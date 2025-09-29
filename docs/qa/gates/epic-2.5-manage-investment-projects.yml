@@ -1,0 +1,29 @@
+schema: 1
+story: "2.5"
+story_title: "Manage Investment Projects"
+gate: "PASS"
+status_reason: "The story is well-implemented with high code quality and good unit test coverage. The only minor concern is the lack of integration tests, which has been noted as future work."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-09-22T18:00:00Z"
+waiver: { active: false }
+top_issues: []
+quality_score: 100
+evidence:
+  tests_reviewed: 15
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3]
+    ac_gaps: []
+nfr_validation:
+  security:
+    status: PASS
+    notes: "New endpoints are protected by auth middleware."
+  performance:
+    status: PASS
+    notes: "No performance issues identified."
+  reliability:
+    status: PASS
+    notes: "Code includes error handling for API calls."
+  maintainability:
+    status: PASS
+    notes: "Code is well-structured and follows project conventions."

@@ -1,0 +1,175 @@
+const request = require('supertest');
+const app = require('../index');
+const mongoose = require('mongoose');
+const Investor = require('../models/InvestorModel');
+const InvestmentProject = require('../models/InvestmentProject');
+const InteractionLog = require('../models/InteractionLog');
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
+
+describe('Project API', () => {
+  it('should create a new project for an investor', async () => {
+    const projectData = {
+      projectTitle: 'Project A',
+      lifecycleStatus: 'Initial Interest',
+    };
+
+    const res = await request(app)
+      .post(`/api/projects/investors/${global.investorId}/projects`)
+      .set('Authorization', `Bearer ${global.mockToken}`)
+      .send(projectData)
+      .expect(201);
+
+    expect(res.body).toHaveProperty('_id');
+    expect(res.body.investor._id).toBe(global.investorId);
+    expect(res.body.projectTitle).toBe('Project A');
+  });
+
+  it('should fetch projects for an investor', async () => {
+    const res = await request(app)
+      .get(`/api/projects/investors/${global.investorId}/projects`)
+      .set('Authorization', `Bearer ${global.mockToken}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body[0].investor._id).toBe(global.investorId);
+  });
+
+    it('should get all projects, optionally filtered by lifecycleStatus', async () => {
+      const newInvestor1 = await Investor.create({ investorName: 'Test Investor 1', sector: 'IT', countryOfOrigin: 'USA' });
+      const newUser1 = await User.create({ name: 'Test User 1', email: 'test1@example.com', password: 'password123' });
+
+      const newInvestor2 = await Investor.create({ investorName: 'Test Investor 2', sector: 'Finance', countryOfOrigin: 'UK' });
+      const newUser2 = await User.create({ name: 'Test User 2', email: 'test2@example.com', password: 'password123' });
+
+      const newInvestor3 = await Investor.create({ investorName: 'Test Investor 3', sector: 'Healthcare', countryOfOrigin: 'Germany' });
+      const newUser3 = await User.create({ name: 'Test User 3', email: 'test3@example.com', password: 'password123' });
+
+      // Create projects directly in the database
+      const project1 = await InvestmentProject.create({
+        projectTitle: 'Filtered Project 1',
+        projectType: 'Type A',
+        lifecycleStatus: 'Lead',
+        investor: newInvestor1._id,
+        assignedTo: newUser1._id,
+      });
+
+      const project2 = await InvestmentProject.create({
+        projectTitle: 'Filtered Project 2',
+        projectType: 'Type B',
+        lifecycleStatus: 'Committment',
+        investor: newInvestor2._id,
+        assignedTo: newUser2._id,
+      });
+
+      const project3 = await InvestmentProject.create({
+        projectTitle: 'Filtered Project 3',
+        projectType: 'Type C',
+        lifecycleStatus: 'Initial Interest',
+        investor: newInvestor3._id,
+        assignedTo: newUser3._id,
+      });
+
+      // Get all projects without filter
+      const resAll = await request(app)
+        .get('/api/projects')
+        .set('Authorization', `Bearer ${global.dgToken}`);
+      expect(resAll.statusCode).toEqual(200);
+      expect(resAll.body.length).toEqual(4); // 1 from beforeEach + 3 from this test
+
+      // Get projects filtered by lifecycleStatus
+      const resFiltered = await request(app)
+        .get('/api/projects?lifecycleStatus=Lead')
+        .set('Authorization', `Bearer ${global.dgToken}`);
+      expect(resFiltered.statusCode).toEqual(200);
+      expect(resFiltered.body.length).toEqual(1);
+      expect(resFiltered.body[0].projectTitle).toEqual('Filtered Project 1');
+    });
+
+    it('should get a single project by ID', async () => {
+      const res = await request(app)
+        .get(`/api/projects/${global.mockProjectId}`)
+        .set('Authorization', `Bearer ${global.dgToken}`);
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toHaveProperty('projectTitle', 'Test Project');
+    });
+
+  it('should update a project by ID', async () => {
+    const project = await InvestmentProject.findOne({ investor: global.investorId });
+
+    const updatedData = { projectTitle: 'Updated Project A' };
+
+    const res = await request(app)
+      .put(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${global.mockToken}`)
+      .send(updatedData)
+      .expect(200);
+
+    expect(res.body.projectTitle).toBe('Updated Project A');
+    expect(res.body.investor._id).toBe(global.investorId);
+  });
+
+  it('should create an interaction log when lifecycleStatus is updated', async () => {
+    const project = await InvestmentProject.create({
+      projectTitle: 'Lifecycle Test Project',
+      investor: global.investorId,
+      lifecycleStatus: 'Initial Interest', // Use valid string enum
+    });
+
+    const updatedData = { lifecycleStatus: 'Lead' }; // Use valid string enum
+
+    const res = await request(app)
+      .put(`/api/projects/${project._id}`)
+      .set('Authorization', `Bearer ${global.mockToken}`)
+      .send(updatedData)
+      .expect(200);
+
+    expect(res.body.lifecycleStatus).toBe('Lead');
+
+    const log = await InteractionLog.findOne({ project: project._id, category: 'System Update' });
+    expect(log).not.toBeNull();
+    expect(log.description).toBe(`Lifecycle status changed from "Initial Interest" to "Lead"`);
+  });
+});
+
+describe('Interaction Logs API', () => {
+  it('should create a new interaction log', async () => {
+    const logData = {
+      description: 'Discussed project scope',
+      category: 'Meeting',
+      documentUrl: 'http://example.com/doc1.pdf',
+      // loggedBy removed: controller handles via req.user.id
+    };
+
+    const res = await request(app)
+      .post(`/api/projects/${global.mockProjectId}/interactions`)
+      .set('Authorization', `Bearer ${global.mockToken}`)
+      .send(logData)
+      .expect(201);
+
+    expect(res.body).toHaveProperty('_id');
+    expect(res.body.project).toBe(global.mockProjectId);
+    expect(res.body.loggedBy._id).toBe(global.mockUserId);
+    expect(res.body.documentUrl).toBe(logData.documentUrl);
+  });
+
+  it('should fetch all interaction logs for a project', async () => {
+    // Ensure at least one log exists for this test
+    await InteractionLog.create({
+      project: global.mockProjectId,
+      loggedBy: global.mockUserId,
+      description: 'Test log for fetch test',
+      category: 'Call',
+    });
+
+    const res = await request(app)
+      .get(`/api/projects/${global.mockProjectId}/interactions`)
+      .set('Authorization', `Bearer ${global.mockToken}`)
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body[0].project).toBe(global.mockProjectId);
+  });
+});

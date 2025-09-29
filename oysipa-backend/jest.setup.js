@@ -1,0 +1,57 @@
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const { connectDB } = require('./src/config/database');
+const Investor = require('./src/models/InvestorModel');
+const InvestmentProject = require('./src/models/InvestmentProject');
+const User = require('./src/models/User');
+const InteractionLog = require('./src/models/InteractionLog');
+
+jest.setTimeout(60000);
+
+// Single connection for all tests
+beforeAll(async () => {
+  await connectDB();
+});
+
+// Clean up and seed data before each test suite
+beforeEach(async () => {
+  // Clear all collections
+  await Promise.all([
+    Investor.deleteMany({}),
+    InvestmentProject.deleteMany({}),
+    User.deleteMany({}),
+    InteractionLog.deleteMany({}),
+  ]);
+
+  // Create fresh seed data for each test
+  const user = await new User({ name: 'Global Test User', email: 'global@example.com', password: 'password123' }).save();
+  const dgUser = await new User({ name: 'DG User', email: 'dg@example.com', password: 'password123', role: 'Director-General' }).save();
+  const investor = await Investor.create({
+    investorName: 'Test Investor',
+    sector: 'Tech',
+    countryOfOrigin: 'USA',
+  });
+  const project = await InvestmentProject.create({
+    projectTitle: 'Test Project',
+    investor: investor._id,
+    lifecycleStatus: 'Idea',
+  });
+
+  // Set global variables for tests to use
+  global.mockUserId = user._id.toString();
+  global.investorId = investor._id.toString();
+  global.mockProjectId = project._id.toString();
+  const payload = { user: { id: global.mockUserId } };
+  global.mockToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+  const dgPayload = { user: { id: dgUser._id, role: 'Director-General' } };
+  global.dgToken = jwt.sign(dgPayload, process.env.JWT_SECRET, { expiresIn: '1h' });
+});
+
+// Disconnect after all tests are done
+afterAll(async () => {
+  if (mongoose.connection.readyState === 1) {
+    await mongoose.connection.db.dropDatabase();
+    await mongoose.connection.close();
+  }
+});
