@@ -25,7 +25,7 @@ const getDashboardKpis = async (req, res) => {
         {
           $project: {
             _id: 0,
-            lifecycleStatus: '$_id',
+            status: '$_id',
             count: 1,
           },
         },

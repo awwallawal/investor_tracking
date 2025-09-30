@@ -68,9 +68,9 @@ describe('GET /api/admin/dashboard-kpis', () => {
     expect(res.body.totalProjects).toBe(4);
     expect(res.body.recentInteractions).toBe(2);
     expect(res.body.projectsByStage).toEqual(expect.arrayContaining([
-      expect.objectContaining({ lifecycleStatus: 'Lead', count: 2 }),
-      expect.objectContaining({ lifecycleStatus: 'Expansion', count: 1 }),
-      expect.objectContaining({ lifecycleStatus: 'Initial Interest', count: 1 }),
+      expect.objectContaining({ status: 'Lead', count: 2 }),
+      expect.objectContaining({ status: 'Expansion', count: 1 }),
+      expect.objectContaining({ status: 'Initial Interest', count: 1 }),
     ]));
   });
 

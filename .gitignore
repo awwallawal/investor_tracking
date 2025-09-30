@@ -13,6 +13,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 err.txt
+working-points.md
 
 # Environment variables
 .env
@@ -41,3 +42,8 @@ Thumbs.db
 
 # Generated bundles
 /web-bundles/
+
+# Local development and planning files
+bug-fix-plan.md
+debug.txt
+new_features.md
