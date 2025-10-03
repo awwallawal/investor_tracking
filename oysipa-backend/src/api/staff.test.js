@@ -8,9 +8,11 @@ const jwt = require('jsonwebtoken');
 
 let staffToken;
 let staffUser;
-let investor;
+let assignedInvestor;
+let unassignedInvestor;
 let project1;
 let project2;
+
 
 describe('Staff API', () => {
   beforeAll(async () => {
@@ -37,36 +39,37 @@ describe('Staff API', () => {
     // Generate a token for the staff user
     staffToken = jwt.sign({ user: { id: staffUser.id, role: staffUser.role } }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    investor = await InvestorModel.create({
-      investorName: 'Test Investor',
-      email: 'investor@test.com',
-      contactPerson: 'John Doe',
-      phone: '123-456-7890',
-      address: '123 Main St',
-      status: 'Active',
+    assignedInvestor = await InvestorModel.create({
+      investorName: 'Assigned Investor',
+      email: 'assigned@test.com',
+      assignedTo: staffUser._id, // Correctly assign the investor to the staff user
       sector: 'Technology',
       countryOfOrigin: 'USA',
     });
 
+    unassignedInvestor = await InvestorModel.create({
+        investorName: 'Unassigned Investor',
+        email: 'unassigned@test.com',
+        sector: 'Finance',
+        countryOfOrigin: 'UK',
+      });
+
     project1 = await InvestmentProject.create({
       projectTitle: 'Staff Project 1',
-      investor: investor._id,
-      assignedTo: staffUser._id,
+      investor: assignedInvestor._id,
       lifecycleStatus: 'Lead',
     });
 
     project2 = await InvestmentProject.create({
       projectTitle: 'Staff Project 2',
-      investor: investor._id,
-      assignedTo: staffUser._id,
+      investor: assignedInvestor._id,
       lifecycleStatus: 'Initial Interest',
     });
 
-    // A project not assigned to staffUser
+    // A project for an unassigned investor
     await InvestmentProject.create({
       projectTitle: 'Other Project',
-      investor: investor._id,
-      assignedTo: new mongoose.Types.ObjectId(), // Assign to a different, non-existent user
+      investor: unassignedInvestor._id,
       lifecycleStatus: 'Committment',
     });
   });

@@ -18,7 +18,7 @@ const ProjectSummaryCard = ({ project }) => {
     >
       <CardContent>
         <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-          Investor: {project.investor ? project.investor.name : 'N/A'}
+          Investor: {project.investor ? project.investor.investorName : 'N/A'}
         </Typography>
         <Typography variant="h5" component="div">
           {project.projectTitle}

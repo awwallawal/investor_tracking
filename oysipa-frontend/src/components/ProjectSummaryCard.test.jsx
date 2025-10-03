@@ -7,7 +7,7 @@ describe('ProjectSummaryCard', () => {
   const mockProject = {
     _id: '654321abcdef',
     projectTitle: 'Test Project Title',
-    investor: { name: 'Test Investor Name' },
+    investor: { investorName: 'Test Investor Name' },
     lifecycleStatus: 'Lead',
   };
 
