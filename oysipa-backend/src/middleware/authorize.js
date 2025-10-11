@@ -1,18 +1,20 @@
-const authorize = (roles = []) => {
-  if (typeof roles === 'string') {
-    roles = [roles];
-  }
-
+const authorize = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
-      return res.status(401).json({ msg: 'No authorization token, authorization denied' });
+      // This case should ideally be caught by the `auth` middleware first
+      return res.status(401).json({ msg: 'Authentication error: User data is missing.' });
     }
 
-    if (roles.length && !roles.includes(req.user.role)) {
+    const userRole = req.user.role;
+    
+    // The roles are passed as arguments, e.g., authorize('Admin', 'User')
+    // The '...allowedRoles' syntax automatically captures them into an array.
+    if (allowedRoles.includes(userRole)) {
+      return next(); // Role is allowed, proceed to the next middleware/controller
+    } else {
+      console.log(`Authorization failed for user ${req.user.email} with role '${userRole}'. Allowed roles: ${allowedRoles.join(', ')}`);
       return res.status(403).json({ msg: 'Forbidden: You do not have access to this resource' });
     }
-
-    next();
   };
 };
 

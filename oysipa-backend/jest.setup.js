@@ -5,8 +5,11 @@ const Investor = require('./src/models/InvestorModel');
 const InvestmentProject = require('./src/models/InvestmentProject');
 const User = require('./src/models/User');
 const InteractionLog = require('./src/models/InteractionLog');
+const LifecycleStatus = require('./src/models/LifecycleStatusModel'); // Import LifecycleStatusModel
 
 jest.setTimeout(60000);
+
+let defaultLifecycleStatus; // Declare it outside to be accessible globally
 
 // Single connection for all tests
 beforeAll(async () => {
@@ -21,20 +24,26 @@ beforeEach(async () => {
     InvestmentProject.deleteMany({}),
     User.deleteMany({}),
     InteractionLog.deleteMany({}),
+    LifecycleStatus.deleteMany({}), // Clear LifecycleStatus collection
   ]);
 
   // Create fresh seed data for each test
   const user = await new User({ name: 'Global Test User', email: 'global@example.com', password: 'password123' }).save();
   const dgUser = await new User({ name: 'DG User', email: 'dg@example.com', password: 'password123', role: 'Director-General' }).save();
+  const portalAdminUser = await new User({ name: 'Portal Admin User', email: 'pa@example.com', password: 'password123', role: 'Portal-Admin' }).save();
+
   const investor = await Investor.create({
     investorName: 'Test Investor',
     sector: 'Tech',
     countryOfOrigin: 'USA',
   });
+  // Create a default LifecycleStatus
+  defaultLifecycleStatus = await LifecycleStatus.create({ name: 'Idea', order: 1, description: 'Initial idea phase.' });
+
   const project = await InvestmentProject.create({
     projectTitle: 'Test Project',
     investor: investor._id,
-    lifecycleStatus: 'Idea',
+    lifecycleStatus: defaultLifecycleStatus._id, // Use the _id of the created status
   });
 
   // Set global variables for tests to use
@@ -46,6 +55,9 @@ beforeEach(async () => {
 
   const dgPayload = { user: { id: dgUser._id, role: 'Director-General' } };
   global.dgToken = jwt.sign(dgPayload, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+  const portalAdminPayload = { user: { id: portalAdminUser._id, role: 'Portal-Admin' } };
+  global.portalAdminToken = jwt.sign(portalAdminPayload, process.env.JWT_SECRET, { expiresIn: '1h' });
 });
 
 // Disconnect after all tests are done
@@ -55,3 +67,5 @@ afterAll(async () => {
     await mongoose.connection.close();
   }
 });
+
+module.exports = { defaultLifecycleStatus }; // Export the defaultLifecycleStatus
