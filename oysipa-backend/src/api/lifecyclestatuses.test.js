@@ -1,18 +1,8 @@
 const request = require('supertest');
 const app = require('../index'); // Assuming your app entry point is index.js
 const LifecycleStatus = require('../models/LifecycleStatusModel');
-const { connectDB, disconnectDB } = require('../config/database');
 
 describe('Lifecycle Statuses API', () => {
-  beforeAll(async () => {
-    // connectDB is called in jest.setup.js, so it's not needed here.
-  });
-
-  afterAll(async () => {
-    await LifecycleStatus.deleteMany({});
-    // disconnectDB is called in jest.setup.js, so it's not needed here.
-  });
-
   beforeEach(async () => {
     await LifecycleStatus.deleteMany({});
     await LifecycleStatus.create([
@@ -24,7 +14,7 @@ describe('Lifecycle Statuses API', () => {
 
   it('should fetch all lifecycle statuses sorted by order', async () => {
     const res = await request(app)
-      .get('/api/lifecyclestatuses')
+      .get('/api/lifecycle-statuses')
       .set('Authorization', `Bearer ${global.mockToken}`);
 
     expect(res.statusCode).toEqual(200);
