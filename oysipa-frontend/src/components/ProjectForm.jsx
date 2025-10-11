@@ -4,6 +4,20 @@ import apiClient from '../api/api';
 
 const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
     const [formData, setFormData] = useState({});
+    const [lifecycleStatuses, setLifecycleStatuses] = useState([]);
+
+    useEffect(() => {
+        const fetchStatuses = async () => {
+            try {
+                const response = await apiClient.get('/api/lifecyclestatuses');
+                setLifecycleStatuses(response.data);
+            } catch (error) {
+                console.error("Failed to fetch lifecycle statuses:", error);
+            }
+        };
+
+        fetchStatuses();
+    }, []);
 
     useEffect(() => {
         if (projectData) {
@@ -15,10 +29,10 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                 estimatedValue: 0,
                 estimatedNumberOfJobs: 0,
                 location: '',
-                lifecycleStatus: 'Initial Interest',
+                lifecycleStatus: lifecycleStatuses.length > 0 ? lifecycleStatuses[0]._id : '',
             });
         }
-    }, [projectData, open]);
+    }, [projectData, open, lifecycleStatuses]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -50,13 +64,10 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                 <TextField margin="dense" name="location" label="Location" type="text" fullWidth variant="standard" value={formData.location || ''} onChange={handleChange} />
                 <FormControl fullWidth margin="dense" variant="standard">
                     <InputLabel>Lifecycle Status</InputLabel>
-                    <Select name="lifecycleStatus" value={formData.lifecycleStatus || 'Initial Interest'} onChange={handleChange}>
-                        <MenuItem value="Initial Interest">Initial Interest</MenuItem>
-                        <MenuItem value="Lead">Lead</MenuItem>
-                        <MenuItem value="Committment">Committment</MenuItem>
-                        <MenuItem value="Exisiting Investor">Exisiting Investor</MenuItem>
-                        <MenuItem value="Expansion">Expansion</MenuItem>
-                        <MenuItem value="Exit">Exit</MenuItem>
+                    <Select name="lifecycleStatus" value={formData.lifecycleStatus || ''} onChange={handleChange}>
+                        {lifecycleStatuses.map(status => (
+                            <MenuItem key={status._id} value={status._id}>{status.name}</MenuItem>
+                        ))}
                     </Select>
                 </FormControl>
             </DialogContent>

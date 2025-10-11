@@ -23,6 +23,7 @@ const Sidebar = () => {
     { path: '/dashboard', name: 'Dashboard', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/users', name: 'User Management', roles: ['Director-General', 'Portal-Admin'] },
     { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
+    { path: '/admin', name: 'Admin Settings', roles: ['Portal-Admin'] },
   ];
 
   if (!token) {

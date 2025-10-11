@@ -63,7 +63,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/investors', investorRoutes);
 app.use('/api/projects', projectRoutes); // Mount project routes
 app.use('/api/interactions', interactionRoutes); // Mount interaction routes
-app.use('/api/lifecyclestatuses', lifecycleStatusRoutes);
+app.use('/api/lifecycle-statuses', lifecycleStatusRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 

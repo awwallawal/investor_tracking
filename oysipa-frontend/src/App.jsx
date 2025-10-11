@@ -13,6 +13,7 @@ import InvestorProfilePage from './pages/InvestorProfilePage'; // Import the pro
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectListPage from './pages/ProjectListPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminPage from './pages/AdminPage';
 import InteractionListPage from './pages/InteractionListPage'; // Import the new page
 import ProtectedRoute from './components/ProtectedRoute';
 import { jwtDecode } from 'jwt-decode';
@@ -108,6 +109,7 @@ function App() {
               )
             }
           />
+          {/* General Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route
               path="/dashboard"
@@ -123,8 +125,14 @@ function App() {
             <Route path="/investors/:id" element={<AppLayout><InvestorProfilePage /></AppLayout>} />
             <Route path="/projects" element={<AppLayout><ProjectListPage /></AppLayout>} />
             <Route path="/projects/:id" element={<AppLayout><ProjectDetailPage /></AppLayout>} />
-            <Route path="/interactions" element={<AppLayout><InteractionListPage /></AppLayout>} /> {/* New route */}
+            <Route path="/interactions" element={<AppLayout><InteractionListPage /></AppLayout>} />
           </Route>
+
+          {/* Admin Protected Routes */}
+          <Route element={<ProtectedRoute allowedRoles={['Portal-Admin']} />}>
+            <Route path="/admin" element={<AppLayout><AdminPage /></AppLayout>} />
+          </Route>
+
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

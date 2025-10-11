@@ -1,0 +1,203 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  List,
+  ListItem,
+  ListItemText,
+  TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import apiClient from '../api/api';
+
+const LifecycleStatusManager = () => {
+  const [statuses, setStatuses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(null);
+
+  useEffect(() => {
+    fetchStatuses();
+  }, []);
+
+  const fetchStatuses = async () => {
+    try {
+      setLoading(true);
+            const response = await apiClient.get('/api/lifecycle-statuses');
+      setStatuses(response.data || []);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch lifecycle statuses.');
+      console.error(err);
+      setStatuses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMove = async (index, direction) => {
+    const newStatuses = [...statuses];
+    const item = newStatuses[index];
+    const newIndex = index + direction;
+
+    if (newIndex < 0 || newIndex >= newStatuses.length) return;
+
+    newStatuses.splice(index, 1);
+    newStatuses.splice(newIndex, 0, item);
+
+    setStatuses(newStatuses);
+
+    try {
+      const reorderedIds = newStatuses.map((status) => status._id);
+      await apiClient.put('/api/lifecycle-statuses/reorder', { orderedIds: reorderedIds });
+    } catch (err) {
+      setError('Failed to reorder statuses.');
+      console.error(err);
+      fetchStatuses(); // revert on error
+    }
+  };
+
+  const handleCreateClick = () => {
+    setCurrentStatus({ name: '', description: '' });
+    setEditOpen(true);
+  };
+
+  const handleEditClick = (status) => {
+    setCurrentStatus(status);
+    setEditOpen(true);
+  };
+
+  const handleDeleteClick = (status) => {
+    setCurrentStatus(status);
+    setDeleteOpen(true);
+  };
+
+  const handleClose = () => {
+    setEditOpen(false);
+    setDeleteOpen(false);
+    setCurrentStatus(null);
+  };
+
+  const handleSave = async () => {
+    try {
+      if (currentStatus._id) {
+        await apiClient.put(`/api/lifecycle-statuses/${currentStatus._id}`, currentStatus);
+      } else {
+        await apiClient.post('/api/lifecycle-statuses', currentStatus);
+      }
+      fetchStatuses();
+      handleClose();
+    } catch (err) {
+      setError(`Failed to save status.`);
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await apiClient.delete(`/api/lifecycle-statuses/${currentStatus._id}`);
+      fetchStatuses();
+      handleClose();
+    } catch (err) {
+      setError('Failed to delete status.');
+      console.error(err);
+    }
+  };
+
+  if (loading) return <Typography>Loading...</Typography>;
+  if (error) return <Typography color="error">{error}</Typography>;
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>
+        Manage Lifecycle Statuses
+      </Typography>
+
+      <Button variant="contained" onClick={handleCreateClick} sx={{ mb: 2 }}>
+        Create New Status
+      </Button>
+
+      {/* Edit/Create Dialog */}
+      <Dialog open={editOpen} onClose={handleClose}>
+        <DialogTitle>{currentStatus?._id ? 'Edit' : 'Create'} Lifecycle Status</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Name"
+            type="text"
+            fullWidth
+            variant="standard"
+            value={currentStatus?.name || ''}
+            onChange={(e) => setCurrentStatus({ ...currentStatus, name: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            type="text"
+            fullWidth
+            variant="standard"
+            value={currentStatus?.description || ''}
+            onChange={(e) => setCurrentStatus({ ...currentStatus, description: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleSave}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onClose={handleClose}>
+        <DialogTitle>Delete Lifecycle Status</DialogTitle>
+        <DialogContent>
+          <Typography>Are you sure you want to delete "{currentStatus?.name}"?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleDelete} color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Status List */}
+      <List>
+        {(statuses || []).map((status, index) => (
+          <ListItem key={status._id}>
+            <ListItemText primary={status.name} secondary={status.description} />
+            <IconButton aria-label="move up" onClick={() => handleMove(index, -1)} disabled={index === 0}>
+              <ArrowUpwardIcon />
+            </IconButton>
+            <IconButton
+              aria-label="move down"
+              onClick={() => handleMove(index, 1)}
+              disabled={index === statuses.length - 1}
+            >
+              <ArrowDownwardIcon />
+            </IconButton>
+            <IconButton aria-label="edit" onClick={() => handleEditClick(status)}>
+              <EditIcon />
+            </IconButton>
+            <IconButton aria-label="delete" onClick={() => handleDeleteClick(status)}>
+              <DeleteIcon />
+            </IconButton>
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  );
+};
+
+export default LifecycleStatusManager;

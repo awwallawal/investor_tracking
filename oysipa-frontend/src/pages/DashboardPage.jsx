@@ -31,7 +31,7 @@ const DashboardPage = () => {
   switch (userRole) {
     case 'Director-General':
       return <DGDashboard />;
-    case 'Portal Administrator':
+    case 'Portal-Admin':
       return <AdminDashboard />;
     case 'Staff':
       return <StaffDashboard />;

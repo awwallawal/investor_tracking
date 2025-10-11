@@ -44,7 +44,7 @@ describe('ProjectListPage', () => {
     expect(axios.get).toHaveBeenCalledWith('/api/projects', expect.any(Object));
   });
 
-  it('renders projects filtered by lifecycleStage from URL', async () => {
+  it('renders projects filtered by lifecycleStatus from URL', async () => {
     render(
       <MemoryRouter initialEntries={['/projects?lifecycleStatus=Lead']}>
         <Routes>
