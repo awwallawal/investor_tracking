@@ -18,6 +18,7 @@ import InteractionListPage from './pages/InteractionListPage'; // Import the new
 import ProtectedRoute from './components/ProtectedRoute';
 import { jwtDecode } from 'jwt-decode';
 import DashboardPage from './pages/DashboardPage';
+import AppLayout from './components/AppLayout'; // Import the correct AppLayout
 
 // Define the theme based on front-end-spec.md
 const theme = createTheme({
@@ -79,21 +80,8 @@ const getRoleFromToken = () => {
   return null;
 };
 
-// Main App Layout for protected routes
-const AppLayout = ({ children }) => (
-  <Box sx={{ display: 'flex' }}>
-    <CssBaseline />
-    <Header />
-    <Sidebar />
-    <Box component="main" sx={{ flexGrow: 1, p: 3, mt: '64px' }}>
-      {children}
-    </Box>
-  </Box>
-);
-
 
 function App() {
-
   return (
     <ThemeProvider theme={theme}>
       <BrowserRouter>

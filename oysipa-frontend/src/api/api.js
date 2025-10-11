@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a new axios instance
 const apiClient = axios.create({
-  baseURL: '/', // Adjust this if your API is on a different domain
+  baseURL: import.meta.env.VITE_API_URL || '/', // Use environment variable
 });
 
 // Add a request interceptor to include the token in all requests

@@ -33,7 +33,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
   const navLinks = [
     { path: '/dashboard', name: 'Dashboard', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/users', name: 'User Management', roles: ['Director-General', 'Portal-Admin'] },
-    { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
+    { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin'] }, // Updated roles
     { path: '/admin', name: 'Admin Settings', roles: ['Portal-Admin'] },
   ];
 
@@ -66,11 +66,13 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       variant={isMobile ? 'temporary' : 'permanent'}
       open={isMobile ? mobileOpen : true}
       onClose={onDrawerToggle}
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
-      }}
+      sx={
+        {
+          width: drawerWidth,
+          flexShrink: 0,
+          [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box' },
+        }
+      }
     >
       {drawerContent}
     </Drawer>
@@ -78,3 +80,4 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
 };
 
 export default Sidebar;
+
