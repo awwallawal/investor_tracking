@@ -24,13 +24,14 @@ describe('InvestmentProject Model', () => {
 
   it('should create a new investment project successfully', async () => {
     const investorId = new mongoose.Types.ObjectId(); // Create a new ObjectId for the investor
+    const lifecycleStatusId = new mongoose.Types.ObjectId();
 
     const projectData = {
       projectTitle: 'Green Energy Initiative',
       description: 'A project to invest in renewable energy sources.',
       estimatedValue: 1000000,
       location: 'California',
-      lifecycleStatus: 'Lead',
+      lifecycleStatus: lifecycleStatusId, // Use an ObjectId
       investor: investorId, // Use the mocked investor ID
     };
 
@@ -49,6 +50,7 @@ describe('InvestmentProject Model', () => {
     const project = new InvestmentProject({
       description: 'Test description',
       investor: new mongoose.Types.ObjectId(),
+      lifecycleStatus: new mongoose.Types.ObjectId(),
     });
     await expect(project.validate()).rejects.toThrow('projectTitle: Path `projectTitle` is required.');
   });
@@ -57,26 +59,27 @@ describe('InvestmentProject Model', () => {
     const project = new InvestmentProject({
       projectTitle: 'Test Project',
       description: 'Test description',
+      lifecycleStatus: new mongoose.Types.ObjectId(),
     });
     await expect(project.validate()).rejects.toThrow('investor: Path `investor` is required.');
   });
 
-  it('should set default values for estimatedValue and lifecycleStatus', async () => {
+  it('should require lifecycleStatus', async () => {
+    const project = new InvestmentProject({
+      projectTitle: 'Test Project',
+      description: 'Test description',
+      investor: new mongoose.Types.ObjectId(),
+    });
+    await expect(project.validate()).rejects.toThrow('lifecycleStatus: Path `lifecycleStatus` is required.');
+  });
+
+  it('should set default value for estimatedValue', async () => {
     const project = new InvestmentProject({
       projectTitle: 'Project with Defaults',
       investor: new mongoose.Types.ObjectId(),
+      lifecycleStatus: new mongoose.Types.ObjectId(),
     });
     await expect(project.validate()).resolves.toBeUndefined();
     expect(project.estimatedValue).toBe(0);
-    expect(project.lifecycleStatus).toBe('Initial Interest');
-  });
-
-  it('should validate lifecycleStatus against enum values', async () => {
-    const project = new InvestmentProject({
-      projectTitle: 'Invalid Stage Project',
-      investor: new mongoose.Types.ObjectId(),
-      lifecycleStatus: 'InvalidStage', // Invalid enum value
-    });
-    await expect(project.validate()).rejects.toThrow('`InvalidStage` is not a valid enum value for path `lifecycleStatus`.');
   });
 });

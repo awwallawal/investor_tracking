@@ -17,8 +17,19 @@ const getDashboardKpis = async (req, res) => {
       InvestmentProject.countDocuments(),
       InvestmentProject.aggregate([
         {
+          $lookup: {
+            from: 'lifecyclestatuses', // The collection name for LifecycleStatus model
+            localField: 'lifecycleStatus',
+            foreignField: '_id',
+            as: 'statusDetails',
+          },
+        },
+        {
+          $unwind: '$statusDetails',
+        },
+        {
           $group: {
-            _id: '$lifecycleStatus',
+            _id: '$statusDetails.name',
             count: { $sum: 1 },
           },
         },

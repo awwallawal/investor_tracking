@@ -32,6 +32,7 @@ const ProjectList = ({ investorId }) => {
                         <ListItem key={project._id} component="a" href={`/projects/${project._id}`}>
                             <ListItemText 
                                 primary={project.projectTitle} 
+                                secondary={`Status: ${project.lifecycleStatus?.name || 'N/A'}`}
                             />
                         </ListItem>
                     ))}

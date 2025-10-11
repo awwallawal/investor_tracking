@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { createTheme, ThemeProvider, CssBaseline, Box, CircularProgress } from '@mui/material';
+import { createTheme, ThemeProvider, CssBaseline, Box, CircularProgress, useMediaQuery } from '@mui/material';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoginPage from './pages/Login';

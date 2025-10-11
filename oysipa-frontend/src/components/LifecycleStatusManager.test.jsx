@@ -54,7 +54,7 @@ describe('LifecycleStatusManager', () => {
     await user.click(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/api/lifecyclestatuses', {
+      expect(apiClient.post).toHaveBeenCalledWith('/api/lifecycle-statuses', {
         name: 'New Status',
         description: 'New Description',
       });
@@ -76,7 +76,7 @@ describe('LifecycleStatusManager', () => {
     await user.click(screen.getByText('Save'));
 
     await waitFor(() => {
-      expect(apiClient.put).toHaveBeenCalledWith('/api/lifecyclestatuses/1', {
+      expect(apiClient.put).toHaveBeenCalledWith('/api/lifecycle-statuses/1', {
         _id: '1',
         name: 'Updated Status',
         description: 'Initial stage',
@@ -85,34 +85,33 @@ describe('LifecycleStatusManager', () => {
     });
   });
 
-  it('opens a confirmation and deletes a status', async () => {
-    const user = userEvent.setup();
-    render(<LifecycleStatusManager />);
-
-    const deleteButtons = await screen.findAllByRole('button', { name: /delete/i });
-    await user.click(deleteButtons[0]);
-
-    expect(screen.getByText('Are you sure you want to delete "Initial"?')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Delete' }));
-
-    await waitFor(() => {
-      expect(apiClient.delete).toHaveBeenCalledWith('/api/lifecyclestatuses/1');
-      expect(apiClient.get).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('reorders statuses when using the arrow buttons', async () => {
-    const user = userEvent.setup();
-    render(<LifecycleStatusManager />);
-
-    const downButtons = await screen.findAllByRole('button', { name: /move down/i });
-    await user.click(downButtons[0]);
-
-    await waitFor(() => {
-      expect(apiClient.put).toHaveBeenCalledWith('/api/lifecyclestatuses/reorder', {
-        orderedIds: ['2', '1', '3'],
+      it('opens a confirmation and deletes a status', async () => {
+      const user = userEvent.setup();
+      render(<LifecycleStatusManager />);
+  
+      const deleteButtons = await screen.findAllByRole('button', { name: /delete/i });
+      await user.click(deleteButtons[0]);
+  
+      expect(screen.getByText('Are you sure you want to delete "Initial"?')).toBeInTheDocument();
+  
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+  
+      await waitFor(() => {
+        expect(apiClient.delete).toHaveBeenCalledWith('/api/lifecycle-statuses/1');
+        expect(apiClient.get).toHaveBeenCalledTimes(2);
       });
     });
+  
+    it('reorders statuses when using the arrow buttons', async () => {
+      const user = userEvent.setup();
+      render(<LifecycleStatusManager />);
+  
+      const downButtons = await screen.findAllByRole('button', { name: /move down/i });
+      await user.click(downButtons[0]);
+  
+      await waitFor(() => {
+        expect(apiClient.put).toHaveBeenCalledWith('/api/lifecycle-statuses/reorder', {
+          orderedIds: ['2', '1', '3'],
+        });    });
   });
 });

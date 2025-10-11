@@ -9,7 +9,7 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
     useEffect(() => {
         const fetchStatuses = async () => {
             try {
-                const response = await apiClient.get('/api/lifecyclestatuses');
+                const response = await apiClient.get('/api/lifecycle-statuses');
                 setLifecycleStatuses(response.data);
             } catch (error) {
                 console.error("Failed to fetch lifecycle statuses:", error);
@@ -21,7 +21,10 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
 
     useEffect(() => {
         if (projectData) {
-            setFormData(projectData);
+            setFormData({
+                ...projectData,
+                lifecycleStatus: projectData.lifecycleStatus?._id || (lifecycleStatuses.length > 0 ? lifecycleStatuses[0]._id : ''),
+            });
         } else {
             setFormData({
                 projectTitle: '',

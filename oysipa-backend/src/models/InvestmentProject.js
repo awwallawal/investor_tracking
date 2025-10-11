@@ -23,9 +23,9 @@ const investmentProjectSchema = new mongoose.Schema({
         trim: true
     },
     lifecycleStatus: {
-        type: String,
-        enum: ['Idea', 'Initial Interest', 'Lead', 'Committment', 'Exisiting Investor', 'Expansion', 'Exit'],
-        default: 'Initial Interest'
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'LifecycleStatus',
+        required: true
     },
     investor: {
         type: mongoose.Schema.Types.ObjectId,

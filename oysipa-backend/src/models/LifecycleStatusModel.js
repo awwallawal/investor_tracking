@@ -9,8 +9,7 @@ const lifecycleStatusSchema = new mongoose.Schema({
   },
   order: {
     type: Number,
-    required: true,
-    unique: true
+    required: true
   },
   description: {
     type: String,

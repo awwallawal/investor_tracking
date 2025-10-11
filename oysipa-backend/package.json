@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node src/index.js",
+    "seed": "node src/db/seed.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "dev": "nodemon src/index.js"
   },

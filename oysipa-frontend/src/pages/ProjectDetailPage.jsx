@@ -33,6 +33,7 @@ const ProjectDetailPage = () => {
     const handleEditFormSave = () => {
         setIsEditFormOpen(false);
         fetchProject();
+        setLogRefreshKey(prevKey => prevKey + 1); // Refresh interaction log
     };
 
     const handleLogFormOpen = () => {
@@ -73,7 +74,7 @@ const ProjectDetailPage = () => {
                 <Typography sx={{ mb: 2 }}>{project.location || 'N/A'}</Typography>
 
                 <Typography variant="h6">Lifecycle Status:</Typography>
-                <Typography sx={{ mb: 2 }}>{project.lifecycleStatus}</Typography>
+                <Typography sx={{ mb: 2 }}>{project.lifecycleStatus?.name || 'N/A'}</Typography>
 
                 <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                     <Button variant="contained" onClick={handleEditFormOpen}>Edit Project</Button>

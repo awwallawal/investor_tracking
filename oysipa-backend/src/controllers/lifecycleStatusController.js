@@ -17,13 +17,17 @@ const getAllLifecycleStatuses = async (req, res) => {
 // @route   POST /api/lifecycle-status
 // @access  Private (Admin)
 const createLifecycleStatus = async (req, res) => {
-  const { name, description, order } = req.body;
+  const { name, description } = req.body;
 
   try {
+    // Find the highest order value
+    const lastStatus = await LifecycleStatus.findOne().sort({ order: -1 });
+    const newOrder = lastStatus ? lastStatus.order + 1 : 1;
+
     const newStatus = new LifecycleStatus({
       name,
       description,
-      order,
+      order: newOrder,
     });
 
     const status = await newStatus.save();

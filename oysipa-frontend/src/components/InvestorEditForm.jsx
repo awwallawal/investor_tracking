@@ -6,15 +6,38 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  TextField
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 
 const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
   const [formData, setFormData] = useState(investorData);
+  const [statuses, setStatuses] = useState([]);
 
   useEffect(() => {
     setFormData(investorData);
   }, [investorData]);
+
+  useEffect(() => {
+    if (open) {
+      const fetchStatuses = async () => {
+        try {
+          const response = await fetch('/api/lifecycle-statuses');
+          if (!response.ok) {
+            throw new Error('Failed to fetch lifecycle statuses');
+          }
+          const data = await response.json();
+          setStatuses(data);
+        } catch (error) {
+          console.error("Fetch error:", error);
+        }
+      };
+      fetchStatuses();
+    }
+  }, [open]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,6 +76,23 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
             required
             margin="normal"
           />
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="lifecycle-status-label">Lifecycle Status</InputLabel>
+            <Select
+              labelId="lifecycle-status-label"
+              id="lifecycleStatus"
+              name="lifecycleStatus"
+              value={formData.lifecycleStatus || ''}
+              onChange={handleChange}
+              label="Lifecycle Status"
+            >
+              {statuses.map((status) => (
+                <MenuItem key={status._id} value={status._id}>
+                  {status.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField
             name="email"
             label="Email"

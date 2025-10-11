@@ -1,5 +1,6 @@
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
+const LifecycleStatus = require('../models/LifecycleStatusModel');
 
 // @desc    Get all projects, optionally filtered by lifecycleStatus
 // @route   GET /api/projects
@@ -14,7 +15,8 @@ exports.getProjects = async (req, res) => {
     }
 
     const projects = await InvestmentProject.find(filter)
-      .populate('investor', 'investorName');
+      .populate('investor', 'investorName')
+      .populate('lifecycleStatus');
 
     res.status(200).json(projects);
   } catch (error) {
@@ -29,9 +31,19 @@ exports.createProject = async (req, res) => {
   try {
     const { investorId } = req.params;
 
+    let { lifecycleStatus } = req.body;
+    if (!lifecycleStatus) {
+        const defaultStatus = await LifecycleStatus.findOne({ name: 'Initial Interest' });
+        if (!defaultStatus) {
+            return res.status(400).json({ error: 'Default lifecycle status "Initial Interest" not found.' });
+        }
+        lifecycleStatus = defaultStatus._id;
+    }
+
     const projectData = {
       ...req.body,
       investor: investorId,
+      lifecycleStatus,
     };
 
     const project = new InvestmentProject(projectData);
@@ -55,6 +67,7 @@ exports.getProjectsByInvestor = async (req, res) => {
 
     const projects = await InvestmentProject.find({ investor: investorId })
       .populate('investor', 'investorName')
+      .populate('lifecycleStatus')
       .populate('assignedTo', 'name email');
 
     res.status(200).json(projects);
@@ -70,6 +83,7 @@ exports.getProjectById = async (req, res) => {
   try {
     const project = await InvestmentProject.findById(req.params.id)
       .populate('investor') // Populate all investor details
+      .populate('lifecycleStatus') // Populate lifecycle status details
       .populate('assignedTo', 'name email'); // Populate assignedTo with name and email
 
     if (!project) {
@@ -93,19 +107,22 @@ exports.updateProject = async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const oldStageName = projectToUpdate.lifecycleStatus;
-    const newStageName = req.body.lifecycleStatus;
+    const oldStatusId = projectToUpdate.lifecycleStatus.toString();
+    const newStatusId = req.body.lifecycleStatus;
 
     // Update the project first
     const updatedProject = await InvestmentProject.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
-    ).populate('investor', 'investorName');
+    ).populate('investor', 'investorName').populate('lifecycleStatus');
 
     // If the stage changed, create a system log entry
-    if (newStageName && oldStageName !== newStageName) {
-      const logDescription = `Lifecycle status changed from "${oldStageName}" to "${newStageName}"`;
+    if (newStatusId && oldStatusId !== newStatusId) {
+      const oldStatus = await LifecycleStatus.findById(oldStatusId);
+      const newStatus = await LifecycleStatus.findById(newStatusId);
+      
+      const logDescription = `Lifecycle status changed from "${oldStatus.name}" to "${newStatus.name}"`;
       const interactionLog = new InteractionLog({
         project: req.params.id,
         loggedBy: req.user.id,
@@ -139,19 +156,16 @@ exports.updateProjectStatus = async (req, res) => {
       return res.status(404).json({ msg: 'Project not found' });
     }
 
-    // Validate new status against enum
-    const validStatuses = InvestmentProject.schema.path('lifecycleStatus').enumValues;
-    if (!validStatuses.includes(lifecycleStatus)) {
-      return res.status(400).json({ msg: `Invalid lifecycle status. Must be one of: ${validStatuses.join(', ')}` });
-    }
-
-    const oldStatus = project.lifecycleStatus;
+    const oldStatusId = project.lifecycleStatus.toString();
     project.lifecycleStatus = lifecycleStatus;
     await project.save();
 
     // Create an interaction log if status changed
-    if (oldStatus !== lifecycleStatus) {
-      const logDescription = `Lifecycle status changed from "${oldStatus}" to "${lifecycleStatus}"`;
+    if (oldStatusId !== lifecycleStatus) {
+      const oldStatus = await LifecycleStatus.findById(oldStatusId);
+      const newStatus = await LifecycleStatus.findById(lifecycleStatus);
+
+      const logDescription = `Lifecycle status changed from "${oldStatus.name}" to "${newStatus.name}"`;
       const interactionLog = new InteractionLog({
         project: id,
         loggedBy: req.user.id, // Assuming req.user.id is available from auth middleware
@@ -163,6 +177,7 @@ exports.updateProjectStatus = async (req, res) => {
 
     const updatedProject = await InvestmentProject.findById(id)
       .populate('investor')
+      .populate('lifecycleStatus')
       .populate('assignedTo', 'name email');
 
     res.status(200).json(updatedProject);

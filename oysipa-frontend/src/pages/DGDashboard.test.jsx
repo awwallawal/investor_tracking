@@ -1,14 +1,14 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import DGDashboard from './DGDashboard';
 import apiClient from '../api/api';
-import { getAuthenticatedUser } from '../utils/auth'; // Changed import
+import { getAuthenticatedUser } from '../utils/auth';
 
-// Mock the external dependencies
+// Mock external dependencies
 vi.mock('../api/api');
-vi.mock('../utils/auth', () => ({ // Changed mock path and structure
+vi.mock('../utils/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }));
 
@@ -29,47 +29,39 @@ describe('DGDashboard', () => {
   };
 
   beforeEach(() => {
-    // Reset mocks before each test
     vi.clearAllMocks();
-
-    // Setup mock implementations
-    getAuthenticatedUser.mockReturnValue(mockUser); // Changed mock assignment
+    getAuthenticatedUser.mockReturnValue(mockUser);
     apiClient.get.mockResolvedValue({ data: mockKpiData });
   });
 
-  it('fetches and displays the KPI data, welcome message, and correct titles', async () => {
+  it('fetches and displays KPI data and welcome message correctly', async () => {
     render(
       <BrowserRouter>
         <DGDashboard />
       </BrowserRouter>
     );
 
-    // Wait for the API call to resolve and the component to re-render
-    await waitFor(() => {
-      // Check for the welcome message
-      expect(screen.getByText(`Welcome ${mockUser.role}, ${mockUser.name}`)).toBeInTheDocument();
-    });
+    // ✅ Use findByText for simpler async waits
+    expect(await screen.findByText(`Welcome ${mockUser.role}, ${mockUser.name}`))
+      .toBeInTheDocument();
 
-    // Check for the main title
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
 
-    // Check for the KPI widgets with their titles and values
-    await waitFor(() => {
-        expect(screen.getByText('Total Investors')).toBeInTheDocument();
-        expect(screen.getByText(mockKpiData.totalInvestors.toString())).toBeInTheDocument();
+    // KPI Data Checks
+    expect(await screen.findByText('Total Investors')).toBeInTheDocument();
+    expect(screen.getByText(mockKpiData.totalInvestors.toString())).toBeInTheDocument();
 
-        expect(screen.getByText('Total Projects')).toBeInTheDocument();
-        expect(screen.getByText(mockKpiData.totalProjects.toString())).toBeInTheDocument();
+    expect(await screen.findByText('Total Projects')).toBeInTheDocument();
+    expect(screen.getByText(mockKpiData.totalProjects.toString())).toBeInTheDocument();
 
-        expect(screen.getByText('All-Time Interactions')).toBeInTheDocument();
-        expect(screen.getByText(mockKpiData.recentInteractions.toString())).toBeInTheDocument();
-        
-        expect(apiClient.get).toHaveBeenCalledWith('/api/admin/dashboard-kpis');
-    });
+    expect(await screen.findByText('All-Time Interactions')).toBeInTheDocument();
+    expect(screen.getByText(mockKpiData.recentInteractions.toString())).toBeInTheDocument();
+
+    // Ensure API was called correctly
+    expect(apiClient.get).toHaveBeenCalledWith('/api/admin/dashboard-kpis');
   });
 
-  it('displays an error message if the API call fails', async () => {
-    // Override the mock for this specific test
+  it('displays an error message if API call fails', async () => {
     apiClient.get.mockRejectedValue(new Error('API Error'));
 
     render(
@@ -78,9 +70,35 @@ describe('DGDashboard', () => {
       </BrowserRouter>
     );
 
-    // Wait for the error message to appear
-    await waitFor(() => {
-      expect(screen.getByText('Failed to fetch KPI data.')).toBeInTheDocument();
-    });
+    // Check for user-friendly error
+    expect(await screen.findByText('Failed to fetch KPI data.')).toBeInTheDocument();
+
+    // Ensure KPI data is not displayed
+    expect(screen.queryByText('Total Investors')).not.toBeInTheDocument();
+    expect(screen.queryByText('Total Projects')).not.toBeInTheDocument();
+  });
+
+  it('matches snapshot after successful render', async () => {
+    render(
+      <BrowserRouter>
+        <DGDashboard />
+      </BrowserRouter>
+    );
+
+    await screen.findByText(`Welcome ${mockUser.role}, ${mockUser.name}`);
+    expect(document.body).toMatchSnapshot();
+  });
+
+  // Optional: Enable if you implement a loading indicator in DGDashboard
+  it.skip('shows loading indicator before data loads', async () => {
+    apiClient.get.mockImplementation(() => new Promise(() => {})); // Simulate pending request
+
+    render(
+      <BrowserRouter>
+        <DGDashboard />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
   });
 });
