@@ -15,8 +15,14 @@ const adminRoutes = require('./api/admin');
 const app = express();
 
 // Middleware
+const allowedOrigins = [
+  process.env.FRONTEND_URL, // Should be set in your Render environment
+  'http://localhost:5173',
+  'https://investor-tracking.vercel.app' // Explicitly allow Vercel deployment
+].filter(Boolean); // Removes any falsy values (e.g., if FRONTEND_URL is not set)
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: allowedOrigins,
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 app.use(cors(corsOptions));
