@@ -18,7 +18,7 @@ const app = express();
 const allowedOrigins = [
   process.env.FRONTEND_URL, // Should be set in your Render environment
   'http://localhost:5173',
-  'https://investor-tracking.vercel.app' // Explicitly allow Vercel deployment
+  //'https://investor-tracking.vercel.app' // Explicitly allow Vercel deployment
 ].filter(Boolean); // Removes any falsy values (e.g., if FRONTEND_URL is not set)
 
 const corsOptions = {
