@@ -2,8 +2,12 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "fallback": {
-    "source": "/(.*)",
-    "destination": "/404.html"
-  }
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    }
+  ]
 }
