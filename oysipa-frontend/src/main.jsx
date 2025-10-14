@@ -8,3 +8,16 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+window.addEventListener('DOMContentLoaded', () => {
+  const splash = document.getElementById('splash-screen')
+  const rootDiv = document.getElementById('root')
+
+  if (splash && rootDiv) {
+    setTimeout(() => {
+      splash.style.opacity = '0'
+      splash.style.visibility = 'hidden'
+      rootDiv.style.display = 'block'
+    }, 2000)
+  }
+})
