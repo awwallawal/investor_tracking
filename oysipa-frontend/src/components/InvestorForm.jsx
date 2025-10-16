@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -7,11 +8,8 @@ import {
   DialogContent,
   DialogTitle,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
 } from '@mui/material';
+import apiClient from '../api/api';
 
 const InvestorForm = ({ open, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -22,25 +20,22 @@ const InvestorForm = ({ open, onClose, onSave }) => {
     countryOfOrigin: '',
     companyRegistrationInfo: '',
     keyContactPerson: '',
-    lifecycleStatus: ''
   });
-  const [statuses, setStatuses] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (open) {
-      const fetchStatuses = async () => {
-        try {
-          const response = await fetch('/api/lifecycle-statuses');
-          if (!response.ok) {
-            throw new Error('Failed to fetch lifecycle statuses');
-          }
-          const data = await response.json();
-          setStatuses(data);
-        } catch (error) {
-          console.error("Fetch error:", error);
-        }
-      };
-      fetchStatuses();
+      // Reset form and error on open
+      setFormData({
+        investorName: '',
+        email: '',
+        phoneNumber: '',
+        sector: '',
+        countryOfOrigin: '',
+        companyRegistrationInfo: '',
+        keyContactPerson: '',
+      });
+      setError(null);
     }
   }, [open]);
 
@@ -51,19 +46,15 @@ const InvestorForm = ({ open, onClose, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null); // Clear previous errors
+
     try {
-      const response = await fetch('/api/investors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create investor');
-      }
+      await apiClient.post('/api/investors', formData);
       onSave(); // Trigger refresh and close
     } catch (error) {
       console.error("Submission error:", error);
-      // Optionally, show an error message to the user
+      const message = error.response?.data?.error || error.message || 'Failed to create investor';
+      setError(message);
     }
   };
 
@@ -71,6 +62,7 @@ const InvestorForm = ({ open, onClose, onSave }) => {
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Register New Investor</DialogTitle>
       <DialogContent>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
           <TextField
             name="investorName"
@@ -81,23 +73,6 @@ const InvestorForm = ({ open, onClose, onSave }) => {
             required
             margin="normal"
           />
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="lifecycle-status-label">Lifecycle Status</InputLabel>
-            <Select
-              labelId="lifecycle-status-label"
-              id="lifecycleStatus"
-              name="lifecycleStatus"
-              value={formData.lifecycleStatus}
-              onChange={handleChange}
-              label="Lifecycle Status"
-            >
-              {statuses.map((status) => (
-                <MenuItem key={status._id} value={status._id}>
-                  {status.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
           <TextField
             name="email"
             label="Email"

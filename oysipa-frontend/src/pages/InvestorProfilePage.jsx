@@ -9,18 +9,24 @@ import apiClient from '../api/api';
 
 const InvestorProfilePage = () => {
     const [investor, setInvestor] = useState(null);
+    const [projects, setProjects] = useState([]); // Add state for projects
     const [isEditFormOpen, setIsEditFormOpen] = useState(false);
     const [isProjectFormOpen, setIsProjectFormOpen] = useState(false); // State for project form
     const { id } = useParams();
 
     const fetchInvestorAndProjects = useCallback(async () => {
         try {
-            const response = await apiClient.get(`/api/investors/${id}`);
-            setInvestor(response.data);
+            // Fetch investor details and projects in parallel
+            const [investorResponse, projectsResponse] = await Promise.all([
+                apiClient.get(`/api/investors/${id}`),
+                apiClient.get(`/api/projects/investors/${id}/projects`)
+            ]);
+            setInvestor(investorResponse.data);
+            setProjects(projectsResponse.data);
         } catch (error) {
             console.error("Fetch error:", error);
         }
-    }, [id]); // id is a dependency of useCallback
+    }, [id]);
 
     useEffect(() => {
         fetchInvestorAndProjects();
@@ -41,7 +47,7 @@ const InvestorProfilePage = () => {
 
     const handleProjectFormSave = () => {
         setIsProjectFormOpen(false);
-        fetchInvestorAndProjects(); // Re-fetch data to update the project list
+        fetchInvestorAndProjects(); // This will now re-fetch both investor and projects
     };
 
     const handleAssignUser = async (userId) => {
@@ -98,7 +104,7 @@ const InvestorProfilePage = () => {
 
             <Divider sx={{ my: 4 }} />
 
-            <ProjectList investorId={investor._id} />
+            <ProjectList projects={projects} />
 
         </Box>
     );

@@ -1,32 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Divider } from '@mui/material';
-import apiClient from '../api/api';
 
-const ProjectList = ({ investorId }) => {
-    const [projects, setProjects] = useState([]);
-
-    useEffect(() => {
-        const fetchProjects = async () => {
-            try {
-                const response = await apiClient.get(`/api/projects/investors/${investorId}/projects`);
-                setProjects(response.data);
-            } catch (error) {
-                console.error("Fetch error:", error);
-            }
-        };
-
-        if (investorId) {
-            fetchProjects();
-        }
-    }, [investorId]);
-
+const ProjectList = ({ projects }) => {
     return (
         <Box sx={{ mt: 4 }}>
             <Typography variant="h5" component="h2" gutterBottom>
                 Investment Projects
             </Typography>
             <Divider />
-            {projects.length > 0 ? (
+            {projects && projects.length > 0 ? (
                 <List>
                     {projects.map((project) => (
                         <ListItem key={project._id} component="a" href={`/projects/${project._id}`}>
@@ -45,3 +27,4 @@ const ProjectList = ({ investorId }) => {
 };
 
 export default ProjectList;
+
