@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
+import apiClient from '../api/api';
 
 const ProjectListPage = () => {
   const [projects, setProjects] = useState([]);
@@ -15,14 +15,8 @@ const ProjectListPage = () => {
       try {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('token');
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        };
-        const url = lifecycleStatus ? `/api/projects?lifecycleStatus=${lifecycleStatus}` : '/api/projects';
-        const res = await axios.get(url, config);
+        const url = `/api/projects${lifecycleStatus ? `?lifecycleStatus=${lifecycleStatus}` : ''}`;
+        const res = await apiClient.get(url);
         setProjects(res.data);
       } catch (err) {
         setError('Failed to fetch projects.');

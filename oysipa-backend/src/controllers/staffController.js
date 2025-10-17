@@ -17,7 +17,8 @@ exports.getStaffDashboard = async (req, res) => {
 
     // Find all projects linked to those investors
     const projects = await InvestmentProject.find({ investor: { $in: investorIds } })
-      .populate('investor', 'investorName');
+      .populate('investor', 'investorName')
+      .populate('lifecycleStatus');
 
     res.json(projects);
   } catch (err) {

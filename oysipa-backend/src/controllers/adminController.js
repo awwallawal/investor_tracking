@@ -4,14 +4,11 @@ const InteractionLog = require('../models/InteractionLog');
 
 const getDashboardKpis = async (req, res) => {
   try {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
     const [
       totalInvestors,
       totalProjects,
       projectsByStage,
-      recentInteractions,
+      allTimeInteractions,
     ] = await Promise.all([
       Investor.countDocuments(),
       InvestmentProject.countDocuments(),
@@ -41,14 +38,14 @@ const getDashboardKpis = async (req, res) => {
           },
         },
       ]),
-      InteractionLog.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      InteractionLog.countDocuments(),
     ]);
 
     res.json({
       totalInvestors,
       totalProjects,
       projectsByStage,
-      recentInteractions,
+      recentInteractions: allTimeInteractions, // Keep the original field name for compatibility
     });
   } catch (error) {
     console.error('Error fetching dashboard KPIs:', error);

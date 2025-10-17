@@ -11,7 +11,13 @@ exports.getProjects = async (req, res) => {
     const filter = {};
 
     if (lifecycleStatus) {
-      filter.lifecycleStatus = lifecycleStatus;
+      const statusDoc = await LifecycleStatus.findOne({ name: lifecycleStatus });
+      if (statusDoc) {
+        filter.lifecycleStatus = statusDoc._id;
+      } else {
+        // If a status is provided but not found, return no projects.
+        return res.status(200).json([]);
+      }
     }
 
     const projects = await InvestmentProject.find(filter)
