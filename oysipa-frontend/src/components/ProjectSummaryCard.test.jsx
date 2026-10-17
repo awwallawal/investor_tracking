@@ -8,7 +8,7 @@ describe('ProjectSummaryCard', () => {
     _id: '654321abcdef',
     projectTitle: 'Test Project Title',
     investor: { investorName: 'Test Investor Name' },
-    lifecycleStatus: 'Lead',
+    lifecycleStatus: { name: 'Lead' },
   };
 
   it('renders project details correctly', () => {
@@ -20,7 +20,7 @@ describe('ProjectSummaryCard', () => {
 
     expect(screen.getByText(/Investor: Test Investor Name/i)).toBeInTheDocument();
     expect(screen.getByText(/Test Project Title/i)).toBeInTheDocument();
-    expect(screen.getByText(/Stage: Lead/i)).toBeInTheDocument();
+    expect(screen.getByText(/Status: Lead/i)).toBeInTheDocument();
   });
 
   it('renders a link to the project detail page', () => {

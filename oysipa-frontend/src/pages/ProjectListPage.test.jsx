@@ -2,13 +2,19 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProjectListPage from '../pages/ProjectListPage';
-import axios from 'axios';
+import apiClient from '../api/api';
 
-vi.mock('axios');
+// Mock the shared API client (the page fetches through apiClient, not axios directly)
+vi.mock('../api/api', () => ({
+  default: {
+    get: vi.fn(),
+  },
+}));
 
 describe('ProjectListPage', () => {
   beforeEach(() => {
-    axios.get.mockResolvedValue({
+    apiClient.get.mockReset();
+    apiClient.get.mockResolvedValue({
       data: [
         { _id: '1', projectTitle: 'Project Alpha', investor: { investorName: 'Investor A' } },
         { _id: '2', projectTitle: 'Project Beta', investor: { investorName: 'Investor B' } },
@@ -41,7 +47,7 @@ describe('ProjectListPage', () => {
       expect(screen.getByText('Project Alpha (Investor: Investor A)')).toBeInTheDocument();
       expect(screen.getByText('Project Beta (Investor: Investor B)')).toBeInTheDocument();
     });
-    expect(axios.get).toHaveBeenCalledWith('/api/projects', expect.any(Object));
+    expect(apiClient.get).toHaveBeenCalledWith('/api/projects');
   });
 
   it('renders projects filtered by lifecycleStatus from URL', async () => {
@@ -56,12 +62,12 @@ describe('ProjectListPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Project Alpha (Investor: Investor A)')).toBeInTheDocument();
     });
-    expect(axios.get).toHaveBeenCalledWith('/api/projects?lifecycleStatus=Lead', expect.any(Object));
+    expect(apiClient.get).toHaveBeenCalledWith('/api/projects?lifecycleStatus=Lead');
     expect(screen.getByText('Project List (Status: Lead)')).toBeInTheDocument();
   });
 
   it('renders no projects message if none are found', async () => {
-    axios.get.mockResolvedValueOnce({ data: [] });
+    apiClient.get.mockResolvedValueOnce({ data: [] });
 
     render(
       <MemoryRouter>
@@ -75,7 +81,7 @@ describe('ProjectListPage', () => {
   });
 
   it('renders error message if fetching fails', async () => {
-    axios.get.mockRejectedValueOnce(new Error('Network Error'));
+    apiClient.get.mockRejectedValueOnce(new Error('Network Error'));
 
     render(
       <MemoryRouter>

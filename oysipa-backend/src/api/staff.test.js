@@ -1,9 +1,9 @@
 const request = require('supertest');
-const mongoose = require('mongoose');
 const app = require('../index'); // Your Express app
 const User = require('../models/User');
 const InvestorModel = require('../models/InvestorModel'); // Corrected import
 const InvestmentProject = require('../models/InvestmentProject');
+const LifecycleStatus = require('../models/LifecycleStatusModel');
 const jwt = require('jsonwebtoken');
 
 let staffToken;
@@ -14,20 +14,20 @@ let project1;
 let project2;
 
 
+// The DB connection is opened (and closed) by jest.setup.js via the shared connectDB.
 describe('Staff API', () => {
-  beforeAll(async () => {
-    // Connect to a test database
-    await mongoose.connect(process.env.MONGO_URI_TEST || 'mongodb://localhost:27017/oysipa_test', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-  });
-
   beforeEach(async () => {
     // Clear the database and seed with test data
     await User.deleteMany({});
     await InvestorModel.deleteMany({}); // Delete InvestorModel data
     await InvestmentProject.deleteMany({});
+
+    // lifecycleStatus is an ObjectId ref; "Idea" is already seeded by jest.setup.js
+    const [leadStatus, initialInterestStatus, commitmentStatus] = await LifecycleStatus.create([
+      { name: 'Lead', order: 2 },
+      { name: 'Initial Interest', order: 3 },
+      { name: 'Commitment', order: 4 },
+    ]);
 
     staffUser = await User.create({
       name: 'Test Staff',
@@ -57,20 +57,20 @@ describe('Staff API', () => {
     project1 = await InvestmentProject.create({
       projectTitle: 'Staff Project 1',
       investor: assignedInvestor._id,
-      lifecycleStatus: 'Lead',
+      lifecycleStatus: leadStatus._id,
     });
 
     project2 = await InvestmentProject.create({
       projectTitle: 'Staff Project 2',
       investor: assignedInvestor._id,
-      lifecycleStatus: 'Initial Interest',
+      lifecycleStatus: initialInterestStatus._id,
     });
 
     // A project for an unassigned investor
     await InvestmentProject.create({
       projectTitle: 'Other Project',
       investor: unassignedInvestor._id,
-      lifecycleStatus: 'Committment',
+      lifecycleStatus: commitmentStatus._id,
     });
   });
 
@@ -79,11 +79,6 @@ describe('Staff API', () => {
     await User.deleteMany({});
     await InvestorModel.deleteMany({}); // Delete InvestorModel data
     await InvestmentProject.deleteMany({});
-  });
-
-  afterAll(async () => {
-    // Disconnect from the database
-    await mongoose.connection.close();
   });
 
   it('should return assigned projects for a staff member', async () => {
@@ -98,6 +93,7 @@ describe('Staff API', () => {
     expect(res.body[0].projectTitle).toBeDefined();
     expect(res.body[0].investor.investorName).toBeDefined();
     expect(res.body[0].lifecycleStatus).toBeDefined();
+    expect(res.body.map(p => p.lifecycleStatus.name).sort()).toEqual(['Initial Interest', 'Lead']);
     expect(res.body.some(p => p.projectTitle === 'Staff Project 1')).toBeTruthy();
     expect(res.body.some(p => p.projectTitle === 'Staff Project 2')).toBeTruthy();
   });

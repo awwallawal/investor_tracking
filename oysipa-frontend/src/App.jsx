@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { createTheme, ThemeProvider, CssBaseline, Box, CircularProgress, useMediaQuery } from '@mui/material';
+import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import LoginPage from './pages/Login';
@@ -16,7 +16,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminPage from './pages/AdminPage';
 import InteractionListPage from './pages/InteractionListPage'; // Import the new page
 import ProtectedRoute from './components/ProtectedRoute';
-import { jwtDecode } from 'jwt-decode';
 import DashboardPage from './pages/DashboardPage';
 import AppLayout from './components/AppLayout'; // Import the correct AppLayout
 
@@ -63,23 +62,6 @@ const theme = createTheme({
 const isAuthenticated = () => {
   return localStorage.getItem('token') !== null;
 };
-
-const getRoleFromToken = () => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    try {
-      const decodedToken = jwtDecode(token);
-      console.log('Decoded Token:', decodedToken);
-      console.log('Extracted Role:', decodedToken.user.role);
-      return decodedToken.user.role; // Assuming role is stored in token.user.role
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return null;
-    }
-  }
-  return null;
-};
-
 
 function App() {
   return (

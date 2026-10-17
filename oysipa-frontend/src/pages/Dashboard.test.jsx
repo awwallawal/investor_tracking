@@ -116,9 +116,13 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('displays "Access Denied" if user is not Staff', async () => {
-    jwtDecode.mockReturnValue({ user: { id: 'admin123', name: 'Test Admin', role: 'Portal Administrator' } });
+  it('renders the DG dashboard for a Portal-Admin user', async () => {
+    jwtDecode.mockReturnValue({ user: { id: 'admin123', name: 'Test Admin', role: 'Portal-Admin' } });
     localStorage.setItem('token', mockToken); // Ensure token is set for the effect to run
+    // Portal-Admin -> AdminDashboard -> DGDashboard, which fetches the KPI data
+    apiClient.get.mockResolvedValueOnce({
+      data: { totalInvestors: 3, totalProjects: 5, recentInteractions: 7, projectsByStage: [] },
+    });
 
     render(
       <Router>
@@ -126,9 +130,9 @@ describe('DashboardPage', () => {
       </Router>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText(/Portal Administration/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+    expect(screen.getByText('Welcome Portal-Admin, Test Admin')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledWith('/api/admin/dashboard-kpis');
   });
 
   it('displays "No authentication token found" if no token is present', async () => {

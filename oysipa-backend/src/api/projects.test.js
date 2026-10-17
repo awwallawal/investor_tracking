@@ -5,13 +5,25 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const User = require('../models/User');
+const LifecycleStatus = require('../models/LifecycleStatusModel');
 const jwt = require('jsonwebtoken');
 
 describe('Project API', () => {
+  // lifecycleStatus is an ObjectId ref to LifecycleStatus ("Idea" is seeded globally by jest.setup.js)
+  let leadStatus, initialInterestStatus, commitmentStatus;
+
+  beforeEach(async () => {
+    [leadStatus, initialInterestStatus, commitmentStatus] = await LifecycleStatus.create([
+      { name: 'Lead', order: 2 },
+      { name: 'Initial Interest', order: 3 },
+      { name: 'Commitment', order: 4 },
+    ]);
+  });
+
   it('should create a new project for an investor', async () => {
     const projectData = {
       projectTitle: 'Project A',
-      lifecycleStatus: 'Initial Interest',
+      lifecycleStatus: initialInterestStatus._id.toString(),
     };
 
     const res = await request(app)
@@ -23,6 +35,7 @@ describe('Project API', () => {
     expect(res.body).toHaveProperty('_id');
     expect(res.body.investor._id).toBe(global.investorId);
     expect(res.body.projectTitle).toBe('Project A');
+    expect(res.body.lifecycleStatus).toBe(initialInterestStatus._id.toString());
   });
 
   it('should fetch projects for an investor', async () => {
@@ -50,7 +63,7 @@ describe('Project API', () => {
       const project1 = await InvestmentProject.create({
         projectTitle: 'Filtered Project 1',
         projectType: 'Type A',
-        lifecycleStatus: 'Lead',
+        lifecycleStatus: leadStatus._id,
         investor: newInvestor1._id,
         assignedTo: newUser1._id,
       });
@@ -58,7 +71,7 @@ describe('Project API', () => {
       const project2 = await InvestmentProject.create({
         projectTitle: 'Filtered Project 2',
         projectType: 'Type B',
-        lifecycleStatus: 'Committment',
+        lifecycleStatus: commitmentStatus._id,
         investor: newInvestor2._id,
         assignedTo: newUser2._id,
       });
@@ -66,7 +79,7 @@ describe('Project API', () => {
       const project3 = await InvestmentProject.create({
         projectTitle: 'Filtered Project 3',
         projectType: 'Type C',
-        lifecycleStatus: 'Initial Interest',
+        lifecycleStatus: initialInterestStatus._id,
         investor: newInvestor3._id,
         assignedTo: newUser3._id,
       });
@@ -85,6 +98,7 @@ describe('Project API', () => {
       expect(resFiltered.statusCode).toEqual(200);
       expect(resFiltered.body.length).toEqual(1);
       expect(resFiltered.body[0].projectTitle).toEqual('Filtered Project 1');
+      expect(resFiltered.body[0].lifecycleStatus.name).toEqual('Lead');
     });
 
     it('should get a single project by ID', async () => {
@@ -114,10 +128,10 @@ describe('Project API', () => {
     const project = await InvestmentProject.create({
       projectTitle: 'Lifecycle Test Project',
       investor: global.investorId,
-      lifecycleStatus: 'Initial Interest', // Use valid string enum
+      lifecycleStatus: initialInterestStatus._id,
     });
 
-    const updatedData = { lifecycleStatus: 'Lead' }; // Use valid string enum
+    const updatedData = { lifecycleStatus: leadStatus._id.toString() };
 
     const res = await request(app)
       .put(`/api/projects/${project._id}`)
@@ -125,7 +139,7 @@ describe('Project API', () => {
       .send(updatedData)
       .expect(200);
 
-    expect(res.body.lifecycleStatus).toBe('Lead');
+    expect(res.body.lifecycleStatus.name).toBe('Lead');
 
     const log = await InteractionLog.findOne({ project: project._id, category: 'System Update' });
     expect(log).not.toBeNull();

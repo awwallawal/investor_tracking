@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import LifecycleStatusManager from './LifecycleStatusManager';
@@ -41,26 +41,31 @@ describe('LifecycleStatusManager', () => {
   });
 
   it('opens a dialog and creates a new status', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     render(<LifecycleStatusManager />);
 
-    await user.click(await screen.findByText('Create New Status'));
+    await user.click(await screen.findByRole('button', { name: 'Create New Status' }));
 
-    const nameInput = screen.getByLabelText('Name');
-    const descriptionInput = screen.getByLabelText('Description');
-    await user.type(nameInput, 'New Status');
-    await user.type(descriptionInput, 'New Description');
+    // Wait for the create dialog to be open before typing into it
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Create Lifecycle Status')).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Name'), 'New Status');
+    await user.type(within(dialog).getByLabelText('Description'), 'New Description');
 
-    await user.click(screen.getByText('Save'));
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith('/api/lifecycle-statuses', {
         name: 'New Status',
         description: 'New Description',
       });
-      expect(apiClient.get).toHaveBeenCalledTimes(2); // initial + refresh
     });
-  });
+    // Wait for the refreshed list first (the component shows only "Loading..." while refetching),
+    // then check the dialog was actually closed and the list was fetched twice (initial + refresh)
+    expect(await screen.findByText('Initial')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
+  }, 15000); // MUI dialog + typing measured 4.8-6.6 s under full-suite load on this laptop
 
   it('opens a dialog and updates an existing status', async () => {
     const user = userEvent.setup();

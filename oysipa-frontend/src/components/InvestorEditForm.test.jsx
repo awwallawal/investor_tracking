@@ -3,6 +3,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event'; // Import userEvent
 import { expect } from 'vitest';
 import InvestorEditForm from './InvestorEditForm';
+import apiClient from '../api/api';
+
+// Mock the shared API client (the form saves via apiClient.put, not fetch)
+vi.mock('../api/api', () => ({
+  default: {
+    put: vi.fn(),
+  },
+}));
 
 // Mock Material-UI Dialog and TextField components to simplify testing
 vi.mock('@mui/material', async (importOriginal) => {
@@ -55,12 +63,7 @@ describe('InvestorEditForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({}),
-      })
-    );
+    apiClient.put.mockResolvedValue({ data: mockInvestorData });
   });
 
   it('renders correctly with investor data', () => {
@@ -110,25 +113,15 @@ describe('InvestorEditForm', () => {
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/investors/1',
-        expect.objectContaining({
-          method: 'PUT',
-          body: JSON.stringify(mockInvestorData), // Initial data as no changes were made
-        })
-      );
+      // Initial data, as no changes were made
+      expect(apiClient.put).toHaveBeenCalledWith('/api/investors/1', mockInvestorData);
       expect(mockOnSave).toHaveBeenCalledTimes(1);
       expect(mockOnClose).not.toHaveBeenCalled(); // onSave handles closing
     });
   });
 
   it('handles API error during submission', async () => {
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        json: () => Promise.resolve({ error: 'Failed to update' }),
-      })
-    );
+    apiClient.put.mockRejectedValueOnce({ response: { data: { error: 'Failed to update' } } });
 
     render(
       <InvestorEditForm
@@ -141,10 +134,9 @@ describe('InvestorEditForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
-    await waitFor(() => {
-      expect(mockOnSave).not.toHaveBeenCalled();
-      expect(mockOnClose).not.toHaveBeenCalled();
-      // Optionally, check for error message display if implemented in component
-    });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to update');
+    expect(apiClient.put).toHaveBeenCalledWith('/api/investors/1', mockInvestorData);
+    expect(mockOnSave).not.toHaveBeenCalled();
+    expect(mockOnClose).not.toHaveBeenCalled();
   });
 });

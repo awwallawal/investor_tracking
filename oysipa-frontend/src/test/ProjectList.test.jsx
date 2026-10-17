@@ -1,49 +1,26 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
 import ProjectList from '../components/ProjectList';
-import apiClient from '../api/api';
 
-// Mock apiClient
-vi.mock('../api/api', () => ({
-  default: {
-    get: vi.fn(),
-  },
-}));
-
+// ProjectList is presentational: the parent page fetches projects and passes them in.
 describe('ProjectList', () => {
-    beforeEach(() => {
-        apiClient.get.mockClear();
-    });
-
-    it('should display a list of projects', async () => {
+    it('should display a list of projects', () => {
         const mockProjects = [
-            { _id: '1', projectTitle: 'Project Alpha', lifecycleStatus: 'Planning' },
-            { _id: '2', projectTitle: 'Project Beta', lifecycleStatus: 'Execution' },
+            { _id: '1', projectTitle: 'Project Alpha', lifecycleStatus: { name: 'Planning' } },
+            { _id: '2', projectTitle: 'Project Beta', lifecycleStatus: { name: 'Execution' } },
         ];
-        const investorId = 'test-investor-id';
 
-        apiClient.get.mockResolvedValue({ data: mockProjects });
-
-        render(<ProjectList investorId={investorId} />);
-
-        await waitFor(() => {
-            expect(apiClient.get).toHaveBeenCalledWith(`/api/projects/investors/${investorId}/projects`);
-        });
+        render(<ProjectList projects={mockProjects} />);
 
         expect(screen.getByText('Project Alpha')).toBeInTheDocument();
         expect(screen.getByText('Project Beta')).toBeInTheDocument();
+        expect(screen.getByText('Status: Planning')).toBeInTheDocument();
+        expect(screen.getByText('Status: Execution')).toBeInTheDocument();
     });
 
-    it('should display a message when there are no projects', async () => {
-        const investorId = 'test-investor-id';
-        apiClient.get.mockResolvedValue({ data: [] });
-
-        render(<ProjectList investorId={investorId} />);
-
-        await waitFor(() => {
-            expect(apiClient.get).toHaveBeenCalledWith(`/api/projects/investors/${investorId}/projects`);
-        });
+    it('should display a message when there are no projects', () => {
+        render(<ProjectList projects={[]} />);
 
         expect(screen.getByText('No projects found for this investor.')).toBeInTheDocument();
     });
