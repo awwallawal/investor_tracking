@@ -12,15 +12,11 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-err.txt
-working-points.md
 
-# Environment variables
+# Environment variables (but NOT .env.example — those are tracked)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 /oysipa-backend/.env
 /oysipa-frontend/.env
 
@@ -28,6 +24,11 @@ working-points.md
 .idea/
 .vscode/
 *.swp
+*.sw?
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
 # OS-generated files
 .DS_Store
@@ -37,15 +38,40 @@ working-points.md
 ehthumbs.db
 Thumbs.db
 
-# Tooling
+# AI tooling
 .gemini/
+.claude/
+
+# Test coverage
+coverage/
+/oysipa-backend/coverage
+/oysipa-frontend/coverage
 
 # Generated bundles
 /web-bundles/
 
-# Local development and planning files
-bug-fix-plan.md
+# Personal / local development files
+docs/error.txt
+docs/insights.txt
+docs/update_process.txt
+err.txt
+errorr.txt
 debug.txt
+bug-fix-plan.md
+working-points.md
 new_features.md
 deployment_instructions.md
-errorr.txt
+
+
+# Local-only planning, AI tooling and notes (this repo is PUBLIC: keep these off GitHub)
+_bmad/
+_bmad-output/
+.agents/
+START-HERE-SABER-Y4.md
+answers.md
+new_dump.txt
+docs/archive-v4/
+docs/gap-analysis-report.md
+docs/ipa-website-research.md
+docs/oyo-state-investment-data.md
+/package-lock.json

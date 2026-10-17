@@ -11,13 +11,25 @@ jest.setTimeout(60000);
 
 let defaultLifecycleStatus; // Declare it outside to be accessible globally
 
+// Safety guard: these hooks delete every collection and drop the database.
+// Refuse to touch any database whose name does not mark it as disposable.
+// (A URI with no database name connects to "test", which may hold live data.)
+const assertSafeTestDb = () => {
+  const name = mongoose.connection.name || '';
+  if (name === 'test' || !/(_test|healthcheck)$/.test(name)) {
+    throw new Error(`Refusing to run destructive test hooks against database "${name}". Use a database name ending in _test or healthcheck.`);
+  }
+};
+
 // Single connection for all tests
 beforeAll(async () => {
   await connectDB();
+  assertSafeTestDb();
 });
 
 // Clean up and seed data before each test suite
 beforeEach(async () => {
+  assertSafeTestDb();
   // Clear all collections
   await Promise.all([
     Investor.deleteMany({}),
@@ -63,6 +75,7 @@ beforeEach(async () => {
 // Disconnect after all tests are done
 afterAll(async () => {
   if (mongoose.connection.readyState === 1) {
+    assertSafeTestDb();
     await mongoose.connection.db.dropDatabase();
     await mongoose.connection.close();
   }
