@@ -7,20 +7,8 @@ import ProjectList from '../components/ProjectList';
 import ProjectForm from '../components/ProjectForm'; // Import ProjectForm
 import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
-import { jwtDecode } from 'jwt-decode';
 import apiClient from '../api/api';
-
-// Same decoding as components/ProtectedRoute.jsx
-const getUserFromToken = () => {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
-    try {
-        return jwtDecode(token).user || null;
-    } catch (error) {
-        console.error('Error decoding token:', error);
-        return null;
-    }
-};
+import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
 const InvestorProfilePage = () => {
     const [investor, setInvestor] = useState(null);
@@ -30,7 +18,7 @@ const InvestorProfilePage = () => {
     const [isLogFormOpen, setIsLogFormOpen] = useState(false);
     const [logRefreshKey, setLogRefreshKey] = useState(0);
     const { id } = useParams();
-    const currentUser = getUserFromToken();
+    const currentUser = getCurrentUser();
     const isStaff = currentUser?.role === 'Staff';
 
     const fetchInvestorAndProjects = useCallback(async () => {
@@ -152,7 +140,7 @@ const InvestorProfilePage = () => {
                 )}
             </Box>
 
-            <InteractionLogList investorId={investor._id} canWrite={canWrite} key={logRefreshKey} />
+            <InteractionLogList investorId={investor._id} canWrite={canWrite} canDelete={isAdminRole(currentUser?.role)} key={logRefreshKey} />
 
             <InteractionLogForm
                 open={isLogFormOpen}

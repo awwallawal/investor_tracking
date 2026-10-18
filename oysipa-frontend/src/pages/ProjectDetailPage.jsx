@@ -5,6 +5,7 @@ import ProjectForm from '../components/ProjectForm';
 import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
 import apiClient from '../api/api';
+import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
 const ProjectDetailPage = () => {
     const [project, setProject] = useState(null);
@@ -12,6 +13,7 @@ const ProjectDetailPage = () => {
     const [isLogFormOpen, setIsLogFormOpen] = useState(false);
     const [logRefreshKey, setLogRefreshKey] = useState(0);
     const { id } = useParams();
+    const canDelete = isAdminRole(getCurrentUser()?.role);
 
     const fetchProject = useCallback(async () => {
         try {
@@ -82,7 +84,7 @@ const ProjectDetailPage = () => {
                 </Box>
             </Paper>
 
-            <InteractionLogList projectId={project._id} key={logRefreshKey} />
+            <InteractionLogList projectId={project._id} canDelete={canDelete} key={logRefreshKey} />
 
             <ProjectForm
                 open={isEditFormOpen}

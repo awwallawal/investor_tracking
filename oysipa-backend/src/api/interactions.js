@@ -19,4 +19,7 @@ router.get('/investors/:investorId', auth, canRead, interactionLogController.get
 // rule is checked in the controller (it needs the log's investor).
 router.patch('/:id', auth, canRead, interactionLogController.tagInteractionServices);
 
+// Delete one interaction. DG/Admin only; written to the ChangeLog first.
+router.delete('/:id', auth, authorize('Director-General', 'Portal-Admin'), interactionLogController.deleteInteractionLog);
+
 module.exports = router;

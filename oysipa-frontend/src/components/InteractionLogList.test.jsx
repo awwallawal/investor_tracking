@@ -156,4 +156,44 @@ describe('InteractionLogList', () => {
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save tags' }));
     expect(await screen.findByText('You can only tag interactions of investors assigned to you')).toBeInTheDocument();
   }, 20000);
+  it('Delete: hidden without canDelete', async () => {
+    apiClient.get.mockResolvedValue({ data: [{ _id: 'd1', description: 'Test log', category: 'Meeting', loggedBy: { name: 'A' }, createdAt: '2023-01-01T00:00:00.000Z' }] });
+    render(<InteractionLogList investorId="inv-1" canWrite />);
+    expect(await screen.findByText('Test log')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  it('Delete: confirm calls DELETE and removes the entry', async () => {
+    apiClient.get.mockResolvedValue({
+      data: [
+        { _id: 'd1', description: 'Test log', category: 'Meeting', loggedBy: { name: 'A' }, createdAt: '2023-01-01T00:00:00.000Z' },
+        { _id: 'd2', description: 'Keep me', category: 'Call', loggedBy: { name: 'A' }, createdAt: '2023-01-02T00:00:00.000Z' },
+      ],
+    });
+    const delSpy = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: { deleted: { interactions: 1 } } });
+    render(<InteractionLogList projectId={projectId} canDelete />);
+
+    expect(await screen.findByText('Test log')).toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Are you sure? This removes evidence.')).toBeInTheDocument();
+    await userEvent.type(within(dialog).getByLabelText(/reason/i), 'Logged twice');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm delete' }));
+
+    await waitFor(() => expect(delSpy).toHaveBeenCalledWith('/api/interactions/d1', { data: { reason: 'Logged twice' } }));
+    await waitFor(() => expect(screen.queryByText('Test log')).not.toBeInTheDocument());
+    expect(screen.getByText('Keep me')).toBeInTheDocument();
+  }, 20000);
+
+  it('Delete: no reason → DELETE without a body; API error keeps the entry', async () => {
+    apiClient.get.mockResolvedValue({ data: [{ _id: 'd1', description: 'Test log', category: 'Meeting', loggedBy: { name: 'A' }, createdAt: '2023-01-01T00:00:00.000Z' }] });
+    const delSpy = vi.spyOn(apiClient, 'delete').mockRejectedValue({ response: { status: 500, data: { message: 'Could not write the audit record. Nothing was deleted.' } } });
+    render(<InteractionLogList projectId={projectId} canDelete />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Confirm delete' }));
+    await waitFor(() => expect(delSpy).toHaveBeenCalledWith('/api/interactions/d1', undefined));
+    expect(await screen.findByText('Could not write the audit record. Nothing was deleted.')).toBeInTheDocument();
+    expect(screen.getAllByText('Test log').length).toBeGreaterThan(0);
+  }, 20000);
 });

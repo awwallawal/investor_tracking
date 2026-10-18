@@ -160,3 +160,36 @@ describe('InvestorProfilePage — write buttons', () => {
     expect(screen.getByRole('button', { name: 'Log Interaction' })).toBeInTheDocument();
   });
 });
+
+describe('InvestorProfilePage — interaction Delete (DG/Admin only)', () => {
+  const timeline = [
+    { _id: 'l1', description: 'Briefing letter sent to NIPC', category: 'Email', loggedBy: { name: 'Me' }, createdAt: '2026-10-18T10:00:00.000Z' },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    apiClient.get.mockImplementation((url) => {
+      if (url === '/api/investors/inv1') return Promise.resolve({ data: { ...investor, assignedTo: { _id: 'u1', name: 'Me' } } });
+      if (url === '/api/interactions/investors/inv1') return Promise.resolve({ data: timeline });
+      return Promise.resolve({ data: [] });
+    });
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('token');
+  });
+
+  it('Staff (even assigned) sees no Delete button', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+    expect(await screen.findByText('Briefing letter sent to NIPC')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  it.each(['Director-General', 'Portal-Admin'])('%s sees a Delete button per interaction', async (role) => {
+    localStorage.setItem('token', tokenFor(role));
+    renderPage();
+    expect(await screen.findByText('Briefing letter sent to NIPC')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
+  });
+});

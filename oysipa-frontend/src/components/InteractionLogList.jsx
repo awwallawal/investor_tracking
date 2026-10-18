@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, List, ListItem, ListItemText, Divider, Paper, Link as MuiLink, Chip, Tooltip, Button,
-    Dialog, DialogTitle, DialogContent, DialogActions, Alert,
+    Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, TextField, Stack,
 } from '@mui/material';
 import apiClient from '../api/api';
 import ServiceCodePicker from './ServiceCodePicker';
@@ -52,6 +52,52 @@ const TagServicesDialog = ({ log, onClose, onSaved }) => {
     );
 };
 
+// DG/Admin only: delete one interaction (evidence). Reason is optional.
+const DeleteInteractionDialog = ({ log, onClose, onDeleted }) => {
+    const [reason, setReason] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleConfirm = async () => {
+        setDeleting(true);
+        setError('');
+        try {
+            const trimmed = reason.trim();
+            await apiClient.delete(`/api/interactions/${log._id}`, trimmed ? { data: { reason: trimmed } } : undefined);
+            onDeleted(log);
+        } catch (err) {
+            setError(err?.response?.data?.message || err?.response?.data?.msg || 'Failed to delete interaction.');
+            console.error(err);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    return (
+        <Dialog open onClose={deleting ? undefined : onClose} fullWidth maxWidth="sm">
+            <DialogTitle>Delete interaction</DialogTitle>
+            <DialogContent>
+                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                <DialogContentText sx={{ mb: 1 }}>Are you sure? This removes evidence.</DialogContentText>
+                <Typography variant="body2" sx={{ mb: 2 }}>{log.description}</Typography>
+                <TextField
+                    label="Reason (optional)"
+                    fullWidth
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    disabled={deleting}
+                />
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose} disabled={deleting}>Cancel</Button>
+                <Button color="error" variant="contained" onClick={handleConfirm} disabled={deleting}>
+                    {deleting ? 'Deleting...' : 'Confirm delete'}
+                </Button>
+            </DialogActions>
+        </Dialog>
+    );
+};
+
 // Code chips (wording as tooltip) and the credit-linkage chip. Also used by InteractionListPage.
 export const ServiceChips = ({ log }) => {
     const codes = log.serviceCodes || [];
@@ -70,11 +116,12 @@ export const ServiceChips = ({ log }) => {
 
 // Lists the interactions of a project (projectId) or the timeline of an
 // investor (investorId: investor-level logs plus logs of its projects).
-const InteractionLogList = ({ projectId, investorId, canWrite = false }) => {
+const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete = false }) => {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tagging, setTagging] = useState(null);
+    const [deleting, setDeleting] = useState(null);
 
     useEffect(() => {
         if (!projectId && !investorId) return;
@@ -106,6 +153,11 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false }) => {
         setTagging(null);
     };
 
+    const handleDeleted = (deleted) => {
+        setLogs((prev) => prev.filter((l) => l._id !== deleted._id));
+        setDeleting(null);
+    };
+
     if (loading) {
         return <Typography>Loading logs...</Typography>;
     }
@@ -129,8 +181,11 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false }) => {
                         <React.Fragment key={log._id}>
                             <ListItem
                                 alignItems="flex-start"
-                                secondaryAction={canWrite ? (
-                                    <Button size="small" onClick={() => setTagging(log)}>Tag services</Button>
+                                secondaryAction={(canWrite || canDelete) ? (
+                                    <Stack direction="row" spacing={1}>
+                                        {canWrite && <Button size="small" onClick={() => setTagging(log)}>Tag services</Button>}
+                                        {canDelete && <Button size="small" color="error" onClick={() => setDeleting(log)}>Delete</Button>}
+                                    </Stack>
                                 ) : null}
                             >
                                 <ListItemText
@@ -168,6 +223,9 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false }) => {
             )}
             {tagging && (
                 <TagServicesDialog log={tagging} onClose={() => setTagging(null)} onSaved={handleTagged} />
+            )}
+            {deleting && (
+                <DeleteInteractionDialog log={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />
             )}
         </Paper>
     );

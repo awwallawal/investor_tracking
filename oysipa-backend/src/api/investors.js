@@ -18,4 +18,8 @@ router.get('/:id', auth, authorize('Director-General', 'Portal-Admin', 'Staff'),
 // and never the assignment itself (see investorWriteAccess).
 router.put('/:id', auth, authorize('Director-General', 'Portal-Admin', 'Staff'), investorWriteAccess, investorController.updateInvestor);
 
+// DELETE an investor with its projects and interactions. DG/Admin only; a
+// reason is required and every deleted document goes to the ChangeLog first.
+router.delete('/:id', auth, authorize('Director-General', 'Portal-Admin'), investorController.deleteInvestor);
+
 module.exports = router;

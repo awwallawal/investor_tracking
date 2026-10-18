@@ -5,6 +5,7 @@ const Investor = require('../models/InvestorModel');
 const { SERVICE_CODES } = require('../constants/serviceCodes');
 const { isAdminRole, isAssignedTo, hasOperatorKey } = require('../middleware/accessHelpers');
 const { DENIED_MSG } = require('../middleware/projectWriteAccess');
+const { recordDeletions } = require('../utils/recordDeletion');
 
 // Validates and dedupes serviceCodes. Returns { codes } or { error }.
 // undefined/null means "not sent" (codes stays undefined).
@@ -244,5 +245,38 @@ exports.getAllInteractionLogs = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Delete one interaction (evidence). Written to the ChangeLog first;
+//          if that fails, nothing is deleted. Reason is optional.
+// @route   DELETE /api/interactions/:id
+// @access  Private (Director-General, Portal-Admin)
+exports.deleteInteractionLog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const log = mongoose.isValidObjectId(id) && await InteractionLog.findById(id).lean();
+    if (!log) {
+      return res.status(404).json({ message: 'Interaction not found.' });
+    }
+
+    const { reason } = req.body || {};
+    if (reason !== undefined && reason !== null && typeof reason !== 'string') {
+      return res.status(400).json({ message: 'reason must be text.' });
+    }
+    const trimmed = typeof reason === 'string' && reason.trim() ? reason.trim() : null;
+
+    try {
+      await recordDeletions(req, 'InteractionLog', [log], { reason: trimmed });
+    } catch (auditError) {
+      console.error('ChangeLog write failed; interaction delete aborted:', auditError);
+      return res.status(500).json({ message: 'Could not write the audit record. Nothing was deleted.' });
+    }
+
+    await InteractionLog.deleteOne({ _id: log._id });
+    return res.status(200).json({ deleted: { interactions: 1 } });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Server Error' });
   }
 };

@@ -12,6 +12,7 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
+const ChangeLog = require('../models/ChangeLog');
 
 const DG = 'DG';
 const PA = 'PA';
@@ -68,6 +69,7 @@ const unassignedCtxs = () => [
 // projectWrite: also run Staff against unassigned projects (expect 403, nothing changed).
 // investorWrite: also run Staff against unassigned investors (expect 403, nothing changed).
 // tagWrite: also run Staff against interactions of unassigned investors (expect 403, log unchanged).
+// adminDelete: Staff 403 leaves every investor, project, log and ChangeLog row in place.
 // When you add or change a route, add it here and in access-matrix.md
 const ROUTES = [
   // Public by design
@@ -86,6 +88,7 @@ const ROUTES = [
   { name: 'GET /api/investors/:id', method: 'get', path: (c) => `/api/investors/${c.investorId}`, allow: ALL },
   { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Tech', countryOfOrigin: 'NG' }), allow: ALL },
   { name: 'PUT /api/investors/:id', method: 'put', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ sector: 'Agro' }), allow: ALL, investorWrite: true },
+  { name: 'DELETE /api/investors/:id', method: 'delete', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ reason: 'Matrix cleanup' }), allow: ADMINS, adminDelete: true },
 
   // Projects — reads
   { name: 'GET /api/projects', method: 'get', path: () => '/api/projects', allow: ALL },
@@ -106,6 +109,7 @@ const ROUTES = [
   { name: 'POST /api/interactions/investors/:investorId', method: 'post', path: (c) => `/api/interactions/investors/${c.investorId}`, body: () => ({ description: 'Briefing letter sent to NIPC', category: 'Email', serviceCodes: ['M4'] }), allow: ALL, projectWrite: true },
   { name: 'GET /api/interactions/investors/:investorId', method: 'get', path: (c) => `/api/interactions/investors/${c.investorId}`, allow: ALL, staffAnyProject: true },
   { name: 'PATCH /api/interactions/:id', method: 'patch', path: (c) => `/api/interactions/${c.logId}`, body: () => ({ serviceCodes: ['A8'], creditLinkage: true }), allow: ALL, tagWrite: true },
+  { name: 'DELETE /api/interactions/:id', method: 'delete', path: (c) => `/api/interactions/${c.logId}`, allow: ADMINS, adminDelete: true },
 
   // Lifecycle statuses — Portal-Admin only
   { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: [PA] },
@@ -195,6 +199,21 @@ describe('Access matrix', () => {
         });
       }
 
+      if (route.adminDelete) {
+        it('Staff → 403, nothing deleted, no ChangeLog row', async () => {
+          const count = async () => ({
+            investors: await Investor.countDocuments(),
+            projects: await InvestmentProject.countDocuments(),
+            logs: await InteractionLog.countDocuments(),
+            changeLog: await ChangeLog.countDocuments(),
+          });
+          const before = await count();
+          const res = await send(route, assignedCtx(), f.tokens[STAFF]);
+          expect(res.statusCode).toBe(403);
+          expect(await count()).toEqual(before);
+        });
+      }
+
       if (route.investorWrite) {
         it('Staff, not assigned → denied (403), nothing changed', async () => {
           for (const ctx of unassignedCtxs()) {
@@ -211,8 +230,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 29 unique entries', () => {
-    expect(ROUTES.length).toBe(29);
+  it('ROUTES list has 31 unique entries', () => {
+    expect(ROUTES.length).toBe(31);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });
