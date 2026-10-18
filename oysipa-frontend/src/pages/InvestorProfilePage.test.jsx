@@ -56,3 +56,54 @@ describe('InvestorProfilePage — Assign Staff dropdown', () => {
     expect(screen.getAllByText('Assign Staff').length).toBeGreaterThan(0);
   });
 });
+
+describe('InvestorProfilePage — write buttons', () => {
+  const mockInvestor = (assignedTo) => {
+    apiClient.get.mockImplementation((url) => {
+      if (url === '/api/investors/inv1') return Promise.resolve({ data: { ...investor, assignedTo } });
+      return Promise.resolve({ data: [] });
+    });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('token');
+  });
+
+  it('Staff sees Edit Investor and Add New Project on an investor assigned to them', async () => {
+    mockInvestor({ _id: 'u1', name: 'Me' });
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+
+    expect(await screen.findByText('Acme Ltd')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Investor' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add New Project' })).toBeInTheDocument();
+    expect(screen.queryByText('Assign Staff')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['unassigned', null],
+    ['assigned to other staff', { _id: 'u2', name: 'Other' }],
+  ])('Staff does not see write buttons on an investor %s', async (_label, assignedTo) => {
+    mockInvestor(assignedTo);
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+
+    expect(await screen.findByText('Acme Ltd')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Investor' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add New Project' })).not.toBeInTheDocument();
+  });
+
+  it.each(['Director-General', 'Portal-Admin'])('%s always sees the write buttons', async (role) => {
+    mockInvestor({ _id: 'u2', name: 'Other' });
+    localStorage.setItem('token', tokenFor(role));
+    renderPage();
+
+    expect(await screen.findByText('Acme Ltd')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Investor' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add New Project' })).toBeInTheDocument();
+  });
+});

@@ -1,6 +1,7 @@
 // Route × role access matrix. Every mounted route is checked against
 // Director-General (DG), Portal-Admin (PA), Staff and no token. Project writes
-// are also checked for Staff on a project whose investor is not assigned to them.
+// are also checked for Staff on a project whose investor is not assigned to them,
+// and investor edits for Staff on an investor not assigned to them.
 // Allowed = response is not 401/403. Denied = 403 (role) or 401 (no token).
 // Keep in sync with _bmad-output/implementation-artifacts/access-matrix.md.
 const request = require('supertest');
@@ -58,6 +59,7 @@ const unassignedCtxs = () => [
 
 // allow: roles that get through. public: no token needed.
 // projectWrite: also run Staff against unassigned projects (expect 403, nothing changed).
+// investorWrite: also run Staff against unassigned investors (expect 403, nothing changed).
 // When you add or change a route, add it here and in access-matrix.md
 const ROUTES = [
   // Public by design
@@ -74,8 +76,8 @@ const ROUTES = [
   // Investors
   { name: 'GET /api/investors', method: 'get', path: () => '/api/investors', allow: ALL },
   { name: 'GET /api/investors/:id', method: 'get', path: (c) => `/api/investors/${c.investorId}`, allow: ALL },
-  { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Tech', countryOfOrigin: 'NG' }), allow: ADMINS },
-  { name: 'PUT /api/investors/:id', method: 'put', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ sector: 'Agro' }), allow: ADMINS },
+  { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Tech', countryOfOrigin: 'NG' }), allow: ALL },
+  { name: 'PUT /api/investors/:id', method: 'put', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ sector: 'Agro' }), allow: ALL, investorWrite: true },
 
   // Projects — reads
   { name: 'GET /api/projects', method: 'get', path: () => '/api/projects', allow: ALL },
@@ -164,6 +166,20 @@ describe('Access matrix', () => {
           }
         });
       }
+
+      if (route.investorWrite) {
+        it('Staff, not assigned → denied (403), nothing changed', async () => {
+          for (const ctx of unassignedCtxs()) {
+            const before = await Investor.findById(ctx.investorId).lean();
+            const res = await send(route, ctx, f.tokens[STAFF]);
+            expect(res.statusCode).toBe(403);
+            expect(res.body).toEqual({ msg: 'Forbidden: You can only change investors assigned to you' });
+            const after = await Investor.findById(ctx.investorId).lean();
+            expect(after.sector).toBe(before.sector);
+            expect(String(after.assignedTo)).toBe(String(before.assignedTo));
+          }
+        });
+      }
     });
   });
 
@@ -232,6 +248,33 @@ describe('Project write edge cases (Staff)', () => {
     expect((await InvestmentProject.findById(f.assignedProject._id)).investor.toString()).toBe(f.assignedInvestor._id.toString());
   });
 
+  it('Staff project PUT with an array (pipeline) body → 400 Invalid update, investor unchanged', async () => {
+    const res = await request(app)
+      .put(`/api/projects/${f.assignedProject._id}`)
+      .set('Authorization', `Bearer ${f.tokens[STAFF]}`)
+      .send([{ $set: { investor: f.unassignedInvestor._id.toString() } }]);
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ msg: 'Invalid update' });
+    expect((await InvestmentProject.findById(f.assignedProject._id)).investor.toString()).toBe(f.assignedInvestor._id.toString());
+  });
+
+  it('lookup error on a Staff project write → 500 (fail closed), project unchanged', async () => {
+    const spy = jest.spyOn(InvestmentProject, 'findById').mockImplementationOnce(() => ({
+      select: () => Promise.reject(new Error('db down')),
+    }));
+    try {
+      const res = await request(app)
+        .put(`/api/projects/${f.assignedProject._id}`)
+        .set('Authorization', `Bearer ${f.tokens[STAFF]}`)
+        .send({ projectTitle: 'Should Not Save' });
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toEqual({ msg: 'Server Error' });
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await InvestmentProject.findById(f.assignedProject._id)).projectTitle).toBe('Assigned Project');
+  });
+
   it('denied status change via PUT /:id writes no System Update log', async () => {
     const logsBefore = await InteractionLog.countDocuments();
     const res = await request(app)
@@ -259,12 +302,56 @@ describe('Project write edge cases (Staff)', () => {
     expect([401, 403]).not.toContain(res.statusCode);
   });
 
-  it('missing investor id on project create → controller response, not 403', async () => {
+  it('missing investor id on project create → 404 Investor not found, not 403', async () => {
+    const before = await InvestmentProject.countDocuments();
     const res = await request(app)
       .post('/api/projects/investors/507f1f77bcf86cd799439011/projects')
       .set('Authorization', `Bearer ${f.tokens[STAFF]}`)
       .send({ projectTitle: 'x', lifecycleStatus: f.idea._id.toString() });
-    expect([401, 403]).not.toContain(res.statusCode);
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ msg: 'Investor not found' });
+    expect(await InvestmentProject.countDocuments()).toBe(before);
+  });
+});
+
+describe('Orphan projects', () => {
+  [DG, PA, STAFF].forEach((role) => {
+    it(`${role} POST project for a valid but missing investor id → 404, no project saved`, async () => {
+      const before = await InvestmentProject.countDocuments();
+      const res = await request(app)
+        .post('/api/projects/investors/507f1f77bcf86cd799439011/projects')
+        .set('Authorization', `Bearer ${f.tokens[role]}`)
+        .send({ projectTitle: 'Orphan', lifecycleStatus: f.idea._id.toString() });
+      expect(res.statusCode).toBe(404);
+      expect(res.body).toEqual({ msg: 'Investor not found' });
+      expect(await InvestmentProject.countDocuments()).toBe(before);
+    });
+  });
+
+  it.each([
+    ['id string', (id) => id],
+    ['populated object', (id) => ({ _id: id, investorName: 'Ghost' })],
+  ])('DG/Admin PUT project with a missing investor (%s) → 404, project unchanged', async (_label, shape) => {
+    for (const role of ADMINS) {
+      const res = await request(app)
+        .put(`/api/projects/${f.unassignedProject._id}`)
+        .set('Authorization', `Bearer ${f.tokens[role]}`)
+        .send({ investor: shape('507f1f77bcf86cd799439011'), projectTitle: 'Moved To Ghost' });
+      expect(res.statusCode).toBe(404);
+      expect(res.body).toEqual({ msg: 'Investor not found' });
+      const after = await InvestmentProject.findById(f.unassignedProject._id);
+      expect(after.investor.toString()).toBe(f.unassignedInvestor._id.toString());
+      expect(after.projectTitle).toBe('Unassigned Project');
+    }
+  });
+
+  it('malformed investor id on project create keeps the existing 400 path', async () => {
+    const res = await request(app)
+      .post('/api/projects/investors/not-an-id/projects')
+      .set('Authorization', `Bearer ${global.dgToken}`)
+      .send({ projectTitle: 'Bad', lifecycleStatus: f.idea._id.toString() });
+    expect(res.statusCode).toBe(400);
+    expect(await InvestmentProject.countDocuments({ projectTitle: 'Bad' })).toBe(0);
   });
 });
 
@@ -283,17 +370,136 @@ describe('Lifecycle status reorder', () => {
 });
 
 describe('Investor writes', () => {
-  it('Staff POST /api/investors → 403; no token → 401', async () => {
-    await request(app).post('/api/investors').set('Authorization', `Bearer ${f.tokens[STAFF]}`)
-      .send({ investorName: 'X', sector: 'Tech', countryOfOrigin: 'NG' }).expect(403);
-    await request(app).post('/api/investors').send({ investorName: 'X', sector: 'Tech', countryOfOrigin: 'NG' }).expect(401);
-    expect(await Investor.countDocuments({ investorName: 'X' })).toBe(0);
+  const put = (id, token, body) => {
+    let r = request(app).put(`/api/investors/${id}`);
+    if (token) r = r.set('Authorization', `Bearer ${token}`);
+    return r.send(body);
+  };
+  const post = (token, body) => {
+    let r = request(app).post('/api/investors');
+    if (token) r = r.set('Authorization', `Bearer ${token}`);
+    return r.send(body);
+  };
+  const base = { sector: 'Tech', countryOfOrigin: 'NG' };
+
+  it('Staff create without assignedTo → 201, assigned to that Staff user', async () => {
+    const res = await post(f.tokens[STAFF], { investorName: 'Staff New A', ...base });
+    expect(res.statusCode).toBe(201);
+    expect(String(res.body.assignedTo)).toBe(f.staff._id.toString());
+    expect(String((await Investor.findOne({ investorName: 'Staff New A' })).assignedTo)).toBe(f.staff._id.toString());
   });
 
-  it('Staff PUT /api/investors/:id → 403 (even when assigned); no token → 401', async () => {
+  it('Staff create with assignedTo = someone else → 201, still assigned to that Staff user', async () => {
+    const res = await post(f.tokens[STAFF], { investorName: 'Staff New B', ...base, assignedTo: f.otherInvestor.assignedTo.toString() });
+    expect(res.statusCode).toBe(201);
+    expect(String((await Investor.findOne({ investorName: 'Staff New B' })).assignedTo)).toBe(f.staff._id.toString());
+  });
+
+  it('DG/Admin create with assignedTo = X → 201, assignedTo = X', async () => {
+    const x = f.staff._id.toString();
+    for (const role of ADMINS) {
+      const name = `Admin New ${role}`;
+      const res = await post(f.tokens[role], { investorName: name, ...base, assignedTo: x });
+      expect(res.statusCode).toBe(201);
+      expect(String((await Investor.findOne({ investorName: name })).assignedTo)).toBe(x);
+    }
+  });
+
+  it('Staff edit, assigned → 200, fields updated', async () => {
+    const res = await put(f.assignedInvestor._id, f.tokens[STAFF], { sector: 'Agro' });
+    expect(res.statusCode).toBe(200);
+    expect((await Investor.findById(f.assignedInvestor._id)).sector).toBe('Agro');
+  });
+
+  it('Staff cannot change assignment (other id / null / populated object): 200, assignedTo unchanged', async () => {
     const id = f.assignedInvestor._id;
-    await request(app).put(`/api/investors/${id}`).set('Authorization', `Bearer ${f.tokens[STAFF]}`).send({ sector: 'Agro' }).expect(403);
-    await request(app).put(`/api/investors/${id}`).send({ sector: 'Agro' }).expect(401);
-    expect((await Investor.findById(id)).sector).toBe('Tech');
+    const otherStaffId = f.otherInvestor.assignedTo.toString();
+    const bodies = [
+      { sector: 'Agro', assignedTo: otherStaffId },
+      { sector: 'Mining', assignedTo: null },
+      { sector: 'Energy', assignedTo: { _id: otherStaffId, name: 'Other Staff' } },
+    ];
+    for (const body of bodies) {
+      const res = await put(id, f.tokens[STAFF], body);
+      expect(res.statusCode).toBe(200);
+      const after = await Investor.findById(id);
+      expect(after.sector).toBe(body.sector);
+      expect(String(after.assignedTo)).toBe(f.staff._id.toString());
+    }
+  });
+
+  it('Staff $-operator keys → 400 Invalid update, nothing changed', async () => {
+    const id = f.assignedInvestor._id;
+    const res = await put(id, f.tokens[STAFF], { $set: { assignedTo: null, sector: 'Agro' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ msg: 'Invalid update' });
+    const after = await Investor.findById(id);
+    expect(after.sector).toBe('Tech');
+    expect(String(after.assignedTo)).toBe(f.staff._id.toString());
+
+    const before = await Investor.countDocuments();
+    const res2 = await post(f.tokens[STAFF], { investorName: 'Op Inv', ...base, $set: { assignedTo: null } });
+    expect(res2.statusCode).toBe(400);
+    expect(res2.body).toEqual({ msg: 'Invalid update' });
+    expect(await Investor.countDocuments()).toBe(before);
+  });
+
+  it('Staff edit on a missing investor id → controller 404, not 403', async () => {
+    const res = await put('507f1f77bcf86cd799439011', f.tokens[STAFF], { sector: 'Agro' });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('Staff edit on a malformed investor id → controller 400 (cast error), not 403', async () => {
+    const res = await put('not-an-id', f.tokens[STAFF], { sector: 'Agro' });
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
+
+  it('Staff PUT with an array (pipeline) body → 400 Invalid update, assignedTo unchanged', async () => {
+    const id = f.assignedInvestor._id;
+    const res = await put(id, f.tokens[STAFF], [{ $set: { assignedTo: null, sector: 'Agro' } }]);
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ msg: 'Invalid update' });
+    const after = await Investor.findById(id);
+    expect(after.sector).toBe('Tech');
+    expect(String(after.assignedTo)).toBe(f.staff._id.toString());
+  });
+
+  it('Staff POST with an array body → 400 Invalid update, no investor created', async () => {
+    const before = await Investor.countDocuments();
+    const res = await post(f.tokens[STAFF], [
+      { investorName: 'Arr A', ...base, assignedTo: null },
+      { investorName: 'Arr B', ...base },
+    ]);
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({ msg: 'Invalid update' });
+    expect(await Investor.countDocuments()).toBe(before);
+  });
+
+  it('lookup error on a Staff edit → 500 (fail closed), investor unchanged', async () => {
+    const spy = jest.spyOn(Investor, 'exists').mockRejectedValueOnce(new Error('db down'));
+    try {
+      const res = await put(f.assignedInvestor._id, f.tokens[STAFF], { sector: 'Agro', assignedTo: null });
+      expect(res.statusCode).toBe(500);
+      expect(res.body).toEqual({ msg: 'Server Error' });
+    } finally {
+      spy.mockRestore();
+    }
+    const after = await Investor.findById(f.assignedInvestor._id);
+    expect(after.sector).toBe('Tech');
+    expect(String(after.assignedTo)).toBe(f.staff._id.toString());
+  });
+
+  it('DG/Admin edit can still change assignment', async () => {
+    const res = await put(f.unassignedInvestor._id, global.dgToken, { assignedTo: f.staff._id.toString() });
+    expect(res.statusCode).toBe(200);
+    expect(String((await Investor.findById(f.unassignedInvestor._id)).assignedTo)).toBe(f.staff._id.toString());
+  });
+
+  it('no token → 401 on POST and PUT', async () => {
+    await post(null, { investorName: 'X', ...base }).expect(401);
+    await put(f.assignedInvestor._id, null, { sector: 'Agro' }).expect(401);
+    expect(await Investor.countDocuments({ investorName: 'X' })).toBe(0);
+    expect((await Investor.findById(f.assignedInvestor._id)).sector).toBe('Tech');
   });
 });

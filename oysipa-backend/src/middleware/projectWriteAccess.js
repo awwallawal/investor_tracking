@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Investor = require('../models/InvestorModel');
+const { isAdminRole, isAssignedTo, hasOperatorKey } = require('./accessHelpers');
 const InvestmentProject = require('../models/InvestmentProject');
 
 const DENIED_MSG = 'Forbidden: You can only change projects of investors assigned to you';
@@ -8,18 +9,12 @@ const DENIED_MSG = 'Forbidden: You can only change projects of investors assigne
 // (Investor.assignedTo). Director-General and Portal-Admin pass straight through.
 // A missing project or malformed id is passed on so the controller keeps its
 // existing response. Unexpected errors fail closed with 500.
-const isAssignedTo = async (investorId, userId) => {
-  if (!mongoose.isValidObjectId(investorId)) return false;
-  const investor = await Investor.findById(investorId).select('assignedTo');
-  return !!(investor && investor.assignedTo && investor.assignedTo.toString() === userId.toString());
-};
-
 const projectWriteAccess = async (req, res, next) => {
   try {
     if (!req.user || !req.user.role) {
       return res.status(401).json({ msg: 'Authentication error: User data is missing.' });
     }
-    if (req.user.role === 'Director-General' || req.user.role === 'Portal-Admin') {
+    if (isAdminRole(req.user.role)) {
       return next();
     }
     if (req.user.role !== 'Staff') {
@@ -27,7 +22,7 @@ const projectWriteAccess = async (req, res, next) => {
     }
 
     // Update operators ($set, $unset, ...) would let the body bypass the checks below.
-    if (req.body && typeof req.body === 'object' && Object.keys(req.body).some((k) => k.startsWith('$'))) {
+    if (hasOperatorKey(req.body)) {
       return res.status(400).json({ msg: 'Invalid update' });
     }
 

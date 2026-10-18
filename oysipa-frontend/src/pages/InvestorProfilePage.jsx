@@ -9,11 +9,11 @@ import { jwtDecode } from 'jwt-decode';
 import apiClient from '../api/api';
 
 // Same decoding as components/ProtectedRoute.jsx
-const getRoleFromToken = () => {
+const getUserFromToken = () => {
     const token = localStorage.getItem('token');
     if (!token) return null;
     try {
-        return jwtDecode(token).user.role;
+        return jwtDecode(token).user || null;
     } catch (error) {
         console.error('Error decoding token:', error);
         return null;
@@ -26,7 +26,8 @@ const InvestorProfilePage = () => {
     const [isEditFormOpen, setIsEditFormOpen] = useState(false);
     const [isProjectFormOpen, setIsProjectFormOpen] = useState(false); // State for project form
     const { id } = useParams();
-    const isStaff = getRoleFromToken() === 'Staff';
+    const currentUser = getUserFromToken();
+    const isStaff = currentUser?.role === 'Staff';
 
     const fetchInvestorAndProjects = useCallback(async () => {
         try {
@@ -77,6 +78,11 @@ const InvestorProfilePage = () => {
         return <div>Loading...</div>;
     }
 
+    // DG/Admin can always write. Staff only on investors assigned to them
+    // (the backend enforces the same rule; GET populates assignedTo).
+    const canWrite = !isStaff
+        || (!!currentUser?.id && investor.assignedTo?._id === currentUser.id);
+
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" component="h1" gutterBottom>{investor.investorName}</Typography>
@@ -89,9 +95,11 @@ const InvestorProfilePage = () => {
             <p>Assigned Staff: {investor.assignedTo ? investor.assignedTo.name : 'Unassigned'}</p>
 
             <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                <Button variant="contained" onClick={handleEditClick}>
-                    Edit Investor
-                </Button>
+                {canWrite && (
+                    <Button variant="contained" onClick={handleEditClick}>
+                        Edit Investor
+                    </Button>
+                )}
                 {!isStaff && (
                     <UserAssignmentDropdown
                         investorId={investor._id}
@@ -99,9 +107,11 @@ const InvestorProfilePage = () => {
                         onAssign={handleAssignUser}
                     />
                 )}
-                <Button variant="contained" color="secondary" onClick={handleProjectFormOpen}>
-                    Add New Project
-                </Button>
+                {canWrite && (
+                    <Button variant="contained" color="secondary" onClick={handleProjectFormOpen}>
+                        Add New Project
+                    </Button>
+                )}
             </Box>
 
             <InvestorEditForm

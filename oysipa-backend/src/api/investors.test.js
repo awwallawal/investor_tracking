@@ -22,7 +22,7 @@ describe('Investor API', () => {
 
     const res = await request(app)
       .post('/api/investors')
-      .set('Authorization', `Bearer ${global.portalAdminToken}`) // route requires Director-General or Portal-Admin
+      .set('Authorization', `Bearer ${global.portalAdminToken}`) // DG/Admin: any investor; Staff: create (auto-assigned) and edit only their assigned investors
       .send({
         investorName: 'Test Investor',
         sector: 'Corporate',
@@ -48,7 +48,7 @@ describe('Investor API', () => {
 
     const res = await request(app)
       .put(`/api/investors/${investorId}`)
-      .set('Authorization', `Bearer ${global.portalAdminToken}`) // route requires Director-General or Portal-Admin
+      .set('Authorization', `Bearer ${global.portalAdminToken}`) // DG/Admin: any investor; Staff: create (auto-assigned) and edit only their assigned investors
       .send(updatedData);
 
     expect(res.statusCode).toEqual(200);

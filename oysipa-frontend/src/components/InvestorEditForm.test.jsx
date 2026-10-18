@@ -139,4 +139,22 @@ describe('InvestorEditForm', () => {
     expect(mockOnSave).not.toHaveBeenCalled();
     expect(mockOnClose).not.toHaveBeenCalled();
   });
+
+  it('shows the assignment message on 403', async () => {
+    apiClient.put.mockRejectedValueOnce({ response: { status: 403, data: { msg: 'Forbidden: You can only change investors assigned to you' } } });
+
+    render(
+      <InvestorEditForm
+        open={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        investorData={mockInvestorData}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('You can only change investors assigned to you');
+    expect(mockOnSave).not.toHaveBeenCalled();
+  });
 });

@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
@@ -36,6 +38,12 @@ exports.getProjects = async (req, res) => {
 exports.createProject = async (req, res) => {
   try {
     const { investorId } = req.params;
+
+    // No orphan projects: the investor must exist. A malformed id falls through
+    // to the existing 400 path (the cast error on save).
+    if (mongoose.isValidObjectId(investorId) && !(await Investor.exists({ _id: investorId }))) {
+      return res.status(404).json({ msg: 'Investor not found' });
+    }
 
     let { lifecycleStatus } = req.body;
     if (!lifecycleStatus) {
@@ -111,6 +119,16 @@ exports.updateProject = async (req, res) => {
 
     if (!projectToUpdate) {
       return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // No orphan projects: a new investor reference must exist. A malformed id
+    // falls through to the existing 400 path (the cast error on update).
+    const bodyInvestor = req.body && req.body.investor;
+    if (bodyInvestor !== undefined && bodyInvestor !== null && bodyInvestor !== '') {
+      const target = typeof bodyInvestor === 'object' && bodyInvestor._id ? bodyInvestor._id : bodyInvestor;
+      if (mongoose.isValidObjectId(target) && !(await Investor.exists({ _id: target }))) {
+        return res.status(404).json({ msg: 'Investor not found' });
+      }
     }
 
     const oldStatusId = projectToUpdate.lifecycleStatus.toString();

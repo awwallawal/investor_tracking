@@ -33,7 +33,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
   const navLinks = [
     { path: '/dashboard', name: 'Dashboard', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/users', name: 'User Management', roles: ['Director-General', 'Portal-Admin'] },
-    { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin'] }, // Updated roles
+    { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/admin', name: 'Admin Settings', roles: ['Portal-Admin'] },
   ];
 

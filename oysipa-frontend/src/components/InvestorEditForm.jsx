@@ -39,7 +39,9 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
       onSave(); // Trigger refresh and close
     } catch (error) {
       console.error("Submission error:", error);
-      const message = error.response?.data?.error || error.message || 'Failed to update investor';
+      const message = error.response?.status === 403
+        ? 'You can only change investors assigned to you'
+        : error.response?.data?.msg || error.response?.data?.error || error.message || 'Failed to update investor';
       setError(message);
     }
   };

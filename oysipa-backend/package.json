@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "seed": "node src/db/seed.js",
+    "check:orphans": "node scripts/check-orphan-projects.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "dev": "nodemon src/index.js"
   },

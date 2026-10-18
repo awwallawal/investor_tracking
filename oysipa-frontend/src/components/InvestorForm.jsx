@@ -53,7 +53,7 @@ const InvestorForm = ({ open, onClose, onSave }) => {
       onSave(); // Trigger refresh and close
     } catch (error) {
       console.error("Submission error:", error);
-      const message = error.response?.data?.error || error.message || 'Failed to create investor';
+      const message = error.response?.data?.msg || error.response?.data?.error || error.message || 'Failed to create investor';
       setError(message);
     }
   };
