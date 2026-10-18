@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert, List, ListItem, ListItemText, Divider } from '@mui/material';
 import apiClient from '../api/api';
+import { ServiceChips } from '../components/InteractionLogList';
 
 const InteractionListPage = () => {
   const [interactions, setInteractions] = useState([]);
@@ -59,9 +60,10 @@ const InteractionListPage = () => {
                       variant="body1"
                       color="text.primary"
                     >
-                      {interaction.project?.projectTitle || 'N/A'} - {interaction.description}
+                      {interaction.project?.projectTitle || interaction.investor?.investorName || 'N/A'} - {interaction.description}
                     </Typography>
                   }
+                  slotProps={{ secondary: { component: 'div' } }}
                   secondary={
                     <React.Fragment>
                       <Typography
@@ -72,6 +74,7 @@ const InteractionListPage = () => {
                       >
                         Category: {interaction.category} | By: {interaction.loggedBy?.name || 'N/A'} on {new Date(interaction.createdAt).toLocaleDateString()}
                       </Typography>
+                      <ServiceChips log={interaction} />
                       {interaction.documentUrl && (
                         <Typography
                           sx={{ display: 'block' }}

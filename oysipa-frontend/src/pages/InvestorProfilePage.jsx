@@ -5,6 +5,8 @@ import InvestorEditForm from '../components/InvestorEditForm';
 import UserAssignmentDropdown from '../components/UserAssignmentDropdown';
 import ProjectList from '../components/ProjectList';
 import ProjectForm from '../components/ProjectForm'; // Import ProjectForm
+import InteractionLogForm from '../components/InteractionLogForm';
+import InteractionLogList from '../components/InteractionLogList';
 import { jwtDecode } from 'jwt-decode';
 import apiClient from '../api/api';
 
@@ -25,6 +27,8 @@ const InvestorProfilePage = () => {
     const [projects, setProjects] = useState([]); // Add state for projects
     const [isEditFormOpen, setIsEditFormOpen] = useState(false);
     const [isProjectFormOpen, setIsProjectFormOpen] = useState(false); // State for project form
+    const [isLogFormOpen, setIsLogFormOpen] = useState(false);
+    const [logRefreshKey, setLogRefreshKey] = useState(0);
     const { id } = useParams();
     const currentUser = getUserFromToken();
     const isStaff = currentUser?.role === 'Staff';
@@ -63,6 +67,11 @@ const InvestorProfilePage = () => {
     const handleProjectFormSave = () => {
         setIsProjectFormOpen(false);
         fetchInvestorAndProjects(); // This will now re-fetch both investor and projects
+    };
+
+    const handleLogFormSave = () => {
+        setIsLogFormOpen(false);
+        setLogRefreshKey((k) => k + 1); // re-fetch the interactions timeline
     };
 
     const handleAssignUser = async (userId) => {
@@ -131,6 +140,26 @@ const InvestorProfilePage = () => {
             <Divider sx={{ my: 4 }} />
 
             <ProjectList projects={projects} />
+
+            <Divider sx={{ my: 4 }} />
+
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="h5" component="h2">Interactions</Typography>
+                {canWrite && (
+                    <Button variant="contained" onClick={() => setIsLogFormOpen(true)}>
+                        Log Interaction
+                    </Button>
+                )}
+            </Box>
+
+            <InteractionLogList investorId={investor._id} canWrite={canWrite} key={logRefreshKey} />
+
+            <InteractionLogForm
+                open={isLogFormOpen}
+                onClose={() => setIsLogFormOpen(false)}
+                onSave={handleLogFormSave}
+                investorId={investor._id}
+            />
 
         </Box>
     );

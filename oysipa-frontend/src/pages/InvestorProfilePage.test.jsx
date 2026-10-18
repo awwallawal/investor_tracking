@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import InvestorProfilePage from './InvestorProfilePage';
@@ -29,6 +30,7 @@ describe('InvestorProfilePage — Assign Staff dropdown', () => {
     apiClient.get.mockImplementation((url) => {
       if (url === '/api/investors/inv1') return Promise.resolve({ data: investor });
       if (url === '/api/projects/investors/inv1/projects') return Promise.resolve({ data: [] });
+      if (url === '/api/interactions/investors/inv1') return Promise.resolve({ data: [] });
       if (url === '/api/users/staff') return Promise.resolve({ data: [] });
       return Promise.resolve({ data: [] });
     });
@@ -58,9 +60,15 @@ describe('InvestorProfilePage — Assign Staff dropdown', () => {
 });
 
 describe('InvestorProfilePage — write buttons', () => {
+  const timeline = [
+    { _id: 'l1', description: 'Briefing letter sent to NIPC', category: 'Email', serviceCodes: ['M4'], creditLinkage: false, loggedBy: { name: 'Me' }, createdAt: '2026-10-18T10:00:00.000Z' },
+    { _id: 'l2', description: 'Old meeting', category: 'Meeting', project: { _id: 'p1', projectTitle: 'Agro Hub' }, loggedBy: { name: 'Me' }, createdAt: '2026-01-01T10:00:00.000Z' },
+  ];
+
   const mockInvestor = (assignedTo) => {
     apiClient.get.mockImplementation((url) => {
       if (url === '/api/investors/inv1') return Promise.resolve({ data: { ...investor, assignedTo } });
+      if (url === '/api/interactions/investors/inv1') return Promise.resolve({ data: timeline });
       return Promise.resolve({ data: [] });
     });
   };
@@ -81,7 +89,48 @@ describe('InvestorProfilePage — write buttons', () => {
     expect(await screen.findByText('Acme Ltd')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Investor' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add New Project' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Log Interaction' })).toBeInTheDocument();
     expect(screen.queryByText('Assign Staff')).not.toBeInTheDocument();
+  });
+
+  it('saving a new interaction refreshes the timeline', async () => {
+    let current = [];
+    apiClient.get.mockImplementation((url) => {
+      if (url === '/api/investors/inv1') return Promise.resolve({ data: { ...investor, assignedTo: { _id: 'u1', name: 'Me' } } });
+      if (url === '/api/interactions/investors/inv1') return Promise.resolve({ data: current });
+      return Promise.resolve({ data: [] });
+    });
+    apiClient.post.mockImplementation(() => {
+      current = [{ _id: 'n1', description: 'Briefing letter sent to NIPC', category: 'Email', serviceCodes: [], loggedBy: { name: 'Me' }, createdAt: '2026-10-18T10:00:00.000Z' }];
+      return Promise.resolve({ data: current[0] });
+    });
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+
+    expect(await screen.findByText('No interactions logged for this investor yet.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Log Interaction' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /interaction description/i }), { target: { value: 'Briefing letter sent to NIPC' } });
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /service category/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Email' }));
+    await userEvent.click(within(dialog).getByText('Save Log'));
+
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalledWith('/api/interactions/investors/inv1', expect.objectContaining({ description: 'Briefing letter sent to NIPC', category: 'Email' })));
+    expect(await screen.findByText('Briefing letter sent to NIPC')).toBeInTheDocument();
+    expect(apiClient.get.mock.calls.filter(([url]) => url === '/api/interactions/investors/inv1').length).toBeGreaterThanOrEqual(2);
+  }, 20000);
+
+  it('shows the Interactions timeline with code chips and project titles', async () => {
+    mockInvestor({ _id: 'u1', name: 'Me' });
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+
+    expect(await screen.findByText('Interactions')).toBeInTheDocument();
+    expect(await screen.findByText('Briefing letter sent to NIPC')).toBeInTheDocument();
+    expect(screen.getByText('M4')).toBeInTheDocument();
+    expect(screen.getByText('Project: Agro Hub')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledWith('/api/interactions/investors/inv1');
+    expect(screen.getAllByRole('button', { name: 'Tag services' }).length).toBe(2);
   });
 
   it.each([
@@ -95,6 +144,9 @@ describe('InvestorProfilePage — write buttons', () => {
     expect(await screen.findByText('Acme Ltd')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Investor' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add New Project' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Log Interaction' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Briefing letter sent to NIPC')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tag services' })).not.toBeInTheDocument();
   });
 
   it.each(['Director-General', 'Portal-Admin'])('%s always sees the write buttons', async (role) => {
@@ -105,5 +157,6 @@ describe('InvestorProfilePage — write buttons', () => {
     expect(await screen.findByText('Acme Ltd')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit Investor' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add New Project' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Log Interaction' })).toBeInTheDocument();
   });
 });

@@ -7,6 +7,7 @@
     "start": "node src/index.js",
     "seed": "node src/db/seed.js",
     "check:orphans": "node scripts/check-orphan-projects.js",
+    "migrate:interactions": "node scripts/migrate-interaction-investor.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "dev": "nodemon src/index.js"
   },

@@ -42,24 +42,32 @@ beforeEach(async () => {
   const unassignedProject = await mk('Unassigned Project', unassignedInvestor);
   const otherProject = await mk('Other Project', otherInvestor);
 
+  // One interaction per project, for PATCH /api/interactions/:id (Tag services)
+  const mkLog = (project) => InteractionLog.create({ project: project._id, loggedBy: staff._id, description: 'Old meeting', category: 'Meeting' });
+  const assignedLog = await mkLog(assignedProject);
+  const unassignedLog = await mkLog(unassignedProject);
+  const otherLog = await mkLog(otherProject);
+
   f = {
     tokens: { [DG]: global.dgToken, [PA]: global.portalAdminToken, [STAFF]: sign(staff) },
     staff, revokeTarget, idea, lead, spare,
     assignedInvestor, unassignedInvestor, otherInvestor,
     assignedProject, unassignedProject, otherProject,
+    assignedLog, unassignedLog, otherLog,
   };
 });
 
 // ctx: { investorId, projectId } — the project/investor a request targets.
-const assignedCtx = () => ({ investorId: f.assignedInvestor._id.toString(), projectId: f.assignedProject._id.toString() });
+const assignedCtx = () => ({ investorId: f.assignedInvestor._id.toString(), projectId: f.assignedProject._id.toString(), logId: f.assignedLog._id.toString() });
 const unassignedCtxs = () => [
-  { label: 'investor unassigned', investorId: f.unassignedInvestor._id.toString(), projectId: f.unassignedProject._id.toString() },
-  { label: 'investor assigned to other staff', investorId: f.otherInvestor._id.toString(), projectId: f.otherProject._id.toString() },
+  { label: 'investor unassigned', investorId: f.unassignedInvestor._id.toString(), projectId: f.unassignedProject._id.toString(), logId: f.unassignedLog._id.toString() },
+  { label: 'investor assigned to other staff', investorId: f.otherInvestor._id.toString(), projectId: f.otherProject._id.toString(), logId: f.otherLog._id.toString() },
 ];
 
 // allow: roles that get through. public: no token needed.
 // projectWrite: also run Staff against unassigned projects (expect 403, nothing changed).
 // investorWrite: also run Staff against unassigned investors (expect 403, nothing changed).
+// tagWrite: also run Staff against interactions of unassigned investors (expect 403, log unchanged).
 // When you add or change a route, add it here and in access-matrix.md
 const ROUTES = [
   // Public by design
@@ -93,6 +101,11 @@ const ROUTES = [
 
   // Interactions (all projects)
   { name: 'GET /api/interactions', method: 'get', path: () => '/api/interactions', allow: ALL },
+
+  // Interactions at investor level (story 11.4)
+  { name: 'POST /api/interactions/investors/:investorId', method: 'post', path: (c) => `/api/interactions/investors/${c.investorId}`, body: () => ({ description: 'Briefing letter sent to NIPC', category: 'Email', serviceCodes: ['M4'] }), allow: ALL, projectWrite: true },
+  { name: 'GET /api/interactions/investors/:investorId', method: 'get', path: (c) => `/api/interactions/investors/${c.investorId}`, allow: ALL, staffAnyProject: true },
+  { name: 'PATCH /api/interactions/:id', method: 'patch', path: (c) => `/api/interactions/${c.logId}`, body: () => ({ serviceCodes: ['A8'], creditLinkage: true }), allow: ALL, tagWrite: true },
 
   // Lifecycle statuses — Portal-Admin only
   { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: [PA] },
@@ -167,6 +180,21 @@ describe('Access matrix', () => {
         });
       }
 
+      if (route.tagWrite) {
+        it('Staff, not assigned → denied (403), interaction unchanged', async () => {
+          for (const ctx of unassignedCtxs()) {
+            const before = await InteractionLog.findById(ctx.logId).lean();
+            const res = await send(route, ctx, f.tokens[STAFF]);
+            expect(res.statusCode).toBe(403);
+            expect(res.body).toEqual({ msg: 'Forbidden: You can only change projects of investors assigned to you' });
+            const after = await InteractionLog.findById(ctx.logId).lean();
+            expect(after.serviceCodes).toEqual(before.serviceCodes);
+            expect(after.creditLinkage).toBe(before.creditLinkage);
+            expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+          }
+        });
+      }
+
       if (route.investorWrite) {
         it('Staff, not assigned → denied (403), nothing changed', async () => {
           for (const ctx of unassignedCtxs()) {
@@ -183,8 +211,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 26 unique entries', () => {
-    expect(ROUTES.length).toBe(26);
+  it('ROUTES list has 29 unique entries', () => {
+    expect(ROUTES.length).toBe(29);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

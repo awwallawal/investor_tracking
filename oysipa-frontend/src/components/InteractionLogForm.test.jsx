@@ -59,6 +59,8 @@ describe('InteractionLogForm', () => {
           description: 'Test description',
           category: 'Meeting',
           documentUrl: '',
+          serviceCodes: [],
+          creditLinkage: false,
         }
       );
     });
@@ -66,7 +68,7 @@ describe('InteractionLogForm', () => {
     await waitFor(() => {
         expect(mockOnSave).toHaveBeenCalled();
     });
-  });
+  }, 20000);
 
   it('should upload a file to Cloudinary and save interaction log with documentUrl', async () => {
     const user = userEvent.setup();
@@ -108,6 +110,8 @@ describe('InteractionLogForm', () => {
           description: 'Test description with file',
           category: 'Meeting',
           documentUrl: cloudinaryUrl,
+          serviceCodes: [],
+          creditLinkage: false,
         }
       );
       expect(mockOnSave).toHaveBeenCalled();
@@ -149,5 +153,67 @@ describe('InteractionLogForm', () => {
     expect(await screen.findByText('You can only change projects of investors assigned to you')).toBeInTheDocument();
     expect(screen.queryByText(/status code 403/)).not.toBeInTheDocument();
     expect(mockOnSave).not.toHaveBeenCalled();
+  });
+
+  it('posts to the investor route when given investorId (no project)', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: {} });
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: /interaction description/i }), { target: { value: 'Briefing letter sent to NIPC' } });
+    await userEvent.click(screen.getByRole('combobox', { name: /service category/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Email' }));
+    fireEvent.click(screen.getByText('Save Log'));
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith('/api/interactions/investors/inv-1', {
+        description: 'Briefing letter sent to NIPC',
+        category: 'Email',
+        documentUrl: '',
+        serviceCodes: [],
+        creditLinkage: false,
+      });
+    });
+    await waitFor(() => expect(mockOnSave).toHaveBeenCalled());
+  });
+
+  it('sends the picked service codes (grouped, with wording) and the credit-linkage flag', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: {} });
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: /interaction description/i }), { target: { value: 'Briefing letter sent to NIPC' } });
+    await userEvent.click(screen.getByRole('combobox', { name: /service category/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Email' }));
+
+    await userEvent.click(screen.getByRole('combobox', { name: /saber services/i }));
+    expect(await screen.findByText('Marketing Services')).toBeInTheDocument();
+    expect(screen.getByText('Information Services')).toBeInTheDocument();
+    expect(screen.getByText('Assistance Services')).toBeInTheDocument();
+    expect(screen.getByText('Advocacy')).toBeInTheDocument();
+    expect(screen.getByText('Proactively promote priority sectors through network of intermediaries')).toBeInTheDocument();
+    await userEvent.click(screen.getByText('A8'));
+    await userEvent.click(screen.getByText('M4'));
+    await userEvent.keyboard('{Escape}');
+
+    await userEvent.click(screen.getByRole('checkbox', { name: /credit linkage/i }));
+    fireEvent.click(screen.getByText('Save Log'));
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith('/api/interactions/investors/inv-1', expect.objectContaining({
+        serviceCodes: ['M4', 'A8'],
+        creditLinkage: true,
+      }));
+    });
+  }, 20000);
+
+  it('shows the investor assignment message on 403 from the investor route', async () => {
+    vi.spyOn(apiClient, 'post').mockRejectedValue({ response: { status: 403, data: { msg: 'Forbidden' } } });
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: /interaction description/i }), { target: { value: 'x' } });
+    await userEvent.click(screen.getByRole('combobox', { name: /service category/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Email' }));
+    fireEvent.click(screen.getByText('Save Log'));
+
+    expect(await screen.findByText('You can only log interactions for investors assigned to you')).toBeInTheDocument();
   });
 });

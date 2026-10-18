@@ -144,6 +144,42 @@ describe('Project API', () => {
     const log = await InteractionLog.findOne({ project: project._id, category: 'System Update' });
     expect(log).not.toBeNull();
     expect(log.description).toBe(`Lifecycle status changed from "Initial Interest" to "Lead"`);
+    expect(log.investor.toString()).toBe(global.investorId);
+  });
+
+  it('moving a project to another investor moves its logs (investor + timelines)', async () => {
+    const newInvestor = await Investor.create({ investorName: 'New Owner', sector: 'Tech', countryOfOrigin: 'NG' });
+    const log = await InteractionLog.create({ project: global.mockProjectId, loggedBy: global.mockUserId, description: 'Moved log', category: 'Call' });
+    expect(log.investor.toString()).toBe(global.investorId);
+
+    await request(app)
+      .put(`/api/projects/${global.mockProjectId}`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
+      .send({ investor: newInvestor._id.toString() })
+      .expect(200);
+
+    expect((await InteractionLog.findById(log._id)).investor.toString()).toBe(newInvestor._id.toString());
+    const oldTimeline = await request(app)
+      .get(`/api/interactions/investors/${global.investorId}`)
+      .set('Authorization', `Bearer ${global.dgToken}`)
+      .expect(200);
+    expect(oldTimeline.body.map((l) => l._id)).not.toContain(log._id.toString());
+    const newTimeline = await request(app)
+      .get(`/api/interactions/investors/${newInvestor._id}`)
+      .set('Authorization', `Bearer ${global.dgToken}`)
+      .expect(200);
+    expect(newTimeline.body.map((l) => l._id)).toContain(log._id.toString());
+  });
+
+  it('PUT /:id/status System Update log has investor set', async () => {
+    await request(app)
+      .put(`/api/projects/${global.mockProjectId}/status`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
+      .send({ lifecycleStatus: leadStatus._id.toString() })
+      .expect(200);
+    const log = await InteractionLog.findOne({ project: global.mockProjectId, category: 'System Update' });
+    expect(log).not.toBeNull();
+    expect(log.investor.toString()).toBe(global.investorId);
   });
 });
 
@@ -166,6 +202,33 @@ describe('Interaction Logs API', () => {
     expect(res.body.project).toBe(global.mockProjectId);
     expect(res.body.loggedBy._id).toBe(jwt.decode(global.portalAdminToken).user.id.toString());
     expect(res.body.documentUrl).toBe(logData.documentUrl);
+    expect(res.body.investor).toBe(global.investorId);
+    expect(res.body.serviceCodes).toEqual([]);
+    expect(res.body.creditLinkage).toBe(false);
+  });
+
+  it('saves serviceCodes/creditLinkage and ignores a foreign investor in the body', async () => {
+    const foreign = await Investor.create({ investorName: 'Foreign Inv', sector: 'Tech', countryOfOrigin: 'UK' });
+    const res = await request(app)
+      .post(`/api/projects/${global.mockProjectId}/interactions`)
+      .set('Authorization', `Bearer ${global.dgToken}`)
+      .send({ description: 'Site visit', category: 'Site Visit', serviceCodes: ['A1', 'A2', 'A1'], creditLinkage: true, investor: foreign._id.toString(), project: new mongoose.Types.ObjectId().toString() })
+      .expect(201);
+    expect(res.body.investor).toBe(global.investorId);
+    expect(res.body.project).toBe(global.mockProjectId);
+    expect(res.body.serviceCodes).toEqual(['A1', 'A2']);
+    expect(res.body.creditLinkage).toBe(true);
+  });
+
+  it('bad service code on the project route -> 400 naming the value, nothing saved', async () => {
+    const before = await InteractionLog.countDocuments();
+    const res = await request(app)
+      .post(`/api/projects/${global.mockProjectId}/interactions`)
+      .set('Authorization', `Bearer ${global.dgToken}`)
+      .send({ description: 'x', category: 'Email', serviceCodes: ['M9'] });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toContain('M9');
+    expect(await InteractionLog.countDocuments()).toBe(before);
   });
 
   it('should fetch all interaction logs for a project', async () => {

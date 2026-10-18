@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import InteractionLogList from './InteractionLogList';
 import apiClient from '../api/api';
@@ -92,4 +93,67 @@ describe('InteractionLogList', () => {
       expect(screen.getByText('Failed to fetch interaction logs.')).toBeInTheDocument();
     });
   });
+
+  it('renders old records without codes as before (no chips)', async () => {
+    apiClient.get.mockResolvedValue({ data: [{ _id: 'o1', description: 'Old', category: 'Meeting', loggedBy: { name: 'A' }, createdAt: '2023-01-01T00:00:00.000Z' }] });
+    render(<InteractionLogList projectId={projectId} />);
+    expect(await screen.findByText('Old')).toBeInTheDocument();
+    expect(screen.getByText(/Category: Meeting/)).toBeInTheDocument();
+    expect(screen.queryByText('Credit linkage')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tag services' })).not.toBeInTheDocument();
+  });
+
+  it('investor timeline: fetches the investor URL, shows code chips with wording tooltip, credit chip and project title', async () => {
+    apiClient.get.mockResolvedValue({
+      data: [
+        { _id: 'a', description: 'Briefing letter sent to NIPC', category: 'Email', serviceCodes: ['M4'], creditLinkage: true, loggedBy: { name: 'A' }, createdAt: '2026-10-18T00:00:00.000Z' },
+        { _id: 'b', description: 'Project call', category: 'Call', project: { _id: 'p1', projectTitle: 'Agro Hub' }, loggedBy: { name: 'A' }, createdAt: '2026-10-17T00:00:00.000Z' },
+      ],
+    });
+    render(<InteractionLogList investorId="inv-1" />);
+
+    expect(await screen.findByText('Briefing letter sent to NIPC')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledWith('/api/interactions/investors/inv-1');
+    expect(screen.getByText('M4')).toBeInTheDocument();
+    expect(screen.getByText('Credit linkage')).toBeInTheDocument();
+    expect(screen.getByText('Project: Agro Hub')).toBeInTheDocument();
+
+    await userEvent.hover(screen.getByText('M4'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Proactively promote priority sectors through network of intermediaries');
+  }, 20000);
+
+  it('shows the investor empty message', async () => {
+    apiClient.get.mockResolvedValue({ data: [] });
+    render(<InteractionLogList investorId="inv-1" />);
+    expect(await screen.findByText('No interactions logged for this investor yet.')).toBeInTheDocument();
+  });
+
+  it('Tag services: PATCHes only codes and flag, then shows the chip with the category unchanged', async () => {
+    apiClient.get.mockResolvedValue({ data: [{ _id: 'o1', description: 'Old meeting', category: 'Meeting', loggedBy: { name: 'A' }, createdAt: '2023-01-01T00:00:00.000Z' }] });
+    const patchSpy = vi.spyOn(apiClient, 'patch').mockResolvedValue({ data: { _id: 'o1', serviceCodes: ['A8'], creditLinkage: true, description: 'Old meeting', category: 'Meeting' } });
+    render(<InteractionLogList investorId="inv-1" canWrite />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Tag services' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('combobox', { name: /saber services/i }));
+    await userEvent.click(await screen.findByText('A8'));
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(within(dialog).getByRole('checkbox', { name: /credit linkage/i }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save tags' }));
+
+    await waitFor(() => expect(patchSpy).toHaveBeenCalledWith('/api/interactions/o1', { serviceCodes: ['A8'], creditLinkage: true }));
+    expect(await screen.findByText('A8')).toBeInTheDocument();
+    expect(screen.getByText(/Category: Meeting/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  }, 20000);
+
+  it('Tag services: shows the assignment message on 403', async () => {
+    apiClient.get.mockResolvedValue({ data: [{ _id: 'o1', description: 'Old', category: 'Meeting', loggedBy: { name: 'A' }, createdAt: '2023-01-01T00:00:00.000Z' }] });
+    vi.spyOn(apiClient, 'patch').mockRejectedValue({ response: { status: 403, data: { msg: 'Forbidden' } } });
+    render(<InteractionLogList investorId="inv-1" canWrite />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Tag services' }));
+    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Save tags' }));
+    expect(await screen.findByText('You can only tag interactions of investors assigned to you')).toBeInTheDocument();
+  }, 20000);
 });

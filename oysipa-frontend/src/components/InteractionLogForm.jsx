@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl, Alert } from '@mui/material';
 import apiClient from '../api/api';
+import ServiceCodePicker from './ServiceCodePicker';
 
 const INTERACTION_CATEGORIES = [
   'Meeting',
@@ -11,12 +12,20 @@ const INTERACTION_CATEGORIES = [
   'Other',
 ];
 
-const InteractionLogForm = ({ open, onClose, onSave, projectId }) => {
+// Logs an interaction against a project (projectId) or, with no project,
+// against an investor (investorId).
+const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [serviceCodes, setServiceCodes] = useState([]);
+  const [creditLinkage, setCreditLinkage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+
+  const url = projectId
+    ? `/api/projects/${projectId}/interactions`
+    : `/api/interactions/investors/${investorId}`;
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
@@ -54,20 +63,30 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId }) => {
         documentUrl = cloudinaryData.secure_url;
       }
 
-      await apiClient.post(`/api/projects/${projectId}/interactions`, {
+      await apiClient.post(url, {
         description,
         category,
         documentUrl,
+        serviceCodes,
+        creditLinkage,
       });
 
       setDescription('');
       setCategory('');
+      setServiceCodes([]);
+      setCreditLinkage(false);
       setSelectedFile(null);
       onSave();
     } catch (err) {
-      setError(err?.response?.status === 403
-        ? 'You can only change projects of investors assigned to you'
-        : (err.message || 'Failed to save interaction log.'));
+      let message;
+      if (err?.response?.status === 403) {
+        message = projectId
+          ? 'You can only change projects of investors assigned to you'
+          : 'You can only log interactions for investors assigned to you';
+      } else {
+        message = err?.response?.data?.message || err.message || 'Failed to save interaction log.';
+      }
+      setError(message);
       console.error(err);
     } finally {
       setUploading(false);
@@ -107,6 +126,13 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId }) => {
             ))}
           </Select>
         </FormControl>
+        <ServiceCodePicker
+          value={serviceCodes}
+          onChange={setServiceCodes}
+          creditLinkage={creditLinkage}
+          onCreditLinkageChange={setCreditLinkage}
+          disabled={uploading}
+        />
         <Button
           variant="contained"
           component="label"

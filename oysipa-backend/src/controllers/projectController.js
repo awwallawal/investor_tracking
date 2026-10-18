@@ -141,6 +141,17 @@ exports.updateProject = async (req, res) => {
       { new: true, runValidators: true }
     ).populate('investor', 'investorName').populate('lifecycleStatus');
 
+    // Project moved to another investor: its logs follow it (timelines, tag access).
+    const oldInvestorId = projectToUpdate.investor ? projectToUpdate.investor.toString() : null;
+    const newInvestorId = updatedProject.investor ? updatedProject.investor._id.toString() : null;
+    if (newInvestorId && newInvestorId !== oldInvestorId) {
+      await InteractionLog.updateMany(
+        { project: req.params.id },
+        { $set: { investor: newInvestorId } },
+        { timestamps: false },
+      );
+    }
+
     // If the stage changed, create a system log entry
     if (newStatusId && oldStatusId !== newStatusId) {
       const oldStatus = await LifecycleStatus.findById(oldStatusId);

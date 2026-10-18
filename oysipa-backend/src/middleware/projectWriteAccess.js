@@ -64,3 +64,4 @@ const projectWriteAccess = async (req, res, next) => {
 };
 
 module.exports = projectWriteAccess;
+module.exports.DENIED_MSG = DENIED_MSG;
