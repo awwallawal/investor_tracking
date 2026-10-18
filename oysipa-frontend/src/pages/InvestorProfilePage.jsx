@@ -5,7 +5,20 @@ import InvestorEditForm from '../components/InvestorEditForm';
 import UserAssignmentDropdown from '../components/UserAssignmentDropdown';
 import ProjectList from '../components/ProjectList';
 import ProjectForm from '../components/ProjectForm'; // Import ProjectForm
+import { jwtDecode } from 'jwt-decode';
 import apiClient from '../api/api';
+
+// Same decoding as components/ProtectedRoute.jsx
+const getRoleFromToken = () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    try {
+        return jwtDecode(token).user.role;
+    } catch (error) {
+        console.error('Error decoding token:', error);
+        return null;
+    }
+};
 
 const InvestorProfilePage = () => {
     const [investor, setInvestor] = useState(null);
@@ -13,6 +26,7 @@ const InvestorProfilePage = () => {
     const [isEditFormOpen, setIsEditFormOpen] = useState(false);
     const [isProjectFormOpen, setIsProjectFormOpen] = useState(false); // State for project form
     const { id } = useParams();
+    const isStaff = getRoleFromToken() === 'Staff';
 
     const fetchInvestorAndProjects = useCallback(async () => {
         try {
@@ -78,11 +92,13 @@ const InvestorProfilePage = () => {
                 <Button variant="contained" onClick={handleEditClick}>
                     Edit Investor
                 </Button>
-                <UserAssignmentDropdown
-                    investorId={investor._id}
-                    currentAssignedUser={investor.assignedTo}
-                    onAssign={handleAssignUser}
-                />
+                {!isStaff && (
+                    <UserAssignmentDropdown
+                        investorId={investor._id}
+                        currentAssignedUser={investor.assignedTo}
+                        onAssign={handleAssignUser}
+                    />
+                )}
                 <Button variant="contained" color="secondary" onClick={handleProjectFormOpen}>
                     Add New Project
                 </Button>

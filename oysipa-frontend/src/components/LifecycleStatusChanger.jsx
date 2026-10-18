@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import { Alert, Button, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import apiClient from '../api/api';
+
+const FORBIDDEN_MSG = 'You can only change projects of investors assigned to you';
+const GENERIC_MSG = 'Failed to update stage. Please try again.';
 
 const LifecycleStatusChanger = ({ project, onStageUpdate }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [stages, setStages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     const fetchStages = async () => {
@@ -38,12 +42,13 @@ const LifecycleStatusChanger = ({ project, onStageUpdate }) => {
     handleClose();
     if (stageId === project.lifecycleStatus) return;
 
+    setSaveError(null);
     try {
       await apiClient.put(`/api/projects/${project._id}`, { lifecycleStatus: stageId });
       onStageUpdate(); // Notify parent to re-fetch project data
     } catch (err) {
       console.error('Failed to update stage:', err);
-      // Optionally, show an error message to the user
+      setSaveError(err?.response?.status === 403 ? FORBIDDEN_MSG : GENERIC_MSG);
     }
   };
 
@@ -75,6 +80,11 @@ const LifecycleStatusChanger = ({ project, onStageUpdate }) => {
           </MenuItem>
         ))}
       </Menu>
+      {saveError && (
+        <Alert severity="error" sx={{ mt: 1 }} onClose={() => setSaveError(null)}>
+          {saveError}
+        </Alert>
+      )}
     </div>
   );
 };

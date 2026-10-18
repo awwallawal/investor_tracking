@@ -14,15 +14,15 @@ router.get('/', lifecycleStatusController.getAllLifecycleStatuses);
 // @access  Private (Portal-Admin)
 router.post('/', auth, authorize('Portal-Admin'), lifecycleStatusController.createLifecycleStatus);
 
+// @route   PUT api/lifecycle-statuses/reorder
+// @desc    Reorder lifecycle statuses (registered before /:id so it is not shadowed)
+// @access  Private (Portal-Admin)
+router.put('/reorder', auth, authorize('Portal-Admin'), lifecycleStatusController.reorderLifecycleStatuses);
+
 // @route   PUT api/lifecycle-statuses/:id
 // @desc    Update a lifecycle status
 // @access  Private (Portal-Admin)
 router.put('/:id', auth, authorize('Portal-Admin'), lifecycleStatusController.updateLifecycleStatus);
-
-// @route   PUT api/lifecycle-statuses/reorder
-// @desc    Reorder lifecycle statuses
-// @access  Private (Portal-Admin)
-router.put('/reorder', auth, authorize('Portal-Admin'), lifecycleStatusController.reorderLifecycleStatuses);
 
 // @route   DELETE api/lifecycle-statuses/:id
 // @desc    Delete a lifecycle status

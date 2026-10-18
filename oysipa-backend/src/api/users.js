@@ -22,8 +22,8 @@ router.get('/', auth, authorize('Director-General', 'Portal-Admin'), async (req,
 
 // @route   GET api/users/staff
 // @desc    Get all active staff users
-// @access  Private (Authenticated)
-router.get('/staff', auth, async (req, res) => {
+// @access  Private (Director-General, Portal-Admin)
+router.get('/staff', auth, authorize('Director-General', 'Portal-Admin'), async (req, res) => {
   try {
     const users = await User.find({ role: 'Staff', status: 'active' }).select('-password');
     res.json(users);

@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { Alert, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import apiClient from '../api/api';
+
+const FORBIDDEN_MSG = 'You can only change projects of investors assigned to you';
+const GENERIC_MSG = 'Failed to save the project. Please try again.';
 
 const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
     const [formData, setFormData] = useState({});
     const [lifecycleStatuses, setLifecycleStatuses] = useState([]);
+    const [saveError, setSaveError] = useState(null);
 
     useEffect(() => {
         const fetchStatuses = async () => {
@@ -20,6 +24,7 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
     }, []);
 
     useEffect(() => {
+        setSaveError(null);
         if (projectData) {
             setFormData({
                 ...projectData,
@@ -48,11 +53,13 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
             ? `/api/projects/${projectData._id}` 
             : `/api/projects/investors/${investorId}/projects`;
 
+        setSaveError(null);
         try {
             await apiClient[method](url, formData);
             onSave();
         } catch (error) {
             console.error("Save error:", error);
+            setSaveError(error?.response?.status === 403 ? FORBIDDEN_MSG : GENERIC_MSG);
         }
     };
 
@@ -60,6 +67,7 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
             <DialogTitle>{projectData ? 'Edit Project' : 'Add New Project'}</DialogTitle>
             <DialogContent>
+                {saveError && <Alert severity="error" sx={{ mb: 1 }}>{saveError}</Alert>}
                 <TextField autoFocus margin="dense" name="projectTitle" label="Project Title" type="text" fullWidth variant="standard" value={formData.projectTitle || ''} onChange={handleChange} />
                 <TextField margin="dense" name="description" label="Description" type="text" fullWidth multiline rows={4} variant="standard" value={formData.description || ''} onChange={handleChange} />
                 <TextField margin="dense" name="estimatedValue" label="Estimated Value" type="number" fullWidth variant="standard" value={formData.estimatedValue || 0} onChange={handleChange} />

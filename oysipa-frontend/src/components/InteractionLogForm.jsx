@@ -65,7 +65,9 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId }) => {
       setSelectedFile(null);
       onSave();
     } catch (err) {
-      setError(err.message || 'Failed to save interaction log.');
+      setError(err?.response?.status === 403
+        ? 'You can only change projects of investors assigned to you'
+        : (err.message || 'Failed to save interaction log.'));
       console.error(err);
     } finally {
       setUploading(false);

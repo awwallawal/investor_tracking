@@ -28,7 +28,7 @@ describe('Project API', () => {
 
     const res = await request(app)
       .post(`/api/projects/investors/${global.investorId}/projects`)
-      .set('Authorization', `Bearer ${global.mockToken}`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
       .send(projectData)
       .expect(201);
 
@@ -116,7 +116,7 @@ describe('Project API', () => {
 
     const res = await request(app)
       .put(`/api/projects/${project._id}`)
-      .set('Authorization', `Bearer ${global.mockToken}`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
       .send(updatedData)
       .expect(200);
 
@@ -135,7 +135,7 @@ describe('Project API', () => {
 
     const res = await request(app)
       .put(`/api/projects/${project._id}`)
-      .set('Authorization', `Bearer ${global.mockToken}`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
       .send(updatedData)
       .expect(200);
 
@@ -158,13 +158,13 @@ describe('Interaction Logs API', () => {
 
     const res = await request(app)
       .post(`/api/projects/${global.mockProjectId}/interactions`)
-      .set('Authorization', `Bearer ${global.mockToken}`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
       .send(logData)
       .expect(201);
 
     expect(res.body).toHaveProperty('_id');
     expect(res.body.project).toBe(global.mockProjectId);
-    expect(res.body.loggedBy._id).toBe(global.mockUserId);
+    expect(res.body.loggedBy._id).toBe(jwt.decode(global.portalAdminToken).user.id.toString());
     expect(res.body.documentUrl).toBe(logData.documentUrl);
   });
 

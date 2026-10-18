@@ -45,4 +45,28 @@ describe('ProjectForm', () => {
             expect(onSave).toHaveBeenCalled();
         });
     });
+
+    it('shows the assignment message when a save returns 403', async () => {
+        const onSave = vi.fn();
+        apiClient.put.mockRejectedValue({ response: { status: 403, data: { msg: 'Forbidden' } } });
+
+        render(<ProjectForm open={true} onClose={vi.fn()} onSave={onSave} projectData={{ _id: 'proj1', projectTitle: 'P' }} />);
+        fireEvent.click(screen.getByText('Save'));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('You can only change projects of investors assigned to you');
+        expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it('shows a generic message for other save errors', async () => {
+        const onSave = vi.fn();
+        apiClient.post.mockRejectedValue({ response: { status: 400 } });
+
+        render(<ProjectForm open={true} onClose={vi.fn()} onSave={onSave} investorId="inv1" />);
+        fireEvent.click(screen.getByText('Save'));
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent('Failed to save the project');
+        expect(alert).not.toHaveTextContent('assigned to you');
+        expect(onSave).not.toHaveBeenCalled();
+    });
 });

@@ -135,4 +135,19 @@ describe('InteractionLogForm', () => {
 
     expect(mockOnSave).not.toHaveBeenCalled();
   });
+
+  it('shows the assignment message when the API returns 403', async () => {
+    vi.spyOn(apiClient, 'post').mockRejectedValue({ message: 'Request failed with status code 403', response: { status: 403, data: { msg: 'Forbidden' } } });
+
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} projectId={projectId} />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: /interaction description/i }), { target: { value: 'Test description' } });
+    await userEvent.click(screen.getByRole('combobox', { name: /service category/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Meeting' }));
+    fireEvent.click(screen.getByText('Save Log'));
+
+    expect(await screen.findByText('You can only change projects of investors assigned to you')).toBeInTheDocument();
+    expect(screen.queryByText(/status code 403/)).not.toBeInTheDocument();
+    expect(mockOnSave).not.toHaveBeenCalled();
+  });
 });
