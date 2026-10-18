@@ -35,8 +35,8 @@ const UserAssignmentDropdown = ({ currentAssignedUser, onAssign }) => {
   };
 
   return (
-    <Box sx={{ minWidth: 120, mt: 2 }}>
-      <FormControl fullWidth>
+    <Box sx={{ minWidth: 220 }}>
+      <FormControl fullWidth size="small">
         <InputLabel id="assign-user-label">Assign Staff</InputLabel>
         <Select
           labelId="assign-user-label"

@@ -103,7 +103,7 @@ const InvestorProfilePage = () => {
             <p>Key Contact Person: {investor.keyContactPerson}</p>
             <p>Assigned Staff: {investor.assignedTo ? investor.assignedTo.name : 'Unassigned'}</p>
 
-            <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+            <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 {canWrite && (
                     <Button variant="contained" onClick={handleEditClick}>
                         Edit Investor
