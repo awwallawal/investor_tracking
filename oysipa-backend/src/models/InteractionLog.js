@@ -1,6 +1,29 @@
 const mongoose = require('mongoose');
 const { SERVICE_CODES } = require('../constants/serviceCodes');
 
+// A privately stored file (FR-Y19). provider/key/resourceType are internal:
+// they are stripped from every JSON response (see toJSON below).
+const DocumentSchema = new mongoose.Schema({
+  fileName: { type: String, required: true },
+  mimeType: { type: String, required: true },
+  size: { type: Number, required: true },
+  // Happened date of the document (officer-entered; today when left empty).
+  documentDate: { type: Date },
+  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  uploadedAt: { type: Date, required: true },
+  provider: { type: String, required: true },
+  key: { type: String, required: true },
+  resourceType: { type: String },
+});
+
+const INTERNAL_DOCUMENT_FIELDS = ['provider', 'key', 'resourceType'];
+DocumentSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    INTERNAL_DOCUMENT_FIELDS.forEach((f) => { delete ret[f]; });
+    return ret;
+  },
+});
+
 const InteractionLogSchema = new mongoose.Schema({
   // Optional: an interaction can be logged at investor level, before any project exists.
   project: {
@@ -26,8 +49,18 @@ const InteractionLogSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  // Legacy public link (pre-11.4b). Kept and still displayed.
   documentUrl: {
     type: String,
+  },
+  // Happened date (officer-entered). No schema default: the controllers set
+  // today on create, and old records without one display their createdAt.
+  interactionDate: {
+    type: Date,
+  },
+  documents: {
+    type: [DocumentSchema],
+    default: undefined,
   },
   // SABER DLI 4 service codes (field T10).
   serviceCodes: {
@@ -58,4 +91,7 @@ InteractionLogSchema.pre('validate', async function setInvestorFromProject() {
   }
 });
 
-module.exports = mongoose.model('InteractionLog', InteractionLogSchema);
+const InteractionLog = mongoose.model('InteractionLog', InteractionLogSchema);
+InteractionLog.INTERNAL_DOCUMENT_FIELDS = INTERNAL_DOCUMENT_FIELDS;
+
+module.exports = InteractionLog;

@@ -10,13 +10,18 @@ import {
   TextField,
 } from '@mui/material';
 import apiClient from '../api/api';
+import HappenedDateField from './HappenedDateField';
+import { lagosDay } from '../utils/dates';
 
 const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
   const [formData, setFormData] = useState(investorData);
   const [error, setError] = useState(null);
+  const originalFirstContact = lagosDay(investorData?.firstContactDate);
+  const [firstContactDate, setFirstContactDate] = useState(originalFirstContact);
 
   useEffect(() => {
     setFormData(investorData);
+    setFirstContactDate(lagosDay(investorData?.firstContactDate));
   }, [investorData]);
 
   useEffect(() => {
@@ -35,13 +40,16 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
     setError(null); // Clear previous errors
 
     try {
-      await apiClient.put(`/api/investors/${formData._id}`, formData);
+      const payload = { ...formData };
+      // Sent only when corrected; empty never clears the stored date.
+      if (firstContactDate && firstContactDate !== originalFirstContact) payload.firstContactDate = firstContactDate;
+      await apiClient.put(`/api/investors/${formData._id}`, payload);
       onSave(); // Trigger refresh and close
     } catch (error) {
       console.error("Submission error:", error);
       const message = error.response?.status === 403
         ? 'You can only change investors assigned to you'
-        : error.response?.data?.msg || error.response?.data?.error || error.message || 'Failed to update investor';
+        : error.response?.data?.message || error.response?.data?.msg || error.response?.data?.error || error.message || 'Failed to update investor';
       setError(message);
     }
   };
@@ -111,6 +119,14 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
             onChange={handleChange}
             fullWidth={true}
             margin="normal"
+          />
+          <HappenedDateField
+            name="firstContactDate"
+            label="First contact date"
+            value={firstContactDate}
+            onChange={setFirstContactDate}
+            margin="normal"
+            helperText={originalFirstContact ? 'Correct it if the paper record shows another date' : 'Leave empty to keep the recorded date'}
           />
         </Box>
       </DialogContent>

@@ -35,6 +35,11 @@ const investmentProjectSchema = new mongoose.Schema({
     assignedTo: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
+    },
+    // Happened date the project was registered (officer-entered). No default:
+    // set by the controller on create; old records display createdAt.
+    dateRegistered: {
+        type: Date
     }
 }, {
     timestamps: true

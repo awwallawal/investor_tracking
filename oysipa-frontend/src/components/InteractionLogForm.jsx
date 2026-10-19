@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl, Alert } from '@mui/material';
 import apiClient from '../api/api';
 import ServiceCodePicker from './ServiceCodePicker';
+import HappenedDateField from './HappenedDateField';
+import { DOCUMENT_ACCEPT, documentErrorMessage, uploadInteractionDocument } from '../api/documents';
 
 const INTERACTION_CATEGORIES = [
   'Meeting',
@@ -12,16 +14,22 @@ const INTERACTION_CATEGORIES = [
   'Other',
 ];
 
+const DOC_NOT_ATTACHED = 'Interaction saved; document not attached';
+
 // Logs an interaction against a project (projectId) or, with no project,
-// against an investor (investorId).
+// against an investor (investorId). A chosen file is uploaded through the
+// backend (private storage) after the interaction is saved.
 const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [interactionDate, setInteractionDate] = useState('');
   const [serviceCodes, setServiceCodes] = useState([]);
   const [creditLinkage, setCreditLinkage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  // Set when the interaction was saved but its document upload failed.
+  const [savedLogId, setSavedLogId] = useState(null);
 
   const url = projectId
     ? `/api/projects/${projectId}/interactions`
@@ -29,6 +37,35 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
+  };
+
+  const reset = () => {
+    setDescription('');
+    setCategory('');
+    setInteractionDate('');
+    setServiceCodes([]);
+    setCreditLinkage(false);
+    setSelectedFile(null);
+    setSavedLogId(null);
+    setError('');
+  };
+
+  const finish = () => {
+    reset();
+    onSave();
+  };
+
+  // Returns true when the document is attached.
+  const attachDocument = async (logId) => {
+    try {
+      await uploadInteractionDocument(logId, selectedFile, interactionDate);
+      return true;
+    } catch (err) {
+      setSavedLogId(logId);
+      setError(`${DOC_NOT_ATTACHED}: ${documentErrorMessage(err, 'the upload failed.')}`);
+      console.error(err);
+      return false;
+    }
   };
 
   const handleSave = async () => {
@@ -39,44 +76,19 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
 
     setError('');
     setUploading(true);
-    let documentUrl = '';
 
     try {
-      if (selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('upload_preset', "investment_tracking_system"); // Actual preset
-        formData.append('cloud_name', "dzzipwwbn"); // Actual cloud name
-
-        const cloudinaryResponse = await fetch(
-          `https://api.cloudinary.com/v1_1/dzzipwwbn/image/upload`, // Actual cloud name
-          {
-            method: 'POST',
-            body: formData,
-          }
-        );
-
-        if (!cloudinaryResponse.ok) {
-          throw new Error('Failed to upload file to Cloudinary.');
-        }
-        const cloudinaryData = await cloudinaryResponse.json();
-        documentUrl = cloudinaryData.secure_url;
-      }
-
-      await apiClient.post(url, {
+      const { data } = await apiClient.post(url, {
         description,
         category,
-        documentUrl,
         serviceCodes,
         creditLinkage,
+        // Empty means today (set by the server).
+        ...(interactionDate && { interactionDate }),
       });
 
-      setDescription('');
-      setCategory('');
-      setServiceCodes([]);
-      setCreditLinkage(false);
-      setSelectedFile(null);
-      onSave();
+      if (selectedFile && !(await attachDocument(data?._id))) return;
+      finish();
     } catch (err) {
       let message;
       if (err?.response?.status === 403) {
@@ -84,7 +96,7 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
           ? 'You can only change projects of investors assigned to you'
           : 'You can only log interactions for investors assigned to you';
       } else {
-        message = err?.response?.data?.message || err.message || 'Failed to save interaction log.';
+        message = err?.response?.data?.message || err?.message || 'Failed to save interaction log.';
       }
       setError(message);
       console.error(err);
@@ -93,11 +105,30 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
     }
   };
 
+  const handleRetry = async () => {
+    setError('');
+    setUploading(true);
+    try {
+      if (await attachDocument(savedLogId)) finish();
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Once saved, closing still refreshes the list (the interaction exists).
+  const handleClose = () => {
+    if (savedLogId) {
+      finish();
+    } else {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={uploading ? undefined : handleClose} fullWidth maxWidth="sm">
       <DialogTitle>Log New Support Interaction</DialogTitle>
       <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        {error && <Alert severity={savedLogId ? 'warning' : 'error'} sx={{ mb: 2 }}>{error}</Alert>}
         <TextField
           autoFocus
           margin="dense"
@@ -109,6 +140,7 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
           variant="standard"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          disabled={uploading || !!savedLogId}
         />
         <FormControl fullWidth margin="dense" variant="standard">
           <InputLabel id="service-category-label">Service Category</InputLabel>
@@ -118,6 +150,7 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             label="Service Category"
+            disabled={uploading || !!savedLogId}
           >
             {INTERACTION_CATEGORIES.map((cat) => (
               <MenuItem key={cat} value={cat}>
@@ -126,12 +159,18 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
             ))}
           </Select>
         </FormControl>
+        <HappenedDateField
+          label="Date it happened"
+          value={interactionDate}
+          onChange={setInteractionDate}
+          disabled={uploading || !!savedLogId}
+        />
         <ServiceCodePicker
           value={serviceCodes}
           onChange={setServiceCodes}
           creditLinkage={creditLinkage}
           onCreditLinkageChange={setCreditLinkage}
-          disabled={uploading}
+          disabled={uploading || !!savedLogId}
         />
         <Button
           variant="contained"
@@ -140,14 +179,25 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
           disabled={uploading}
         >
           {selectedFile ? selectedFile.name : 'Attach Document'}
-          <input type="file" hidden onChange={handleFileChange} />
+          <input type="file" hidden accept={DOCUMENT_ACCEPT} onChange={handleFileChange} />
         </Button>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={uploading}>Cancel</Button>
-        <Button onClick={handleSave} disabled={uploading}>
-          {uploading ? 'Saving...' : 'Save Log'}
-        </Button>
+        {savedLogId ? (
+          <>
+            <Button onClick={finish} disabled={uploading}>Close without document</Button>
+            <Button onClick={handleRetry} disabled={uploading || !selectedFile}>
+              {uploading ? 'Uploading...' : 'Retry'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={onClose} disabled={uploading}>Cancel</Button>
+            <Button onClick={handleSave} disabled={uploading}>
+              {uploading ? 'Saving...' : 'Save Log'}
+            </Button>
+          </>
+        )}
       </DialogActions>
     </Dialog>
   );

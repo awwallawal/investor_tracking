@@ -3,6 +3,23 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const { recordDeletionGroups, newBatchId } = require('../utils/recordDeletion');
+const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
+
+// Validates body.firstContactDate in place. On create an empty value becomes
+// today; on update an empty value leaves the stored date alone.
+// Returns an error message or null.
+const applyFirstContactDate = (body, { isCreate }) => {
+  const parsed = parseHappenedDate(body.firstContactDate, { label: 'First contact date' });
+  if (parsed.error) return parsed.error;
+  if (parsed.value !== undefined) {
+    body.firstContactDate = parsed.value;
+  } else if (isCreate) {
+    body.firstContactDate = new Date();
+  } else {
+    delete body.firstContactDate;
+  }
+  return null;
+};
 
 // exports.createInvestor = async (req, res) => {
 //     try {
@@ -16,10 +33,14 @@ const { recordDeletionGroups, newBatchId } = require('../utils/recordDeletion');
 
 exports.createInvestor = async (req, res) => {
   try {
-    const investor = await Investor.create(req.body);
-    res.status(201).json(investor);
+    // createdAt/updatedAt are server-set; client values are ignored.
+    const body = stripTimestamps({ ...(req.body || {}) });
+    const dateError = applyFirstContactDate(body, { isCreate: true });
+    if (dateError) return res.status(400).json({ message: dateError });
+    const investor = await Investor.create(body);
+    return res.status(201).json(investor);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: error.message });
   }
 };
 
@@ -46,13 +67,17 @@ exports.getInvestorById = async (req, res) => {
 
 exports.updateInvestor = async (req, res) => {
     try {
-        const investor = await Investor.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        // createdAt/updatedAt are server-set; client values are ignored.
+        const body = stripTimestamps({ ...(req.body || {}) });
+        const dateError = applyFirstContactDate(body, { isCreate: false });
+        if (dateError) return res.status(400).json({ message: dateError });
+        const investor = await Investor.findByIdAndUpdate(req.params.id, body, { new: true, runValidators: true });
         if (!investor) {
             return res.status(404).json({ error: 'Investor not found' });
         }
-        res.json(investor);
+        return res.json(investor);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: error.message });
     }
 };
 

@@ -36,6 +36,11 @@ const investorSchema = new mongoose.Schema({
   assignedTo: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  // Happened date of first contact (officer-entered). No default: set by the
+  // controller on create; old records keep none and display createdAt.
+  firstContactDate: {
+    type: Date
   }
 }, { timestamps: true }); // ✅ correct way
 

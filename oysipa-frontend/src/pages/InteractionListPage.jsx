@@ -2,11 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert, List, ListItem, ListItemText, Divider } from '@mui/material';
 import apiClient from '../api/api';
 import { ServiceChips } from '../components/InteractionLogList';
+import InteractionDocuments from '../components/InteractionDocuments';
+import { dateLine } from '../utils/dates';
+import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
 const InteractionListPage = () => {
   const [interactions, setInteractions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // DG/Admin can write on every interaction; Staff attach from the investor or project page.
+  const isAdmin = isAdminRole(getCurrentUser()?.role);
+
+  const handleDocumentsChange = (logId, documents) => {
+    setInteractions((prev) => prev.map((l) => (l._id === logId ? { ...l, documents } : l)));
+  };
 
   useEffect(() => {
     const fetchInteractions = async () => {
@@ -72,7 +81,7 @@ const InteractionListPage = () => {
                         variant="body2"
                         color="text.secondary"
                       >
-                        Category: {interaction.category} | By: {interaction.loggedBy?.name || 'N/A'} on {new Date(interaction.createdAt).toLocaleDateString()}
+                        Category: {interaction.category} | By: {interaction.loggedBy?.name || 'N/A'} on {dateLine(interaction, 'interactionDate')}
                       </Typography>
                       <ServiceChips log={interaction} />
                       {interaction.documentUrl && (
@@ -85,6 +94,12 @@ const InteractionListPage = () => {
                           Document: <a href={interaction.documentUrl} target="_blank" rel="noopener noreferrer">View Document</a>
                         </Typography>
                       )}
+                      <InteractionDocuments
+                        log={{ ...interaction, documentUrl: undefined }}
+                        canWrite={isAdmin}
+                        canDelete={isAdmin}
+                        onDocumentsChange={(docs) => handleDocumentsChange(interaction._id, docs)}
+                      />
                     </React.Fragment>
                   }
                 />

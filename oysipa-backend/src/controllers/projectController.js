@@ -3,6 +3,45 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
+const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
+
+// Pulls statusChangeDate out of the body (it is not a project field: it becomes
+// the System Update log's interactionDate). Returns { value } or { error }.
+const takeStatusChangeDate = (body) => {
+  const raw = body ? body.statusChangeDate : undefined;
+  if (body) delete body.statusChangeDate;
+  return parseHappenedDate(raw, { label: 'Status change date' });
+};
+
+// Validates body.dateRegistered in place (create: empty -> today; update: empty
+// -> leave the stored date). Returns an error message or null.
+const applyDateRegistered = (body, { isCreate }) => {
+  const parsed = parseHappenedDate(body.dateRegistered, { label: 'Date registered' });
+  if (parsed.error) return parsed.error;
+  if (parsed.value !== undefined) {
+    body.dateRegistered = parsed.value;
+  } else if (isCreate) {
+    body.dateRegistered = new Date();
+  } else {
+    delete body.dateRegistered;
+  }
+  return null;
+};
+
+const systemUpdateLog = async ({ projectId, userId, oldStatusId, newStatusId, happenedAt }) => {
+  const oldStatus = await LifecycleStatus.findById(oldStatusId);
+  const newStatus = await LifecycleStatus.findById(newStatusId);
+  const logDescription = `Lifecycle status changed from "${oldStatus.name}" to "${newStatus.name}"`;
+  const interactionLog = new InteractionLog({
+    project: projectId,
+    loggedBy: userId,
+    description: logDescription,
+    category: 'System Update',
+    // Effective date of the change (officer-entered), today when left empty.
+    interactionDate: happenedAt || new Date(),
+  });
+  await interactionLog.save();
+};
 
 // @desc    Get all projects, optionally filtered by lifecycleStatus
 // @route   GET /api/projects
@@ -45,7 +84,13 @@ exports.createProject = async (req, res) => {
       return res.status(404).json({ msg: 'Investor not found' });
     }
 
-    let { lifecycleStatus } = req.body;
+    // createdAt/updatedAt are server-set; client values are ignored.
+    const body = stripTimestamps({ ...(req.body || {}) });
+    delete body.statusChangeDate;
+    const dateError = applyDateRegistered(body, { isCreate: true });
+    if (dateError) return res.status(400).json({ message: dateError });
+
+    let { lifecycleStatus } = body;
     if (!lifecycleStatus) {
         const defaultStatus = await LifecycleStatus.findOne({ name: 'Initial Interest' });
         if (!defaultStatus) {
@@ -55,7 +100,7 @@ exports.createProject = async (req, res) => {
     }
 
     const projectData = {
-      ...req.body,
+      ...body,
       investor: investorId,
       lifecycleStatus,
     };
@@ -66,9 +111,9 @@ exports.createProject = async (req, res) => {
     // Populate investor so test assertions work
     const populatedProject = await project.populate('investor', 'name email');
 
-    res.status(201).json(populatedProject);
+    return res.status(201).json(populatedProject);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: error.message });
   }
 };
 
@@ -131,13 +176,20 @@ exports.updateProject = async (req, res) => {
       }
     }
 
+    // createdAt/updatedAt are server-set; client values are ignored.
+    const body = stripTimestamps({ ...(req.body || {}) });
+    const statusChange = takeStatusChangeDate(body);
+    if (statusChange.error) return res.status(400).json({ message: statusChange.error });
+    const dateError = applyDateRegistered(body, { isCreate: false });
+    if (dateError) return res.status(400).json({ message: dateError });
+
     const oldStatusId = projectToUpdate.lifecycleStatus.toString();
-    const newStatusId = req.body.lifecycleStatus;
+    const newStatusId = body.lifecycleStatus;
 
     // Update the project first
     const updatedProject = await InvestmentProject.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      body,
       { new: true, runValidators: true }
     ).populate('investor', 'investorName').populate('lifecycleStatus');
 
@@ -153,23 +205,19 @@ exports.updateProject = async (req, res) => {
     }
 
     // If the stage changed, create a system log entry
-    if (newStatusId && oldStatusId !== newStatusId) {
-      const oldStatus = await LifecycleStatus.findById(oldStatusId);
-      const newStatus = await LifecycleStatus.findById(newStatusId);
-      
-      const logDescription = `Lifecycle status changed from "${oldStatus.name}" to "${newStatus.name}"`;
-      const interactionLog = new InteractionLog({
-        project: req.params.id,
-        loggedBy: req.user.id,
-        description: logDescription,
-        category: 'System Update',
+    if (newStatusId && oldStatusId !== String(newStatusId)) {
+      await systemUpdateLog({
+        projectId: req.params.id,
+        userId: req.user.id,
+        oldStatusId,
+        newStatusId,
+        happenedAt: statusChange.value,
       });
-      await interactionLog.save();
     }
 
-    res.status(200).json(updatedProject);
+    return res.status(200).json(updatedProject);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    return res.status(400).json({ error: error.message });
   }
 };
 
@@ -179,10 +227,14 @@ exports.updateProject = async (req, res) => {
 exports.updateProjectStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { lifecycleStatus } = req.body;
+    const { lifecycleStatus } = req.body || {};
 
     if (!lifecycleStatus) {
       return res.status(400).json({ msg: 'Lifecycle status is required' });
+    }
+    const statusChange = parseHappenedDate(req.body.statusChangeDate, { label: 'Status change date' });
+    if (statusChange.error) {
+      return res.status(400).json({ message: statusChange.error });
     }
 
     const project = await InvestmentProject.findById(id);
@@ -197,17 +249,13 @@ exports.updateProjectStatus = async (req, res) => {
 
     // Create an interaction log if status changed
     if (oldStatusId !== lifecycleStatus) {
-      const oldStatus = await LifecycleStatus.findById(oldStatusId);
-      const newStatus = await LifecycleStatus.findById(lifecycleStatus);
-
-      const logDescription = `Lifecycle status changed from "${oldStatus.name}" to "${newStatus.name}"`;
-      const interactionLog = new InteractionLog({
-        project: id,
-        loggedBy: req.user.id, // Assuming req.user.id is available from auth middleware
-        description: logDescription,
-        category: 'System Update',
+      await systemUpdateLog({
+        projectId: id,
+        userId: req.user.id,
+        oldStatusId,
+        newStatusId: lifecycleStatus,
+        happenedAt: statusChange.value,
       });
-      await interactionLog.save();
     }
 
     const updatedProject = await InvestmentProject.findById(id)

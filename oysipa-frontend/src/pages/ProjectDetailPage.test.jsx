@@ -26,6 +26,56 @@ const renderPage = () => render(
   </MemoryRouter>
 );
 
+describe('ProjectDetailPage — write actions (Attach document, Tag services)', () => {
+  const projectFor = (assignedTo) => ({ ...project, investor: { ...project.investor, assignedTo } });
+  const setup = (proj) => {
+    apiClient.get.mockImplementation((url) => {
+      if (url === '/api/projects/p1') return Promise.resolve({ data: proj });
+      if (url === '/api/projects/p1/interactions') return Promise.resolve({ data: logs });
+      return Promise.resolve({ data: [] });
+    });
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => localStorage.removeItem('token'));
+
+  it('assigned Staff sees Attach document and Tag services', async () => {
+    setup(projectFor('u1'));
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+    expect(await screen.findByText('Site visit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Attach document' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tag services' })).toBeInTheDocument();
+  });
+
+  it('unassigned Staff sees neither', async () => {
+    setup(projectFor('someone-else'));
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+    expect(await screen.findByText('Site visit')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Attach document' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tag services' })).not.toBeInTheDocument();
+  });
+
+  it('unknown role sees neither', async () => {
+    setup(projectFor('u1'));
+    localStorage.setItem('token', tokenFor('Visitor'));
+    renderPage();
+    expect(await screen.findByText('Site visit')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Attach document' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tag services' })).not.toBeInTheDocument();
+  });
+
+  it('Director-General sees both', async () => {
+    setup(projectFor(undefined));
+    localStorage.setItem('token', tokenFor('Director-General'));
+    renderPage();
+    expect(await screen.findByText('Site visit')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Attach document' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tag services' })).toBeInTheDocument();
+  });
+});
+
 describe('ProjectDetailPage — interaction Delete (DG/Admin only)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -44,6 +44,16 @@ describe('POST /api/interactions/investors/:investorId', () => {
     expect(res.body.loggedBy).toHaveProperty('name');
   });
 
+  it('ignores a client documentUrl (no new public links, FR-Y19)', async () => {
+    const res = await request(app)
+      .post(`/api/interactions/investors/${global.investorId}`)
+      .set('Authorization', bearer(global.dgToken))
+      .send({ description: 'x', category: 'Email', documentUrl: 'http://evil.example/a.pdf' })
+      .expect(201);
+    expect(res.body.documentUrl).toBeUndefined();
+    expect((await InteractionLog.findById(res.body._id).lean()).documentUrl).toBeUndefined();
+  });
+
   it('ignores body investor/project', async () => {
     const res = await request(app)
       .post(`/api/interactions/investors/${global.investorId}`)

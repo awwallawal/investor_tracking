@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Box, Typography, List, ListItem, ListItemText, Divider, Paper, Link as MuiLink, Chip, Tooltip, Button,
+    Box, Typography, List, ListItem, ListItemText, Divider, Paper, Chip, Tooltip, Button,
     Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, TextField, Stack,
 } from '@mui/material';
 import apiClient from '../api/api';
 import ServiceCodePicker from './ServiceCodePicker';
 import { serviceWording } from '../constants/serviceCodes';
+import HappenedDateField from './HappenedDateField';
+import InteractionDocuments from './InteractionDocuments';
+import { dateLine, lagosDay } from '../utils/dates';
 
-// "Tag services": edits only serviceCodes and creditLinkage of one log.
+// "Tag services": edits only serviceCodes, creditLinkage and the happened date of one log.
 const TagServicesDialog = ({ log, onClose, onSaved }) => {
     const [serviceCodes, setServiceCodes] = useState(log?.serviceCodes || []);
     const [creditLinkage, setCreditLinkage] = useState(!!log?.creditLinkage);
+    const originalDate = lagosDay(log?.interactionDate);
+    const [interactionDate, setInteractionDate] = useState(originalDate);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -18,7 +23,10 @@ const TagServicesDialog = ({ log, onClose, onSaved }) => {
         setSaving(true);
         setError('');
         try {
-            const { data } = await apiClient.patch(`/api/interactions/${log._id}`, { serviceCodes, creditLinkage });
+            const body = { serviceCodes, creditLinkage };
+            // Sent only when corrected; empty never clears a stored date.
+            if (interactionDate && interactionDate !== originalDate) body.interactionDate = interactionDate;
+            const { data } = await apiClient.patch(`/api/interactions/${log._id}`, body);
             onSaved(data);
         } catch (err) {
             setError(err?.response?.status === 403
@@ -36,6 +44,13 @@ const TagServicesDialog = ({ log, onClose, onSaved }) => {
             <DialogContent>
                 {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                 <Typography variant="body2" sx={{ mb: 1 }}>{log.description}</Typography>
+                <HappenedDateField
+                    label="Date it happened"
+                    value={interactionDate}
+                    onChange={setInteractionDate}
+                    disabled={saving}
+                    helperText={originalDate ? 'Correct it if the paper record shows another date' : 'Leave empty to keep the recorded date'}
+                />
                 <ServiceCodePicker
                     value={serviceCodes}
                     onChange={setServiceCodes}
@@ -148,9 +163,19 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
 
     const handleTagged = (updated) => {
         setLogs((prev) => prev.map((l) => (l._id === updated._id
-            ? { ...l, serviceCodes: updated.serviceCodes, creditLinkage: updated.creditLinkage, updatedAt: updated.updatedAt }
+            ? {
+                ...l,
+                serviceCodes: updated.serviceCodes,
+                creditLinkage: updated.creditLinkage,
+                interactionDate: updated.interactionDate,
+                updatedAt: updated.updatedAt,
+            }
             : l)));
         setTagging(null);
+    };
+
+    const handleDocumentsChange = (logId, documents) => {
+        setLogs((prev) => prev.map((l) => (l._id === logId ? { ...l, documents } : l)));
     };
 
     const handleDeleted = (deleted) => {
@@ -204,14 +229,15 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
                                                 variant="body2"
                                                 color="text.primary"
                                             >
-                                                {`Category: ${log.category} | By: ${log.loggedBy?.name || 'Unknown User'} on ${new Date(log.createdAt).toLocaleDateString()}`}
+                                                {`Category: ${log.category} | By: ${log.loggedBy?.name || 'Unknown User'} on ${dateLine(log, 'interactionDate')}`}
                                             </Typography>
-                                            {log.documentUrl && (
-                                                <MuiLink href={log.documentUrl} target="_blank" rel="noopener" sx={{ ml: 1 }}>
-                                                    [View Document]
-                                                </MuiLink>
-                                            )}
                                             <ServiceChips log={log} />
+                                            <InteractionDocuments
+                                                log={log}
+                                                canWrite={canWrite}
+                                                canDelete={canDelete}
+                                                onDocumentsChange={(docs) => handleDocumentsChange(log._id, docs)}
+                                            />
                                         </React.Fragment>
                                     }
                                 />

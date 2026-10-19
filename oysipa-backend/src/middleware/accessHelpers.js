@@ -19,4 +19,22 @@ const hasOperatorKey = (body) =>
   Array.isArray(body)
   || !!(body && typeof body === 'object' && Object.keys(body).some((k) => k.startsWith('$')));
 
-module.exports = { isAdminRole, isAssignedTo, hasOperatorKey };
+// Interaction writes (Tag services, documents): DG/Admin always; Staff only when
+// the log's investor is assigned to them. A project-linked log follows the
+// project's current investor; the stored investor is used only when there is no
+// project or it is gone. `log` needs `investor` and `project`.
+const canWriteInteraction = async (log, user) => {
+  if (isAdminRole(user.role)) return true;
+  if (user.role !== 'Staff') return false;
+  let investorId = log.investor;
+  if (log.project) {
+    // Required lazily: InvestmentProject's model file is loaded after this one.
+    // eslint-disable-next-line global-require
+    const InvestmentProject = require('../models/InvestmentProject');
+    const project = await InvestmentProject.findById(log.project).select('investor').lean();
+    if (project && project.investor) investorId = project.investor;
+  }
+  return !!investorId && isAssignedTo(investorId, user._id);
+};
+
+module.exports = { isAdminRole, isAssignedTo, hasOperatorKey, canWriteInteraction };

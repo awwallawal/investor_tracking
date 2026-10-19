@@ -13,6 +13,17 @@ const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
 const ChangeLog = require('../models/ChangeLog');
+const documentStorage = require('../services/documentStorage');
+
+// Document routes (11.4b) use a fake storage provider: no test reaches Cloudinary.
+const fakeStorage = {
+  name: 'fake',
+  isConfigured: () => true,
+  upload: async () => ({ key: `matrix-${Date.now()}-${Math.random()}`, resourceType: 'raw' }),
+  signedUrl: async (doc) => `https://signed.example.test/${doc.key}`,
+  remove: async () => {},
+};
+afterAll(() => documentStorage.__setProviderForTests(null));
 
 const DG = 'DG';
 const PA = 'PA';
@@ -26,6 +37,7 @@ let inviteSeq = 0;
 const sign = (user) => jwt.sign({ user: { id: user._id.toString(), role: user.role } }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
 beforeEach(async () => {
+  documentStorage.__setProviderForTests(fakeStorage);
   const staff = await User.create({ name: 'Matrix Staff', email: 'matrix.staff@example.com', password: 'password123', role: 'Staff', status: 'active' });
   const otherStaff = await User.create({ name: 'Other Staff', email: 'other.staff@example.com', password: 'password123', role: 'Staff', status: 'active' });
   const revokeTarget = await User.create({ name: 'Revoke Me', email: 'revoke.me@example.com', password: 'password123', role: 'Staff', status: 'active' });
@@ -44,7 +56,16 @@ beforeEach(async () => {
   const otherProject = await mk('Other Project', otherInvestor);
 
   // One interaction per project, for PATCH /api/interactions/:id (Tag services)
-  const mkLog = (project) => InteractionLog.create({ project: project._id, loggedBy: staff._id, description: 'Old meeting', category: 'Meeting' });
+  // Each carries one stored document, for the document link/remove routes (11.4b).
+  const mkLog = (project) => InteractionLog.create({
+    project: project._id,
+    loggedBy: staff._id,
+    description: 'Old meeting',
+    category: 'Meeting',
+    documents: [{
+      fileName: 'scan.pdf', mimeType: 'application/pdf', size: 4, uploadedBy: staff._id, uploadedAt: new Date(), provider: 'fake', key: `k-${project._id}`, resourceType: 'raw',
+    }],
+  });
   const assignedLog = await mkLog(assignedProject);
   const unassignedLog = await mkLog(unassignedProject);
   const otherLog = await mkLog(otherProject);
@@ -59,10 +80,13 @@ beforeEach(async () => {
 });
 
 // ctx: { investorId, projectId } — the project/investor a request targets.
-const assignedCtx = () => ({ investorId: f.assignedInvestor._id.toString(), projectId: f.assignedProject._id.toString(), logId: f.assignedLog._id.toString() });
+const ctxFor = (investor, project, log) => ({
+  investorId: investor._id.toString(), projectId: project._id.toString(), logId: log._id.toString(), docId: log.documents[0]._id.toString(),
+});
+const assignedCtx = () => ctxFor(f.assignedInvestor, f.assignedProject, f.assignedLog);
 const unassignedCtxs = () => [
-  { label: 'investor unassigned', investorId: f.unassignedInvestor._id.toString(), projectId: f.unassignedProject._id.toString(), logId: f.unassignedLog._id.toString() },
-  { label: 'investor assigned to other staff', investorId: f.otherInvestor._id.toString(), projectId: f.otherProject._id.toString(), logId: f.otherLog._id.toString() },
+  { label: 'investor unassigned', ...ctxFor(f.unassignedInvestor, f.unassignedProject, f.unassignedLog) },
+  { label: 'investor assigned to other staff', ...ctxFor(f.otherInvestor, f.otherProject, f.otherLog) },
 ];
 
 // allow: roles that get through. public: no token needed.
@@ -70,6 +94,7 @@ const unassignedCtxs = () => [
 // investorWrite: also run Staff against unassigned investors (expect 403, nothing changed).
 // tagWrite: also run Staff against interactions of unassigned investors (expect 403, log unchanged).
 // adminDelete: Staff 403 leaves every investor, project, log and ChangeLog row in place.
+// attach: send as multipart with this file (document upload, 11.4b).
 // When you add or change a route, add it here and in access-matrix.md
 const ROUTES = [
   // Public by design
@@ -111,6 +136,11 @@ const ROUTES = [
   { name: 'PATCH /api/interactions/:id', method: 'patch', path: (c) => `/api/interactions/${c.logId}`, body: () => ({ serviceCodes: ['A8'], creditLinkage: true }), allow: ALL, tagWrite: true },
   { name: 'DELETE /api/interactions/:id', method: 'delete', path: (c) => `/api/interactions/${c.logId}`, allow: ADMINS, adminDelete: true },
 
+  // Private documents (story 11.4b)
+  { name: 'POST /api/interactions/:id/documents', method: 'post', path: (c) => `/api/interactions/${c.logId}/documents`, attach: { field: 'file', buffer: Buffer.from('%PDF-1.4'), filename: 'matrix.pdf', contentType: 'application/pdf' }, allow: ALL, tagWrite: true },
+  { name: 'GET /api/interactions/:id/documents/:docId/link', method: 'get', path: (c) => `/api/interactions/${c.logId}/documents/${c.docId}/link`, allow: ALL, staffAnyProject: true },
+  { name: 'DELETE /api/interactions/:id/documents/:docId', method: 'delete', path: (c) => `/api/interactions/${c.logId}/documents/${c.docId}`, allow: ADMINS, adminDelete: true },
+
   // Lifecycle statuses — Portal-Admin only
   { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: [PA] },
   { name: 'PUT /api/lifecycle-statuses/reorder', method: 'put', path: () => '/api/lifecycle-statuses/reorder', body: () => ({ orderedIds: [f.spare._id.toString(), f.lead._id.toString(), f.idea._id.toString()] }), allow: [PA] },
@@ -127,6 +157,10 @@ const ROUTES = [
 const send = (route, ctx, token) => {
   let req = request(app)[route.method](route.path(ctx));
   if (token) req = req.set('Authorization', `Bearer ${token}`);
+  if (route.attach) {
+    const { field, buffer, filename, contentType } = route.attach;
+    return req.attach(field, buffer, { filename, contentType });
+  }
   return route.body ? req.send(route.body()) : req;
 };
 
@@ -195,6 +229,7 @@ describe('Access matrix', () => {
             expect(after.serviceCodes).toEqual(before.serviceCodes);
             expect(after.creditLinkage).toBe(before.creditLinkage);
             expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+            expect(after.documents).toHaveLength(before.documents.length);
           }
         });
       }
@@ -205,6 +240,7 @@ describe('Access matrix', () => {
             investors: await Investor.countDocuments(),
             projects: await InvestmentProject.countDocuments(),
             logs: await InteractionLog.countDocuments(),
+            documents: (await InteractionLog.find({}).lean()).reduce((n, l) => n + (l.documents || []).length, 0),
             changeLog: await ChangeLog.countDocuments(),
           });
           const before = await count();
@@ -230,8 +266,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 31 unique entries', () => {
-    expect(ROUTES.length).toBe(31);
+  it('ROUTES list has 34 unique entries', () => {
+    expect(ROUTES.length).toBe(34);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

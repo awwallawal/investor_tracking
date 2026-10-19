@@ -9,6 +9,7 @@ import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
+import { dateLine } from '../utils/dates';
 
 const InvestorProfilePage = () => {
     const [investor, setInvestor] = useState(null);
@@ -90,6 +91,7 @@ const InvestorProfilePage = () => {
             <p>Company Registration Info: {investor.companyRegistrationInfo}</p>
             <p>Key Contact Person: {investor.keyContactPerson}</p>
             <p>Assigned Staff: {investor.assignedTo ? investor.assignedTo.name : 'Unassigned'}</p>
+            <p>First contact: {dateLine(investor, 'firstContactDate')}</p>
 
             <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 {canWrite && (

@@ -188,6 +188,7 @@ describe('Interaction Logs API', () => {
     const logData = {
       description: 'Discussed project scope',
       category: 'Meeting',
+      // Ignored on create (FR-Y19: no new public links).
       documentUrl: 'http://example.com/doc1.pdf',
       // loggedBy removed: controller handles via req.user.id
     };
@@ -201,7 +202,7 @@ describe('Interaction Logs API', () => {
     expect(res.body).toHaveProperty('_id');
     expect(res.body.project).toBe(global.mockProjectId);
     expect(res.body.loggedBy._id).toBe(jwt.decode(global.portalAdminToken).user.id.toString());
-    expect(res.body.documentUrl).toBe(logData.documentUrl);
+    expect(res.body.documentUrl).toBeUndefined();
     expect(res.body.investor).toBe(global.investorId);
     expect(res.body.serviceCodes).toEqual([]);
     expect(res.body.creditLinkage).toBe(false);

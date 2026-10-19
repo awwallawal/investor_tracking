@@ -12,7 +12,10 @@ describe('InteractionLogForm', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks(); // Restore all spies before each test
-    global.fetch = vi.fn(); // Mock global fetch for Cloudinary upload
+    mockOnClose.mockClear();
+    mockOnSave.mockClear();
+    // Uploads go through the backend only; any direct fetch would be a bug.
+    global.fetch = vi.fn();
   });
 
   it('renders the form correctly when open', () => {
@@ -58,7 +61,6 @@ describe('InteractionLogForm', () => {
         {
           description: 'Test description',
           category: 'Meeting',
-          documentUrl: '',
           serviceCodes: [],
           creditLinkage: false,
         }
@@ -70,53 +72,100 @@ describe('InteractionLogForm', () => {
     });
   }, 20000);
 
-  it('should upload a file to Cloudinary and save interaction log with documentUrl', async () => {
-    const user = userEvent.setup();
-    const mockFile = new File(['hello'], 'hello.png', { type: 'image/png' });
-    const cloudinaryUrl = 'https://res.cloudinary.com/dzzipwwbn/image/upload/v123/hello.png';
+  const fillRequired = async (description = 'Paper meeting') => {
+    fireEvent.change(screen.getByRole('textbox', { name: /interaction description/i }), { target: { value: description } });
+    await userEvent.click(screen.getByRole('combobox', { name: /service category/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Meeting' }));
+  };
 
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ secure_url: cloudinaryUrl }),
-    });
-    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: {} });
+  it('creates the log, then uploads the file to the backend (no Cloudinary call from the browser)', async () => {
+    const user = userEvent.setup();
+    const mockFile = new File(['%PDF'], 'scan.pdf', { type: 'application/pdf' });
+    const postSpy = vi.spyOn(apiClient, 'post')
+      .mockResolvedValueOnce({ data: { _id: 'log-1' } })
+      .mockResolvedValueOnce({ data: { _id: 'doc-1', fileName: 'scan.pdf' } });
 
     render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} projectId={projectId} />);
+    await user.upload(screen.getByLabelText(/attach document/i), mockFile);
+    await fillRequired('Test description with file');
+    fireEvent.change(screen.getByLabelText(/date it happened/i), { target: { value: '2025-03-18' } });
+    await user.click(screen.getByText('Save Log'));
 
-    // Simulate file selection
-    const fileInput = screen.getByLabelText(/attach document/i);
-    await user.upload(fileInput, mockFile);
-
-    // Fill other fields
-    fireEvent.change(screen.getByRole('textbox', { name: /interaction description/i }), { target: { value: 'Test description with file' } });
-    await userEvent.click(screen.getByRole('combobox', { name: /service category/i }));
-    const meetingOption = await screen.findByRole('option', { name: 'Meeting' });
-    await userEvent.click(meetingOption);
-
-    const saveButton = screen.getByText('Save Log');
-    await user.click(saveButton);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        `https://api.cloudinary.com/v1_1/dzzipwwbn/image/upload`,
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.any(FormData),
-        })
-      );
-      expect(postSpy).toHaveBeenCalledWith(
-        `/api/projects/${projectId}/interactions`,
-        {
-          description: 'Test description with file',
-          category: 'Meeting',
-          documentUrl: cloudinaryUrl,
-          serviceCodes: [],
-          creditLinkage: false,
-        }
-      );
-      expect(mockOnSave).toHaveBeenCalled();
+    await waitFor(() => expect(mockOnSave).toHaveBeenCalled());
+    expect(postSpy).toHaveBeenNthCalledWith(1, `/api/projects/${projectId}/interactions`, {
+      description: 'Test description with file',
+      category: 'Meeting',
+      serviceCodes: [],
+      creditLinkage: false,
+      interactionDate: '2025-03-18',
     });
-  }, 10000);
+    const [uploadUrl, formData] = postSpy.mock.calls[1];
+    expect(uploadUrl).toBe('/api/interactions/log-1/documents');
+    expect(formData).toBeInstanceOf(FormData);
+    expect(formData.get('file').name).toBe('scan.pdf');
+    expect(formData.get('documentDate')).toBe('2025-03-18');
+    expect(global.fetch).not.toHaveBeenCalled();
+  }, 20000);
+
+  it('upload fails: keeps the dialog open ("Interaction saved; document not attached"), Retry uploads again', async () => {
+    const user = userEvent.setup();
+    const mockFile = new File(['%PDF'], 'scan.pdf', { type: 'application/pdf' });
+    const postSpy = vi.spyOn(apiClient, 'post')
+      .mockResolvedValueOnce({ data: { _id: 'log-1' } })
+      .mockRejectedValueOnce({ response: { status: 502, data: { message: 'The document could not be stored. Please try again.' } } })
+      .mockResolvedValueOnce({ data: { _id: 'doc-1' } });
+
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+    await user.upload(screen.getByLabelText(/attach document/i), mockFile);
+    await fillRequired();
+    await user.click(screen.getByText('Save Log'));
+
+    expect(await screen.findByText(/Interaction saved; document not attached/)).toBeInTheDocument();
+    expect(screen.getByText(/could not be stored/)).toBeInTheDocument();
+    expect(mockOnSave).not.toHaveBeenCalled();
+    expect(screen.queryByText('Save Log')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(mockOnSave).toHaveBeenCalled());
+    // The interaction is not created twice: the retry only re-sends the file.
+    expect(postSpy).toHaveBeenCalledTimes(3);
+    expect(postSpy.mock.calls[2][0]).toBe('/api/interactions/log-1/documents');
+  }, 20000);
+
+  it('storage not configured (503): says so; closing still refreshes the saved interaction', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(apiClient, 'post')
+      .mockResolvedValueOnce({ data: { _id: 'log-1' } })
+      .mockRejectedValueOnce({ response: { status: 503, data: { message: 'Document storage is not configured' } } });
+
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+    await user.upload(screen.getByLabelText(/attach document/i), new File(['x'], 'a.pdf', { type: 'application/pdf' }));
+    await fillRequired();
+    await user.click(screen.getByText('Save Log'));
+
+    expect(await screen.findByText('Interaction saved; document not attached: Document storage is not configured')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /close without document/i }));
+    expect(mockOnSave).toHaveBeenCalled();
+  }, 20000);
+
+  it('date field: empty is not sent', async () => {
+    const postSpy = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: { _id: 'log-1' } });
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+    await fillRequired();
+    fireEvent.click(screen.getByText('Save Log'));
+    await waitFor(() => expect(postSpy).toHaveBeenCalled());
+    expect(postSpy.mock.calls[0][1]).not.toHaveProperty('interactionDate');
+  }, 20000);
+
+  it('date field: a future date rejected by the API shows its message', async () => {
+    vi.spyOn(apiClient, 'post').mockRejectedValue({ response: { status: 400, data: { message: 'Interaction date cannot be in the future.' } } });
+    render(<InteractionLogForm open={true} onClose={mockOnClose} onSave={mockOnSave} investorId="inv-1" />);
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText(/date it happened/i), { target: { value: '2099-01-01' } });
+    fireEvent.click(screen.getByText('Save Log'));
+    expect(await screen.findByText('Interaction date cannot be in the future.')).toBeInTheDocument();
+    expect(mockOnSave).not.toHaveBeenCalled();
+  }, 20000);
 
   it('displays an API error on submission failure', async () => {
     const errorMessage = 'API submission failed';
@@ -168,7 +217,6 @@ describe('InteractionLogForm', () => {
       expect(postSpy).toHaveBeenCalledWith('/api/interactions/investors/inv-1', {
         description: 'Briefing letter sent to NIPC',
         category: 'Email',
-        documentUrl: '',
         serviceCodes: [],
         creditLinkage: false,
       });

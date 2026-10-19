@@ -6,6 +6,7 @@ import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
+import { dateLine } from '../utils/dates';
 
 const ProjectDetailPage = () => {
     const [project, setProject] = useState(null);
@@ -13,7 +14,8 @@ const ProjectDetailPage = () => {
     const [isLogFormOpen, setIsLogFormOpen] = useState(false);
     const [logRefreshKey, setLogRefreshKey] = useState(0);
     const { id } = useParams();
-    const canDelete = isAdminRole(getCurrentUser()?.role);
+    const currentUser = getCurrentUser();
+    const canDelete = isAdminRole(currentUser?.role);
 
     const fetchProject = useCallback(async () => {
         try {
@@ -51,6 +53,13 @@ const ProjectDetailPage = () => {
         return <div>Loading...</div>;
     }
 
+    // DG/Admin can always write. Staff only on projects of investors assigned to
+    // them (the backend enforces the same rule; GET populates the investor).
+    const assignedTo = project.investor?.assignedTo;
+    const canWrite = isAdminRole(currentUser?.role)
+        || (currentUser?.role === 'Staff' && !!currentUser?.id
+            && String(assignedTo?._id || assignedTo || '') === currentUser.id);
+
     return (
         <Box sx={{ p: 3 }}>
             <Paper sx={{ p: 3, mb: 4 }}>
@@ -78,13 +87,16 @@ const ProjectDetailPage = () => {
                 <Typography variant="h6">Lifecycle Status:</Typography>
                 <Typography sx={{ mb: 2 }}>{project.lifecycleStatus?.name || 'N/A'}</Typography>
 
+                <Typography variant="h6">Date Registered:</Typography>
+                <Typography sx={{ mb: 2 }}>{dateLine(project, 'dateRegistered')}</Typography>
+
                 <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
                     <Button variant="contained" onClick={handleEditFormOpen}>Edit Project</Button>
                     <Button variant="contained" color="secondary" onClick={handleLogFormOpen}>Log Interaction</Button>
                 </Box>
             </Paper>
 
-            <InteractionLogList projectId={project._id} canDelete={canDelete} key={logRefreshKey} />
+            <InteractionLogList projectId={project._id} canWrite={canWrite} canDelete={canDelete} key={logRefreshKey} />
 
             <ProjectForm
                 open={isEditFormOpen}

@@ -10,6 +10,7 @@ import {
   TextField,
 } from '@mui/material';
 import apiClient from '../api/api';
+import HappenedDateField from './HappenedDateField';
 
 const InvestorForm = ({ open, onClose, onSave }) => {
   const [formData, setFormData] = useState({
@@ -21,6 +22,7 @@ const InvestorForm = ({ open, onClose, onSave }) => {
     companyRegistrationInfo: '',
     keyContactPerson: '',
   });
+  const [firstContactDate, setFirstContactDate] = useState('');
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -35,6 +37,7 @@ const InvestorForm = ({ open, onClose, onSave }) => {
         companyRegistrationInfo: '',
         keyContactPerson: '',
       });
+      setFirstContactDate('');
       setError(null);
     }
   }, [open]);
@@ -49,11 +52,12 @@ const InvestorForm = ({ open, onClose, onSave }) => {
     setError(null); // Clear previous errors
 
     try {
-      await apiClient.post('/api/investors', formData);
+      // Empty first contact date means today (set by the server).
+      await apiClient.post('/api/investors', { ...formData, ...(firstContactDate && { firstContactDate }) });
       onSave(); // Trigger refresh and close
     } catch (error) {
       console.error("Submission error:", error);
-      const message = error.response?.data?.msg || error.response?.data?.error || error.message || 'Failed to create investor';
+      const message = error.response?.data?.message || error.response?.data?.msg || error.response?.data?.error || error.message || 'Failed to create investor';
       setError(message);
     }
   };
@@ -122,6 +126,13 @@ const InvestorForm = ({ open, onClose, onSave }) => {
             value={formData.keyContactPerson}
             onChange={handleChange}
             fullWidth
+            margin="normal"
+          />
+          <HappenedDateField
+            name="firstContactDate"
+            label="First contact date"
+            value={firstContactDate}
+            onChange={setFirstContactDate}
             margin="normal"
           />
         </Box>

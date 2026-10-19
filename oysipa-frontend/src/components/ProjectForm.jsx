@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import apiClient from '../api/api';
+import HappenedDateField from './HappenedDateField';
+import { lagosDay } from '../utils/dates';
 
 const FORBIDDEN_MSG = 'You can only change projects of investors assigned to you';
 const GENERIC_MSG = 'Failed to save the project. Please try again.';
@@ -9,6 +11,10 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
     const [formData, setFormData] = useState({});
     const [lifecycleStatuses, setLifecycleStatuses] = useState([]);
     const [saveError, setSaveError] = useState(null);
+    const [dateRegistered, setDateRegistered] = useState('');
+    const [statusChangeDate, setStatusChangeDate] = useState('');
+    const originalDateRegistered = lagosDay(projectData?.dateRegistered);
+    const originalStatusId = projectData?.lifecycleStatus?._id || projectData?.lifecycleStatus || '';
 
     useEffect(() => {
         const fetchStatuses = async () => {
@@ -22,6 +28,13 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
 
         fetchStatuses();
     }, []);
+
+    // Date fields reset only when the dialog opens or the project changes (not
+    // when the statuses arrive, so a typed date is kept).
+    useEffect(() => {
+        setDateRegistered(lagosDay(projectData?.dateRegistered));
+        setStatusChangeDate('');
+    }, [projectData, open]);
 
     useEffect(() => {
         setSaveError(null);
@@ -54,14 +67,26 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
             : `/api/projects/investors/${investorId}/projects`;
 
         setSaveError(null);
+        const payload = { ...formData };
+        delete payload.dateRegistered;
+        // Empty means today on create; on edit it is sent only when corrected.
+        if (dateRegistered && (!projectData || dateRegistered !== originalDateRegistered)) {
+            payload.dateRegistered = dateRegistered;
+        }
+        if (statusChanged && statusChangeDate) payload.statusChangeDate = statusChangeDate;
         try {
-            await apiClient[method](url, formData);
+            await apiClient[method](url, payload);
             onSave();
         } catch (error) {
             console.error("Save error:", error);
-            setSaveError(error?.response?.status === 403 ? FORBIDDEN_MSG : GENERIC_MSG);
+            setSaveError(error?.response?.status === 403
+                ? FORBIDDEN_MSG
+                : (error?.response?.data?.message || GENERIC_MSG));
         }
     };
+
+    // "Status changed on" appears only when an existing project's status changes.
+    const statusChanged = !!projectData && !!formData.lifecycleStatus && formData.lifecycleStatus !== originalStatusId;
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -81,6 +106,21 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                         ))}
                     </Select>
                 </FormControl>
+                {statusChanged && (
+                    <HappenedDateField
+                        name="statusChangeDate"
+                        label="Status changed on"
+                        value={statusChangeDate}
+                        onChange={setStatusChangeDate}
+                    />
+                )}
+                <HappenedDateField
+                    name="dateRegistered"
+                    label="Date registered"
+                    value={dateRegistered}
+                    onChange={setDateRegistered}
+                    helperText={projectData && originalDateRegistered ? 'Correct it if the paper record shows another date' : 'Leave empty for today'}
+                />
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
