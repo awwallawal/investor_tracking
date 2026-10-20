@@ -11,7 +11,7 @@ const LogoutButton = () => {
   };
 
   return (
-    <Button color="inherit" variant="outlined" onClick={handleLogout}>
+    <Button color="inherit" variant="outlined" onClick={handleLogout} sx={{ flexShrink: 0 }}>
       Logout
     </Button>
   );

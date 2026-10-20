@@ -18,8 +18,8 @@ const Header = ({ onDrawerToggle }) => {
         >
           <MenuIcon />
         </IconButton>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          OYSIPA Investor Tracker
+        <Typography variant="h6" component="div" noWrap sx={{ flexGrow: 1, minWidth: 0 }}>
+          OYSIPA<Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}> Investor Tracker</Box>
         </Typography>
         {token && <LogoutButton />}
       </Toolbar>

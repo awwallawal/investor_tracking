@@ -50,18 +50,19 @@ const InteractionListPage = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 0, sm: 3 } }}>
       <Typography variant="h4" component="h1" gutterBottom>
         All-Time Interactions
       </Typography>
       {interactions.length === 0 ? (
         <Typography>No interactions found.</Typography>
       ) : (
-        <List>
+        <List disablePadding>
           {interactions.map((interaction) => (
             <React.Fragment key={interaction._id}>
-              <ListItem alignItems="flex-start">
+              <ListItem alignItems="flex-start" disableGutters>
                 <ListItemText
+                  sx={{ overflowWrap: 'anywhere' }}
                   primary={
                     <Typography
                       sx={{ display: 'inline' }}
@@ -104,7 +105,7 @@ const InteractionListPage = () => {
                   }
                 />
               </ListItem>
-              <Divider variant="inset" component="li" />
+              <Divider component="li" />
             </React.Fragment>
           ))}
         </List>

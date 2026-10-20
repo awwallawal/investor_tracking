@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Box, Typography } from '@mui/material';
 import KpiWidget from '../components/KpiWidget';
 import LifecycleChart from '../components/LifecycleChart';
 import apiClient from '../api/api';
@@ -9,8 +10,6 @@ const DGDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const user = getAuthenticatedUser();
-
-  console.log('DGDashboard user object:', user);
 
   useEffect(() => {
     const fetchKpiData = async () => {
@@ -37,18 +36,24 @@ const DGDashboard = () => {
   }
 
   return (
-    <div>
-      {user && <h2>{`Welcome ${user.role}, ${user.name}`}</h2>}
-      <h1>Dashboard</h1>
-      {kpiData && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-          <KpiWidget title="Total Investors" value={kpiData.totalInvestors} navigateTo="/investors" />
-          <KpiWidget title="Total Projects" value={kpiData.totalProjects} navigateTo="/projects" />
-          <KpiWidget title="All-Time Interactions" value={kpiData.recentInteractions} navigateTo="/interactions" />
-          <LifecycleChart data={kpiData.projectsByStage} />
-        </div>
+    <Box>
+      <Typography variant="h4" component="h1">Dashboard</Typography>
+      {user && (
+        <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+          {`Welcome ${user.role}, ${user.name}`}
+        </Typography>
       )}
-    </div>
+      {kpiData && (
+        <>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
+            <KpiWidget title="Total Investors" value={kpiData.totalInvestors} navigateTo="/investors" />
+            <KpiWidget title="Total Projects" value={kpiData.totalProjects} navigateTo="/projects" />
+            <KpiWidget title="All-Time Interactions" value={kpiData.recentInteractions} navigateTo="/interactions" />
+          </Box>
+          <LifecycleChart data={kpiData.projectsByStage} />
+        </>
+      )}
+    </Box>
   );
 };
 

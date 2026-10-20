@@ -70,7 +70,7 @@ const StaffDashboard = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 0, sm: 3 } }}>
       <Typography variant="h4" component="h1" gutterBottom>
         Welcome, {user.name}
       </Typography>
@@ -92,7 +92,7 @@ const StaffDashboard = () => {
             </Typography>
           </Paper>
         ) : (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' }}>
             {projects.map((project) => (
               <ProjectSummaryCard key={project._id} project={project} />
             ))}

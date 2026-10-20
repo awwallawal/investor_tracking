@@ -44,7 +44,8 @@ describe('UserManagementPage', () => {
     render(<BrowserRouter><UserManagementPage /></BrowserRouter>);
     await waitFor(() => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
-        expect(screen.getByText('bob@example.com')).toBeInTheDocument();
+        // Shown in the Email column and, for phones, under the name.
+        expect(screen.getAllByText('bob@example.com').length).toBeGreaterThan(0);
     });
   });
 

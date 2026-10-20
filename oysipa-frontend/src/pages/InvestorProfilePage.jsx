@@ -82,8 +82,8 @@ const InvestorProfilePage = () => {
         || (!!currentUser?.id && investor.assignedTo?._id === currentUser.id);
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom>{investor.investorName}</Typography>
+        <Box sx={{ p: { xs: 0, sm: 3 } }}>
+            <Typography variant="h4" component="h1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>{investor.investorName}</Typography>
             <Typography variant="body1" sx={{ mb: 2 }}>Email: {investor.email}</Typography>
             <Typography variant="body1" sx={{ mb: 2 }}>Phone: {investor.phoneNumber}</Typography>
             <p>Sector: {investor.sector}</p>
@@ -127,7 +127,7 @@ const InvestorProfilePage = () => {
                 investorId={investor._id}
             />
 
-            <Divider sx={{ my: 4 }} />
+            <Divider sx={{ my: { xs: 3, sm: 4 } }} />
 
             <ProjectList projects={projects} />
 

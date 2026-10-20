@@ -19,6 +19,8 @@ import {
   Alert 
 } from '@mui/material';
 
+const hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } };
+
 const UserManagementPage = () => {
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({
@@ -119,22 +121,29 @@ const UserManagementPage = () => {
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell sx={hideOnPhone}>Email</TableCell>
+              <TableCell sx={hideOnPhone}>Role</TableCell>
+              <TableCell sx={hideOnPhone}>Status</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {users.map((user) => (
               <TableRow key={user._id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.role}</TableCell>
-                <TableCell>{user.status}</TableCell>
                 <TableCell>
+                  {user.name}
+                  {/* On phones the email, role and status show under the name. */}
+                  <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{user.email}</Typography>
+                    <Typography variant="body2" color="text.secondary">{`${user.role} · ${user.status}`}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell sx={hideOnPhone}>{user.email}</TableCell>
+                <TableCell sx={hideOnPhone}>{user.role}</TableCell>
+                <TableCell sx={hideOnPhone}>{user.status}</TableCell>
+                <TableCell align="right">
                   {user.status === 'active' && (
-                    <Button variant="outlined" color="error" onClick={() => handleRevoke(user._id)}>Revoke Access</Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleRevoke(user._id)}>Revoke Access</Button>
                   )}
                 </TableCell>
               </TableRow>

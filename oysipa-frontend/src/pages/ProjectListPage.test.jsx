@@ -44,8 +44,10 @@ describe('ProjectListPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Project Alpha (Investor: Investor A)')).toBeInTheDocument();
-      expect(screen.getByText('Project Beta (Investor: Investor B)')).toBeInTheDocument();
+      expect(screen.getByText('Project Alpha')).toBeInTheDocument();
+      expect(screen.getByText('Investor: Investor A')).toBeInTheDocument();
+      expect(screen.getByText('Project Beta')).toBeInTheDocument();
+      expect(screen.getByText('Investor: Investor B')).toBeInTheDocument();
     });
     expect(apiClient.get).toHaveBeenCalledWith('/api/projects');
   });
@@ -60,7 +62,7 @@ describe('ProjectListPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Project Alpha (Investor: Investor A)')).toBeInTheDocument();
+      expect(screen.getByText('Project Alpha')).toBeInTheDocument();
     });
     expect(apiClient.get).toHaveBeenCalledWith('/api/projects?lifecycleStatus=Lead');
     expect(screen.getByText('Project List (Status: Lead)')).toBeInTheDocument();

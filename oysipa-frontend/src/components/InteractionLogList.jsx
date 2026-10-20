@@ -192,7 +192,7 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
     }
 
     return (
-        <Paper sx={{ p: 3, mt: 4 }}>
+        <Paper sx={{ p: { xs: 2, sm: 3 }, mt: { xs: 2, sm: 4 } }}>
             <Typography variant="h5" component="h2" gutterBottom>
                 Support Interaction History
             </Typography>
@@ -201,19 +201,13 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
                     {projectId ? 'No interaction logs found for this project.' : 'No interactions logged for this investor yet.'}
                 </Typography>
             ) : (
-                <List>
+                <List disablePadding>
                     {logs.map((log, index) => (
                         <React.Fragment key={log._id}>
-                            <ListItem
-                                alignItems="flex-start"
-                                secondaryAction={(canWrite || canDelete) ? (
-                                    <Stack direction="row" spacing={1}>
-                                        {canWrite && <Button size="small" onClick={() => setTagging(log)}>Tag services</Button>}
-                                        {canDelete && <Button size="small" color="error" onClick={() => setDeleting(log)}>Delete</Button>}
-                                    </Stack>
-                                ) : null}
-                            >
+                            {/* Actions sit on their own row under the text so they never cover it on phones. */}
+                            <ListItem alignItems="flex-start" disableGutters sx={{ flexDirection: 'column', alignItems: 'stretch' }}>
                                 <ListItemText
+                                    sx={{ m: 0, overflowWrap: 'anywhere' }}
                                     primary={log.description}
                                     slotProps={{ secondary: { component: 'div' } }}
                                     secondary={
@@ -224,7 +218,7 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
                                                 </Typography>
                                             )}
                                             <Typography
-                                                sx={{ display: 'inline' }}
+                                                sx={{ display: 'block' }}
                                                 component="span"
                                                 variant="body2"
                                                 color="text.primary"
@@ -241,8 +235,14 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
                                         </React.Fragment>
                                     }
                                 />
+                                {(canWrite || canDelete) && (
+                                    <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+                                        {canWrite && <Button size="small" variant="outlined" onClick={() => setTagging(log)}>Tag services</Button>}
+                                        {canDelete && <Button size="small" variant="outlined" color="error" onClick={() => setDeleting(log)}>Delete</Button>}
+                                    </Stack>
+                                )}
                             </ListItem>
-                            {index < logs.length - 1 && <Divider variant="inset" component="li" />}
+                            {index < logs.length - 1 && <Divider component="li" />}
                         </React.Fragment>
                     ))}
                 </List>

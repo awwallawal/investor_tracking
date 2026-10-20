@@ -10,9 +10,11 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Paper,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -71,6 +73,8 @@ const DeleteInvestorDialog = ({ investor, onClose, onDeleted }) => {
     );
 };
 
+const hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } };
+
 const InvestorDirectoryPage = () => {
     const [investors, setInvestors] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -103,9 +107,9 @@ const InvestorDirectoryPage = () => {
     };
 
     return (
-        <Container maxWidth="lg" sx={{ mt: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h4">Investor Directory</Typography>
+        <Container maxWidth="lg" disableGutters sx={{ mt: { xs: 1, sm: 4 } }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
+                <Typography variant="h4" component="h1">Investor Directory</Typography>
                 <Button variant="contained" onClick={() => setIsFormOpen(true)}>
                     Register New Investor
                 </Button>
@@ -116,12 +120,13 @@ const InvestorDirectoryPage = () => {
               onClose={() => setIsFormOpen(false)}
               onSave={handleSave}
             />
+            <TableContainer component={Paper}>
             <Table>
                 <TableHead>
                     <TableRow>
                         <TableCell>Name</TableCell>
-                        <TableCell>Sector</TableCell>
-                        <TableCell>Country</TableCell>
+                        <TableCell sx={hideOnPhone}>Sector</TableCell>
+                        <TableCell sx={hideOnPhone}>Country</TableCell>
                         {canDelete && <TableCell align="right">Actions</TableCell>}
                     </TableRow>
                 </TableHead>
@@ -130,9 +135,13 @@ const InvestorDirectoryPage = () => {
                         <TableRow hover key={investor._id}>
                             <TableCell>
                                 <Link to={`/investors/${investor._id}`}>{investor.investorName}</Link>
+                                {/* On phones the sector and country show under the name. */}
+                                <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.5 }}>
+                                    {[investor.sector, investor.countryOfOrigin].filter(Boolean).join(' · ')}
+                                </Typography>
                             </TableCell>
-                            <TableCell>{investor.sector}</TableCell>
-                            <TableCell>{investor.countryOfOrigin}</TableCell>
+                            <TableCell sx={hideOnPhone}>{investor.sector}</TableCell>
+                            <TableCell sx={hideOnPhone}>{investor.countryOfOrigin}</TableCell>
                             {canDelete && (
                                 <TableCell align="right">
                                     <Button size="small" color="error" onClick={() => setDeleting(investor)}>
@@ -144,6 +153,7 @@ const InvestorDirectoryPage = () => {
                     ))}
                 </TableBody>
             </Table>
+            </TableContainer>
             {deleting && (
                 <DeleteInvestorDialog investor={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />
             )}

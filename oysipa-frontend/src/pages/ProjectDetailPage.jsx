@@ -61,9 +61,9 @@ const ProjectDetailPage = () => {
             && String(assignedTo?._id || assignedTo || '') === currentUser.id);
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Paper sx={{ p: 3, mb: 4 }}>
-                <Typography variant="h4" component="h1" gutterBottom>
+        <Box sx={{ p: { xs: 0, sm: 3 } }}>
+            <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 } }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>
                     {project.projectTitle}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
@@ -90,7 +90,7 @@ const ProjectDetailPage = () => {
                 <Typography variant="h6">Date Registered:</Typography>
                 <Typography sx={{ mb: 2 }}>{dateLine(project, 'dateRegistered')}</Typography>
 
-                <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+                <Box sx={{ mt: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                     <Button variant="contained" onClick={handleEditFormOpen}>Edit Project</Button>
                     <Button variant="contained" color="secondary" onClick={handleLogFormOpen}>Log Interaction</Button>
                 </Box>

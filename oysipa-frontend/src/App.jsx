@@ -8,7 +8,6 @@ import DGDashboard from './pages/DGDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import UserManagementPage from './pages/UserManagementPage';
 import InvestorDirectoryPage from './pages/InvestorDirectoryPage';
-import InvestorForm from './components/InvestorForm';
 import InvestorProfilePage from './pages/InvestorProfilePage'; // Import the profile page
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectListPage from './pages/ProjectListPage';
@@ -51,9 +50,12 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: 'Poppins, sans-serif',
-    h1: { fontSize: '32px', fontWeight: 700, lineHeight: 1.2 },
-    h2: { fontSize: '24px', fontWeight: 700, lineHeight: 1.3 },
-    h3: { fontSize: '20px', fontWeight: 600, lineHeight: 1.4 },
+    // Headings shrink on phones (below 600px) so long titles fit.
+    h1: { fontSize: '32px', fontWeight: 700, lineHeight: 1.2, '@media (max-width:599.95px)': { fontSize: '26px' } },
+    h2: { fontSize: '24px', fontWeight: 700, lineHeight: 1.3, '@media (max-width:599.95px)': { fontSize: '21px' } },
+    h3: { fontSize: '20px', fontWeight: 600, lineHeight: 1.4, '@media (max-width:599.95px)': { fontSize: '18px' } },
+    h4: { '@media (max-width:599.95px)': { fontSize: '1.5rem', lineHeight: 1.3 } },
+    h5: { '@media (max-width:599.95px)': { fontSize: '1.25rem' } },
     body1: { fontSize: '16px', fontWeight: 400, lineHeight: 1.5 },
     body2: { fontSize: '14px', fontWeight: 400, lineHeight: 1.5 },
   },
@@ -91,7 +93,7 @@ function App() {
             />
             <Route path="/users" element={<AppLayout><UserManagementPage /></AppLayout>} />
             <Route path="/investors" element={<AppLayout><InvestorDirectoryPage /></AppLayout>} />
-            <Route path="/investors/new" element={<AppLayout><InvestorForm /></AppLayout>} />
+            <Route path="/investors/new" element={<Navigate to="/investors" replace />} />
             <Route path="/investors/:id" element={<AppLayout><InvestorProfilePage /></AppLayout>} />
             <Route path="/projects" element={<AppLayout><ProjectListPage /></AppLayout>} />
             <Route path="/projects/:id" element={<AppLayout><ProjectDetailPage /></AppLayout>} />

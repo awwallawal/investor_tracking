@@ -25,8 +25,11 @@ const AppLayout = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          mt: '64px',
+          // minWidth 0 lets wide tables scroll inside the page instead of
+          // stretching it (which makes phones zoom out).
+          minWidth: 0,
+          p: { xs: 2, sm: 3 },
+          mt: { xs: '56px', sm: '64px' },
           width: { sm: `calc(100% - ${drawerWidth}px)` },
         }}
       >

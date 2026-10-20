@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { Box, List, ListItemButton, ListItemText, Paper, Typography } from '@mui/material';
 import apiClient from '../api/api';
 
 const ProjectListPage = () => {
@@ -38,20 +39,28 @@ const ProjectListPage = () => {
   }
 
   return (
-    <div>
-      <h1>Project List {lifecycleStatus ? `(Status: ${lifecycleStatus})` : ''}</h1>
+    <Box>
+      <Typography variant="h4" component="h1" gutterBottom>
+        {`Project List ${lifecycleStatus ? `(Status: ${lifecycleStatus})` : ''}`.trim()}
+      </Typography>
       {projects.length === 0 ? (
-        <p>No projects found.</p>
+        <Typography>No projects found.</Typography>
       ) : (
-        <ul>
-          {projects.map((project) => (
-            <li key={project._id}>
-              {project.projectTitle} (Investor: {project.investor.investorName})
-            </li>
-          ))}
-        </ul>
+        <Paper>
+          <List disablePadding>
+            {projects.map((project) => (
+              <ListItemButton key={project._id} component={RouterLink} to={`/projects/${project._id}`} divider>
+                <ListItemText
+                  primary={project.projectTitle}
+                  secondary={`Investor: ${project.investor?.investorName || 'N/A'}`}
+                  sx={{ overflowWrap: 'anywhere' }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        </Paper>
       )}
-    </div>
+    </Box>
   );
 };
 
