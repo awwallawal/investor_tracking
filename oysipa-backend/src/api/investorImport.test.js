@@ -243,6 +243,8 @@ describe('POST /api/investors/import/run', () => {
     const beta = await Investor.findOne({ investorName: 'Beta Partners' }).lean();
     expect(beta.email).toBeUndefined();
     expect(beta.organisationType).toBe('Intermediary');
+    // No first contact date in the file: left empty, never the import date.
+    expect(beta.firstContactDate).toBeUndefined();
     expect(await Investor.countDocuments({ email: 'taken@example.test' })).toBe(1);
     // Empty projects: investor only.
     const delta = await Investor.findOne({ investorName: 'Delta Foods' }).lean();

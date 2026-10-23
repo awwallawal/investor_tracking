@@ -321,10 +321,11 @@ const planImport = async (input) => {
       }
       const organisationType = str(inv.organisationType);
       if (organisationType && !ORGANISATION_TYPES.includes(organisationType)) return fail(`Unknown organisation type "${organisationType}".`);
+      // No date in the file: left empty and shown as "Not recorded", never the
+      // import date (that would be false T11 data). Officers fill it later.
       let firstContactDate;
       if (isEmpty(inv.firstContactDate)) {
-        firstContactDate = todayDate();
-        warn('No firstContactDate in the file; the import date is used.');
+        warn('No firstContactDate in the file; left empty (shown as "Not recorded").');
       } else {
         const parsed = parseHappenedDate(inv.firstContactDate, { label: 'First contact date' });
         if (parsed.error) return fail(parsed.error);

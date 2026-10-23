@@ -92,7 +92,8 @@ const InvestorProfilePage = () => {
             <p>Company Registration Info: {investor.companyRegistrationInfo}</p>
             <p>Key Contact Person: {investor.keyContactPerson}</p>
             <p>Assigned Staff: {investor.assignedTo ? investor.assignedTo.name : 'Unassigned'}</p>
-            <p>First contact: {dateLine(investor, 'firstContactDate')}</p>
+            {/* Imported records without a date show "Not recorded", not the import day. */}
+            <p>First contact: {!investor.firstContactDate && investor.importBatchId ? 'Not recorded' : dateLine(investor, 'firstContactDate')}</p>
             <p>Lead source: {investor.leadSource || UNKNOWN_LEAD_SOURCE}</p>
             {investor.leadSourceDetail && <p>Lead source detail: {investor.leadSourceDetail}</p>}
             <p>Organisation type: {investor.organisationType || DEFAULT_ORGANISATION_TYPE}</p>

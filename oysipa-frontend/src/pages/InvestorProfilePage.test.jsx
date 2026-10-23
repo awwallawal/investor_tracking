@@ -225,4 +225,11 @@ describe('InvestorProfilePage — T11 and import fields (11.5)', () => {
     expect(await screen.findByText('Lead source: Unknown (pre-T11)')).toBeInTheDocument();
     expect(screen.getByText('Organisation type: Investor')).toBeInTheDocument();
   });
+
+  it('an imported record with no first contact date shows "Not recorded"', async () => {
+    const imported = { ...investor, importBatchId: 'b1', createdAt: '2026-10-23T10:00:00.000Z' };
+    apiClient.get.mockImplementation((url) => Promise.resolve({ data: url === '/api/investors/inv1' ? imported : [] }));
+    renderPage();
+    expect(await screen.findByText('First contact: Not recorded')).toBeInTheDocument();
+  });
 });
