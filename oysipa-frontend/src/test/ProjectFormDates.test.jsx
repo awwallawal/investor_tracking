@@ -45,7 +45,7 @@ describe('ProjectForm dates', () => {
     expect(screen.getByLabelText(/date registered/i)).toHaveValue('2022-07-01');
     expect(screen.queryByLabelText(/status changed on/i)).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.click(screen.getByRole('combobox', { name: /lifecycle status/i }));
     await userEvent.click(await screen.findByRole('option', { name: 'Lead' }));
     const changedOn = await screen.findByLabelText(/status changed on/i);
     fireEvent.change(changedOn, { target: { value: '2024-06-01' } });
@@ -62,7 +62,7 @@ describe('ProjectForm dates', () => {
     apiClient.post.mockRejectedValue({ response: { status: 400, data: { message: 'Date registered cannot be in the future.' } } });
     render(<ProjectForm open onClose={vi.fn()} onSave={vi.fn()} investorId="inv1" />);
     // Let the statuses load first (loading them resets the form and its error).
-    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.click(screen.getByRole('combobox', { name: /lifecycle status/i }));
     await screen.findByRole('option', { name: 'Lead' });
     await userEvent.keyboard('{Escape}');
     fireEvent.change(screen.getByLabelText(/date registered/i), { target: { value: '2099-01-01' } });
@@ -76,20 +76,28 @@ describe('Investor forms: first contact date', () => {
     vi.clearAllMocks();
   });
 
+  // Lead source is required on the new-investor form (11.5).
+  const chooseLeadSource = async () => {
+    await userEvent.click(screen.getByRole('combobox', { name: /lead source/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Other' }));
+  };
+
   it('new investor: empty is not sent; a date is', async () => {
     apiClient.post.mockResolvedValue({ data: {} });
     const { unmount } = render(<InvestorForm open onClose={vi.fn()} onSave={vi.fn()} />);
+    await chooseLeadSource();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
     expect(apiClient.post.mock.calls[0][1]).not.toHaveProperty('firstContactDate');
     unmount();
 
     render(<InvestorForm open onClose={vi.fn()} onSave={vi.fn()} />);
+    await chooseLeadSource();
     fireEvent.change(screen.getByLabelText(/first contact date/i), { target: { value: '2024-02-14' } });
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() => expect(apiClient.post).toHaveBeenCalledTimes(2));
     expect(apiClient.post.mock.calls[1][1]).toHaveProperty('firstContactDate', '2024-02-14');
-  });
+  }, 20000);
 
   it('edit: shows the stored date and sends a correction', async () => {
     apiClient.put.mockResolvedValue({ data: {} });

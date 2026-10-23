@@ -1,4 +1,7 @@
 const mongoose = require('mongoose');
+const {
+  LEAD_SOURCES, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE, EMAIL_RE,
+} = require('../constants/investorFields');
 
 const investorSchema = new mongoose.Schema({
   investorName: {
@@ -13,7 +16,7 @@ const investorSchema = new mongoose.Schema({
     lowercase: true,
     unique: true,
     sparse: true, // Add this to allow multiple null emails
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
+    match: [EMAIL_RE, 'Please fill a valid email address']
   },
   phoneNumber: {
     type: String,
@@ -41,6 +44,46 @@ const investorSchema = new mongoose.Schema({
   // controller on create; old records keep none and display createdAt.
   firstContactDate: {
     type: Date
+  },
+  // SABER T11 (story 11.5). No schema default: the controller requires it on
+  // create, and the migration sets "Unknown (pre-T11)" on older records.
+  leadSource: {
+    type: String,
+    enum: { values: LEAD_SOURCES, message: 'Invalid lead source: {VALUE}' }
+  },
+  leadSourceDetail: {
+    type: String,
+    trim: true
+  },
+  organisationType: {
+    type: String,
+    enum: { values: ORGANISATION_TYPES, message: 'Invalid organisation type: {VALUE}' },
+    default: DEFAULT_ORGANISATION_TYPE
+  },
+  // Set when leadSource is "Intermediary referral"; must be an Intermediary record.
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Investor'
+  },
+  notes: {
+    type: String,
+    trim: true
+  },
+  website: {
+    type: String,
+    trim: true
+  },
+  headOffice: {
+    type: String,
+    trim: true
+  },
+  // Import stamps (story 11.11): the run that created the record, and the file's tags.
+  importBatchId: {
+    type: String
+  },
+  importTags: {
+    type: [String],
+    default: undefined
   }
 }, { timestamps: true }); // ✅ correct way
 

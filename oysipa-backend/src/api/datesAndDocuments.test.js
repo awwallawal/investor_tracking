@@ -223,7 +223,7 @@ describe('Interaction happened date', () => {
 });
 
 describe('Investor firstContactDate', () => {
-  const base = { investorName: 'New Paper Inv', sector: 'Tech', countryOfOrigin: 'NG' };
+  const base = { investorName: 'New Paper Inv', sector: 'Tech', countryOfOrigin: 'NG', leadSource: 'Other' };
 
   it('create with a paper date; client createdAt ignored', async () => {
     const res = await request(app).post('/api/investors').set('Authorization', bearer(global.dgToken))

@@ -7,6 +7,7 @@ import InteractionLogList from '../components/InteractionLogList';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { dateLine } from '../utils/dates';
+import { formatMoney } from '../utils/money';
 
 const ProjectDetailPage = () => {
     const [project, setProject] = useState(null);
@@ -76,7 +77,7 @@ const ProjectDetailPage = () => {
                 <Typography sx={{ mb: 2 }}>{project.description || 'N/A'}</Typography>
 
                 <Typography variant="h6">Estimated Value:</Typography>
-                <Typography sx={{ mb: 2 }}>₦{project.estimatedValue?.toLocaleString() || '0'}</Typography>
+                <Typography sx={{ mb: 2 }}>{formatMoney(project.estimatedValue, project.currency)}</Typography>
 
                 <Typography variant="h6">Estimated Number of Jobs:</Typography>
                 <Typography sx={{ mb: 2 }}>{project.estimatedNumberOfJobs?.toLocaleString() || '0'}</Typography>

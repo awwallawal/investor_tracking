@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { Alert, Box, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
 import { lagosDay } from '../utils/dates';
+import { CURRENCIES, DEFAULT_CURRENCY } from '../constants/investorFields';
 
 const FORBIDDEN_MSG = 'You can only change projects of investors assigned to you';
 const GENERIC_MSG = 'Failed to save the project. Please try again.';
@@ -48,6 +49,7 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                 projectTitle: '',
                 description: '',
                 estimatedValue: 0,
+                currency: DEFAULT_CURRENCY,
                 estimatedNumberOfJobs: 0,
                 location: '',
                 lifecycleStatus: lifecycleStatuses.length > 0 ? lifecycleStatuses[0]._id : '',
@@ -95,12 +97,20 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                 {saveError && <Alert severity="error" sx={{ mb: 1 }}>{saveError}</Alert>}
                 <TextField autoFocus margin="dense" name="projectTitle" label="Project Title" type="text" fullWidth variant="standard" value={formData.projectTitle || ''} onChange={handleChange} />
                 <TextField margin="dense" name="description" label="Description" type="text" fullWidth multiline rows={4} variant="standard" value={formData.description || ''} onChange={handleChange} />
-                <TextField margin="dense" name="estimatedValue" label="Estimated Value" type="number" fullWidth variant="standard" value={formData.estimatedValue || 0} onChange={handleChange} />
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <FormControl margin="dense" variant="standard" sx={{ minWidth: 100 }}>
+                        <InputLabel id="currency-label">Currency</InputLabel>
+                        <Select labelId="currency-label" name="currency" value={formData.currency || DEFAULT_CURRENCY} onChange={handleChange}>
+                            {CURRENCIES.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <TextField margin="dense" name="estimatedValue" label="Estimated Value" type="number" fullWidth variant="standard" value={formData.estimatedValue || 0} onChange={handleChange} />
+                </Box>
                 <TextField margin="dense" name="estimatedNumberOfJobs" label="Estimated Number of Jobs" type="number" fullWidth variant="standard" value={formData.estimatedNumberOfJobs || 0} onChange={handleChange} />
                 <TextField margin="dense" name="location" label="Location" type="text" fullWidth variant="standard" value={formData.location || ''} onChange={handleChange} />
                 <FormControl fullWidth margin="dense" variant="standard">
-                    <InputLabel>Lifecycle Status</InputLabel>
-                    <Select name="lifecycleStatus" value={formData.lifecycleStatus || ''} onChange={handleChange}>
+                    <InputLabel id="lifecycleStatus-label">Lifecycle Status</InputLabel>
+                    <Select labelId="lifecycleStatus-label" name="lifecycleStatus" value={formData.lifecycleStatus || ''} onChange={handleChange}>
                         {lifecycleStatuses.map(status => (
                             <MenuItem key={status._id} value={status._id}>{status.name}</MenuItem>
                         ))}

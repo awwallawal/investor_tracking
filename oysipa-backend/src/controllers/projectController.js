@@ -4,6 +4,12 @@ const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
+// Import stamps are server-owned (set only by the investor import).
+const stripImportStamps = (body) => {
+  delete body.importBatchId;
+  delete body.importTags;
+  return body;
+};
 
 // Pulls statusChangeDate out of the body (it is not a project field: it becomes
 // the System Update log's interactionDate). Returns { value } or { error }.
@@ -85,7 +91,7 @@ exports.createProject = async (req, res) => {
     }
 
     // createdAt/updatedAt are server-set; client values are ignored.
-    const body = stripTimestamps({ ...(req.body || {}) });
+    const body = stripImportStamps(stripTimestamps({ ...(req.body || {}) }));
     delete body.statusChangeDate;
     const dateError = applyDateRegistered(body, { isCreate: true });
     if (dateError) return res.status(400).json({ message: dateError });
@@ -177,7 +183,7 @@ exports.updateProject = async (req, res) => {
     }
 
     // createdAt/updatedAt are server-set; client values are ignored.
-    const body = stripTimestamps({ ...(req.body || {}) });
+    const body = stripImportStamps(stripTimestamps({ ...(req.body || {}) }));
     const statusChange = takeStatusChangeDate(body);
     if (statusChange.error) return res.status(400).json({ message: statusChange.error });
     const dateError = applyDateRegistered(body, { isCreate: false });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Button, Box, Typography, Divider } from '@mui/material';
 import InvestorEditForm from '../components/InvestorEditForm';
 import UserAssignmentDropdown from '../components/UserAssignmentDropdown';
@@ -10,6 +10,7 @@ import InteractionLogList from '../components/InteractionLogList';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { dateLine } from '../utils/dates';
+import { DEFAULT_ORGANISATION_TYPE, UNKNOWN_LEAD_SOURCE } from '../constants/investorFields';
 
 const InvestorProfilePage = () => {
     const [investor, setInvestor] = useState(null);
@@ -92,6 +93,19 @@ const InvestorProfilePage = () => {
             <p>Key Contact Person: {investor.keyContactPerson}</p>
             <p>Assigned Staff: {investor.assignedTo ? investor.assignedTo.name : 'Unassigned'}</p>
             <p>First contact: {dateLine(investor, 'firstContactDate')}</p>
+            <p>Lead source: {investor.leadSource || UNKNOWN_LEAD_SOURCE}</p>
+            {investor.leadSourceDetail && <p>Lead source detail: {investor.leadSourceDetail}</p>}
+            <p>Organisation type: {investor.organisationType || DEFAULT_ORGANISATION_TYPE}</p>
+            {investor.referredBy && (
+                <p>Referred by: {investor.referredBy._id
+                    ? <Link to={`/investors/${investor.referredBy._id}`}>{investor.referredBy.investorName}</Link>
+                    : String(investor.referredBy)}</p>
+            )}
+            <p>Website: {investor.website || '—'}</p>
+            <p>Head office: {investor.headOffice || '—'}</p>
+            <Typography component="div" sx={{ my: 2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                Notes: {investor.notes || '—'}
+            </Typography>
 
             <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 {canWrite && (

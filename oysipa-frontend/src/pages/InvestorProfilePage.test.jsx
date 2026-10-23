@@ -193,3 +193,36 @@ describe('InvestorProfilePage — interaction Delete (DG/Admin only)', () => {
     expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
   });
 });
+
+describe('InvestorProfilePage — T11 and import fields (11.5)', () => {
+  afterEach(() => localStorage.removeItem('token'));
+
+  it('shows lead source, detail, type, referred by, website, head office and notes', async () => {
+    const full = {
+      ...investor,
+      leadSource: 'Intermediary referral',
+      leadSourceDetail: 'Synthetic forum',
+      organisationType: 'Investor',
+      referredBy: { _id: 'nipc', investorName: 'NIPC Synthetic' },
+      website: 'https://acme.example.test',
+      headOffice: 'Ibadan',
+      notes: 'Synthetic note',
+    };
+    apiClient.get.mockImplementation((url) => Promise.resolve({ data: url === '/api/investors/inv1' ? full : [] }));
+    renderPage();
+    expect(await screen.findByText('Lead source: Intermediary referral')).toBeInTheDocument();
+    expect(screen.getByText('Lead source detail: Synthetic forum')).toBeInTheDocument();
+    expect(screen.getByText('Organisation type: Investor')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'NIPC Synthetic' })).toHaveAttribute('href', '/investors/nipc');
+    expect(screen.getByText('Website: https://acme.example.test')).toBeInTheDocument();
+    expect(screen.getByText('Head office: Ibadan')).toBeInTheDocument();
+    expect(screen.getByText(/Notes: Synthetic note/)).toBeInTheDocument();
+  });
+
+  it('old records show "Unknown (pre-T11)" and Investor', async () => {
+    apiClient.get.mockImplementation((url) => Promise.resolve({ data: url === '/api/investors/inv1' ? investor : [] }));
+    renderPage();
+    expect(await screen.findByText('Lead source: Unknown (pre-T11)')).toBeInTheDocument();
+    expect(screen.getByText('Organisation type: Investor')).toBeInTheDocument();
+  });
+});

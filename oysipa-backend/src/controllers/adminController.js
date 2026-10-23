@@ -1,6 +1,7 @@
 const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
+const { INVESTOR_COUNT_FILTER } = require('../constants/investorFields');
 
 const getDashboardKpis = async (req, res) => {
   try {
@@ -10,7 +11,8 @@ const getDashboardKpis = async (req, res) => {
       projectsByStage,
       allTimeInteractions,
     ] = await Promise.all([
-      Investor.countDocuments(),
+      // Only organisation type Investor (or none set: old records) counts.
+      Investor.countDocuments(INVESTOR_COUNT_FILTER),
       InvestmentProject.countDocuments(),
       InvestmentProject.aggregate([
         {

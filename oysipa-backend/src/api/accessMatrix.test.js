@@ -111,8 +111,12 @@ const ROUTES = [
   // Investors
   { name: 'GET /api/investors', method: 'get', path: () => '/api/investors', allow: ALL },
   { name: 'GET /api/investors/:id', method: 'get', path: (c) => `/api/investors/${c.investorId}`, allow: ALL },
-  { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Tech', countryOfOrigin: 'NG' }), allow: ALL },
+  { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Tech', countryOfOrigin: 'NG', leadSource: 'Other' }), allow: ALL },
   { name: 'PUT /api/investors/:id', method: 'put', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ sector: 'Agro' }), allow: ALL, investorWrite: true },
+  // Import investors (story 11.11) — DG/Admin only. The dry run writes nothing;
+  // the run with a wrong confirmation is refused (400) and writes nothing.
+  { name: 'POST /api/investors/import/dry-run', method: 'post', path: () => '/api/investors/import/dry-run', attach: { field: 'file', buffer: Buffer.from(JSON.stringify({ records: [] })), filename: 'import.json', contentType: 'application/json' }, allow: ADMINS, adminDelete: true },
+  { name: 'POST /api/investors/import/run', method: 'post', path: () => '/api/investors/import/run', attach: { field: 'file', buffer: Buffer.from(JSON.stringify({ records: [] })), filename: 'import.json', contentType: 'application/json' }, allow: ADMINS, adminDelete: true },
   { name: 'DELETE /api/investors/:id', method: 'delete', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ reason: 'Matrix cleanup' }), allow: ADMINS, adminDelete: true },
 
   // Projects — reads
@@ -266,8 +270,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 34 unique entries', () => {
-    expect(ROUTES.length).toBe(34);
+  it('ROUTES list has 36 unique entries', () => {
+    expect(ROUTES.length).toBe(36);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });
@@ -463,7 +467,7 @@ describe('Investor writes', () => {
     if (token) r = r.set('Authorization', `Bearer ${token}`);
     return r.send(body);
   };
-  const base = { sector: 'Tech', countryOfOrigin: 'NG' };
+  const base = { sector: 'Tech', countryOfOrigin: 'NG', leadSource: 'Other' };
 
   it('Staff create without assignedTo → 201, assigned to that Staff user', async () => {
     const res = await post(f.tokens[STAFF], { investorName: 'Staff New A', ...base });

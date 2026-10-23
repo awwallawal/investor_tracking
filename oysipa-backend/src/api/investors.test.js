@@ -26,7 +26,8 @@ describe('Investor API', () => {
       .send({
         investorName: 'Test Investor',
         sector: 'Corporate',
-        countryOfOrigin: 'USA'
+        countryOfOrigin: 'USA',
+        leadSource: 'Other'
       });
 
     expect(res.statusCode).toEqual(201);

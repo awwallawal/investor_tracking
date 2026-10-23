@@ -72,11 +72,25 @@ const InteractionLogSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // Import stamps (story 11.11): the file's interaction id (repeat-safe key),
+  // the run that created it, and the file's tags.
+  importRef: {
+    type: String,
+  },
+  importBatchId: {
+    type: String,
+  },
+  importTags: {
+    type: [String],
+    default: undefined,
+  },
 }, {
   timestamps: true,
 });
 
 InteractionLogSchema.index({ investor: 1, createdAt: -1 });
+// Unique: one interaction per file id, even if two import runs overlap.
+InteractionLogSchema.index({ importRef: 1 }, { unique: true, sparse: true });
 
 // A project-linked log takes its investor from the project, never from the caller.
 InteractionLogSchema.pre('validate', async function setInvestorFromProject() {

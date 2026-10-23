@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { CURRENCIES, DEFAULT_CURRENCY } = require('../constants/investorFields');
 
 const investmentProjectSchema = new mongoose.Schema({
     projectTitle: {
@@ -13,6 +14,12 @@ const investmentProjectSchema = new mongoose.Schema({
     estimatedValue: {
         type: Number,
         default: 0
+    },
+    // Currency of estimatedValue (moved here from 11.6).
+    currency: {
+        type: String,
+        enum: { values: CURRENCIES, message: 'Invalid currency: {VALUE}' },
+        default: DEFAULT_CURRENCY
     },
     estimatedNumberOfJobs: {
         type: Number,
@@ -40,6 +47,14 @@ const investmentProjectSchema = new mongoose.Schema({
     // set by the controller on create; old records display createdAt.
     dateRegistered: {
         type: Date
+    },
+    // Import stamps (story 11.11).
+    importBatchId: {
+        type: String
+    },
+    importTags: {
+        type: [String],
+        default: undefined
     }
 }, {
     timestamps: true

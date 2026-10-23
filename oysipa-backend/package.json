@@ -9,7 +9,9 @@
     "check:orphans": "node scripts/check-orphan-projects.js",
     "migrate:interactions": "node scripts/migrate-interaction-investor.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "migrate:lead-source": "node scripts/migrate-lead-source.js",
+    "import:investors": "node scripts/import-investors.js"
   },
   "keywords": [],
   "author": "",

@@ -11,16 +11,29 @@ import {
 } from '@mui/material';
 import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
+import InvestorT11Fields from './InvestorT11Fields';
+import { DEFAULT_ORGANISATION_TYPE, INTERMEDIARY_REFERRAL } from '../constants/investorFields';
+
+const EMPTY_FORM = {
+  investorName: '',
+  email: '',
+  phoneNumber: '',
+  sector: '',
+  countryOfOrigin: '',
+  companyRegistrationInfo: '',
+  keyContactPerson: '',
+  leadSource: '',
+  leadSourceDetail: '',
+  organisationType: DEFAULT_ORGANISATION_TYPE,
+  referredBy: '',
+  website: '',
+  headOffice: '',
+  notes: '',
+};
 
 const InvestorForm = ({ open, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    investorName: '',
-    email: '',
-    phoneNumber: '',
-    sector: '',
-    countryOfOrigin: '',
-    companyRegistrationInfo: '',
-    keyContactPerson: '',
+    ...EMPTY_FORM,
   });
   const [firstContactDate, setFirstContactDate] = useState('');
   const [error, setError] = useState(null);
@@ -28,15 +41,7 @@ const InvestorForm = ({ open, onClose, onSave }) => {
   useEffect(() => {
     if (open) {
       // Reset form and error on open
-      setFormData({
-        investorName: '',
-        email: '',
-        phoneNumber: '',
-        sector: '',
-        countryOfOrigin: '',
-        companyRegistrationInfo: '',
-        keyContactPerson: '',
-      });
+      setFormData({ ...EMPTY_FORM });
       setFirstContactDate('');
       setError(null);
     }
@@ -47,13 +52,22 @@ const InvestorForm = ({ open, onClose, onSave }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const setField = (name, value) => setFormData(prev => ({ ...prev, [name]: value }));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null); // Clear previous errors
+    // T11: lead source is required for new records (the server checks too).
+    if (!formData.leadSource) {
+      setError('Choose a lead source.');
+      return;
+    }
 
     try {
+      const payload = { ...formData };
+      if (payload.leadSource !== INTERMEDIARY_REFERRAL || !payload.referredBy) delete payload.referredBy;
       // Empty first contact date means today (set by the server).
-      await apiClient.post('/api/investors', { ...formData, ...(firstContactDate && { firstContactDate }) });
+      await apiClient.post('/api/investors', { ...payload, ...(firstContactDate && { firstContactDate }) });
       onSave(); // Trigger refresh and close
     } catch (error) {
       console.error("Submission error:", error);
@@ -128,11 +142,38 @@ const InvestorForm = ({ open, onClose, onSave }) => {
             fullWidth
             margin="normal"
           />
+          <InvestorT11Fields values={formData} onChange={setField} isCreate />
           <HappenedDateField
             name="firstContactDate"
             label="First contact date"
             value={firstContactDate}
             onChange={setFirstContactDate}
+            margin="normal"
+          />
+          <TextField
+            name="website"
+            label="Website"
+            value={formData.website}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            name="headOffice"
+            label="Head office"
+            value={formData.headOffice}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            name="notes"
+            label="Notes"
+            value={formData.notes}
+            onChange={handleChange}
+            fullWidth
+            multiline
+            minRows={2}
             margin="normal"
           />
         </Box>

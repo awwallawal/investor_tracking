@@ -104,3 +104,16 @@ describe('ProjectDetailPage — interaction Delete (DG/Admin only)', () => {
     expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
   });
 });
+
+describe('ProjectDetailPage — value with currency (11.5)', () => {
+  afterEach(() => localStorage.removeItem('token'));
+  it.each([
+    [{ estimatedValue: 10000000, currency: 'USD' }, 'US$10,000,000'],
+    [{ estimatedValue: 2500000000, currency: 'NGN' }, '₦2,500,000,000'],
+    [{ estimatedValue: 5000 }, '₦5,000'],
+  ])('%o → %s', async (fields, shown) => {
+    apiClient.get.mockImplementation((url) => Promise.resolve({ data: url === '/api/projects/p1' ? { ...project, ...fields } : [] }));
+    renderPage();
+    expect(await screen.findByText(shown)).toBeInTheDocument();
+  });
+});

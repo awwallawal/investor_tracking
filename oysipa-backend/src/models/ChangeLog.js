@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // delete paths (and bulkWrite ops other than insertOne). Raw driver calls
 // (ChangeLog.collection.*) are NOT covered. There is no API to change it either.
 const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog'];
-const ACTIONS = ['delete'];
+const ACTIONS = ['delete', 'import'];
 
 const ChangeLogSchema = new mongoose.Schema({
   entity: { type: String, enum: ENTITIES, required: true },
@@ -50,5 +50,6 @@ ChangeLogSchema.pre('save', function refuseResave() {
 const ChangeLog = mongoose.model('ChangeLog', ChangeLogSchema);
 ChangeLog.APPEND_ONLY_MSG = APPEND_ONLY_MSG;
 ChangeLog.ENTITIES = ENTITIES;
+ChangeLog.ACTIONS = ACTIONS;
 
 module.exports = ChangeLog;

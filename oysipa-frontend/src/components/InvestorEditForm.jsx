@@ -12,6 +12,8 @@ import {
 import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
 import { lagosDay } from '../utils/dates';
+import InvestorT11Fields from './InvestorT11Fields';
+import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
 const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
   const [formData, setFormData] = useState(investorData);
@@ -34,6 +36,9 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+  const setField = (name, value) => setFormData(prev => ({ ...prev, [name]: value }));
+  // Lead source is fixed after create; only DG/Admin can correct it (server-enforced too).
+  const canEditLeadSource = isAdminRole(getCurrentUser()?.role);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,6 +132,38 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
             onChange={setFirstContactDate}
             margin="normal"
             helperText={originalFirstContact ? 'Correct it if the paper record shows another date' : 'Leave empty to keep the recorded date'}
+          />
+          <InvestorT11Fields
+            values={formData || {}}
+            onChange={setField}
+            canEditLeadSource={canEditLeadSource}
+            selfId={formData?._id}
+          />
+          <TextField
+            name="website"
+            label="Website"
+            value={formData.website || ''}
+            onChange={handleChange}
+            fullWidth={true}
+            margin="normal"
+          />
+          <TextField
+            name="headOffice"
+            label="Head office"
+            value={formData.headOffice || ''}
+            onChange={handleChange}
+            fullWidth={true}
+            margin="normal"
+          />
+          <TextField
+            name="notes"
+            label="Notes"
+            value={formData.notes || ''}
+            onChange={handleChange}
+            fullWidth={true}
+            multiline
+            minRows={2}
+            margin="normal"
           />
         </Box>
       </DialogContent>

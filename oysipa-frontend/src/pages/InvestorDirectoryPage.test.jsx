@@ -98,3 +98,54 @@ describe('InvestorDirectoryPage', () => {
     expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);
   }, 20000);
 });
+
+describe('InvestorDirectoryPage — T11 filters, type chip and Import (11.5 + 11.11)', () => {
+  const typed = [
+    { _id: '1', investorName: 'John Doe', sector: 'Tech', countryOfOrigin: 'USA', organisationType: 'Investor' },
+    { _id: '3', investorName: 'NIPC Synthetic', sector: 'Gov', countryOfOrigin: 'Nigeria', organisationType: 'Intermediary' },
+    { _id: '4', investorName: 'Old Record', sector: 'Agro', countryOfOrigin: 'Nigeria' },
+  ];
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem('token');
+  });
+  afterEach(() => localStorage.removeItem('token'));
+
+  it('shows an organisation-type chip on each row (old records show Investor)', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: typed });
+    renderPage();
+    expect(await screen.findByText('NIPC Synthetic')).toBeInTheDocument();
+    expect(screen.getByText('Intermediary')).toBeInTheDocument();
+    expect(screen.getAllByText('Investor')).toHaveLength(2);
+  });
+
+  it('filters by lead source and organisation type through the API', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: typed });
+    renderPage();
+    await screen.findByText('John Doe');
+    await userEvent.click(screen.getByRole('combobox', { name: /organisation type/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Intermediary' }));
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith('/api/investors', { params: { organisationType: 'Intermediary' } }));
+    await userEvent.click(screen.getByRole('combobox', { name: /lead source/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Unknown (pre-T11)' }));
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith('/api/investors', { params: { leadSource: 'Unknown (pre-T11)', organisationType: 'Intermediary' } }));
+  }, 20000);
+
+  it('Staff: no Import investors button', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: typed });
+    renderPage();
+    await screen.findByText('John Doe');
+    expect(screen.queryByRole('button', { name: 'Import investors' })).not.toBeInTheDocument();
+  });
+
+  it.each(['Director-General', 'Portal-Admin'])('%s: Import investors opens the dialog', async (role) => {
+    localStorage.setItem('token', tokenFor(role));
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: typed });
+    renderPage();
+    await screen.findByText('John Doe');
+    await userEvent.click(screen.getByRole('button', { name: 'Import investors' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('button', { name: 'Run import' })).toBeDisabled();
+  });
+});
