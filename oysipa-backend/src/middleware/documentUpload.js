@@ -79,4 +79,6 @@ const singleDocument = (req, res, next) => {
   });
 };
 
-module.exports = { requireStorage, singleDocument, canonicalMime, TYPE_MSG };
+module.exports = {
+  requireStorage, singleDocument, canonicalMime, TYPE_MSG, ALLOWED,
+};

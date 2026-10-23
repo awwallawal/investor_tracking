@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import apiClient from '../api/api';
 import {
-  DOCUMENT_ACCEPT, documentErrorMessage, openInteractionDocument, uploadInteractionDocument,
+  DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile, openInteractionDocument, uploadInteractionDocument,
 } from '../api/documents';
 import HappenedDateField from './HappenedDateField';
 import { dateLine, formatDate } from '../utils/dates';
@@ -103,12 +103,14 @@ const RemoveDocumentDialog = ({ log, doc, onClose, onRemoved }) => {
 
 // Documents of one interaction: the legacy public documentUrl link (kept as it
 // was), private documents with "View" (signed link), "Attach document" for
-// writers and "Remove" for DG/Admin.
+// writers and "Remove" for DG/Admin. Evidence library files linked to the
+// interaction (log.evidenceFiles) are listed under "Library files" with Open.
 const InteractionDocuments = ({ log, canWrite = false, canDelete = false, onDocumentsChange }) => {
   const [attaching, setAttaching] = useState(false);
   const [removing, setRemoving] = useState(null);
   const [error, setError] = useState('');
   const docs = log.documents || [];
+  const libraryFiles = log.evidenceFiles || [];
 
   const handleView = async (doc) => {
     setError('');
@@ -130,7 +132,17 @@ const InteractionDocuments = ({ log, canWrite = false, canDelete = false, onDocu
     onDocumentsChange?.(docs.filter((d) => d._id !== doc._id));
   };
 
-  if (!log.documentUrl && docs.length === 0 && !canWrite) return null;
+  const handleOpenLibrary = async (file) => {
+    setError('');
+    try {
+      await openEvidenceFile(file._id);
+    } catch (err) {
+      setError(documentErrorMessage(err, 'Could not open the file.'));
+      console.error(err);
+    }
+  };
+
+  if (!log.documentUrl && docs.length === 0 && libraryFiles.length === 0 && !canWrite) return null;
 
   return (
     <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
@@ -150,6 +162,19 @@ const InteractionDocuments = ({ log, canWrite = false, canDelete = false, onDocu
           )}
         </Box>
       ))}
+      {libraryFiles.length > 0 && (
+        <Box component="span" sx={{ display: 'block', mt: 0.5 }}>
+          <Typography component="span" variant="caption" color="text.secondary" sx={{ display: 'block' }}>Library files</Typography>
+          {libraryFiles.map((file) => (
+            <Box component="span" key={file._id} sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+              <Typography component="span" variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                {`${file.fileName} (${formatDate(file.documentDate || file.uploadedAt)})`}
+              </Typography>
+              <Button size="small" onClick={() => handleOpenLibrary(file)} aria-label={`Open ${file.fileName}`}>Open</Button>
+            </Box>
+          ))}
+        </Box>
+      )}
       {canWrite && (
         <Button size="small" onClick={() => setAttaching(true)}>Attach document</Button>
       )}

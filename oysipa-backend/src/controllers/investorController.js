@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
-const { recordDeletionGroups, newBatchId } = require('../utils/recordDeletion');
+const { recordActionGroups, newBatchId } = require('../utils/recordDeletion');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 const { isAdminRole } = require('../middleware/accessHelpers');
+const { findLinksTo, unlinkSnapshots, pullLinks } = require('../services/evidenceLibrary');
 const {
   LEAD_SOURCES, UNKNOWN_LEAD_SOURCE, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE, INVESTOR_COUNT_FILTER,
 } = require('../constants/investorFields');
@@ -24,6 +25,11 @@ const applyFirstContactDate = (body, { isCreate }) => {
   }
   return null;
 };
+
+// An empty or whitespace-only email means "no email": never stored as ''
+// (email is unique + sparse, so two '' values would clash). On create the key
+// is removed; on update it is $unset.
+const isBlankEmail = (v) => v === null || (typeof v === 'string' && v.trim() === '');
 
 // Server-owned import stamps are never taken from the client.
 const stripServerFields = (body) => {
@@ -96,6 +102,7 @@ exports.createInvestor = async (req, res) => {
 
     const dateError = applyFirstContactDate(body, { isCreate: true });
     if (dateError) return res.status(400).json({ message: dateError });
+    if ('email' in body && isBlankEmail(body.email)) delete body.email;
     const investor = await Investor.create(body);
     return res.status(201).json(investor);
   } catch (error) {
@@ -164,7 +171,12 @@ exports.updateInvestor = async (req, res) => {
         if (referredError) return res.status(400).json({ message: referredError });
         const dateError = applyFirstContactDate(body, { isCreate: false });
         if (dateError) return res.status(400).json({ message: dateError });
-        const investor = await Investor.findByIdAndUpdate(req.params.id, body, { new: true, runValidators: true });
+        let update = body;
+        if ('email' in body && isBlankEmail(body.email)) {
+          update = { ...body, $unset: { email: 1 } };
+          delete update.email;
+        }
+        const investor = await Investor.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
         if (!investor) {
             return res.status(404).json({ error: 'Investor not found' });
         }
@@ -199,24 +211,36 @@ exports.deleteInvestor = async (req, res) => {
       $or: [{ investor: id }, { project: { $in: projectIds } }],
     }).lean();
 
+    // Evidence library links to the investor or its interactions are removed
+    // (audited, same batch); the files stay in the library.
+    const links = await findLinksTo({ investorIds: [investor._id], interactionIds: logs.map((l) => l._id) });
+
     try {
-      await recordDeletionGroups(req, [
-        ['Investor', [investor]],
-        ['InvestmentProject', projects],
-        ['InteractionLog', logs],
+      // Delete and unlink rows in one insert: all are written or none.
+      await recordActionGroups(req, [
+        ['delete', 'Investor', [investor]],
+        ['delete', 'InvestmentProject', projects],
+        ['delete', 'InteractionLog', logs],
+        ['unlink', 'EvidenceFile', unlinkSnapshots(links)],
       ], { reason: trimmed, batchId: newBatchId() });
     } catch (auditError) {
       console.error('ChangeLog write failed; investor delete aborted:', auditError);
       return res.status(500).json({ message: 'Could not write the audit record. Nothing was deleted.' });
     }
 
-    // Delete exactly the documents that were audited.
+    // Delete exactly the documents (and links) that were audited.
+    await pullLinks(links);
     await InteractionLog.deleteMany({ _id: { $in: logs.map((l) => l._id) } });
     await InvestmentProject.deleteMany({ _id: { $in: projectIds } });
     await Investor.deleteOne({ _id: id });
 
     return res.status(200).json({
-      deleted: { investors: 1, projects: projects.length, interactions: logs.length },
+      deleted: {
+        investors: 1,
+        projects: projects.length,
+        interactions: logs.length,
+        ...(links.length > 0 && { evidenceLinks: links.length }),
+      },
     });
   } catch (error) {
     console.error(error);

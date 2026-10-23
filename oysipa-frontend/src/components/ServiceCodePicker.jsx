@@ -9,7 +9,11 @@ import { SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_CODES } from '../c
 // PDF wording on each option, plus the separate "Credit linkage" flag
 // (credit linkage has no service code in the PDF). Shared by
 // InteractionLogForm and the "Tag services" dialog in InteractionLogList.
-const ServiceCodePicker = ({ value, onChange, creditLinkage, onCreditLinkageChange, disabled = false }) => {
+// showCreditLinkage=false hides the checkbox (Evidence library tags have no credit flag).
+const ServiceCodePicker = ({
+  value, onChange, creditLinkage, onCreditLinkageChange, disabled = false, showCreditLinkage = true,
+  helperText = 'Pick every SABER service this interaction delivered (optional).',
+}) => {
   const selected = value || [];
 
   const handleChange = (event) => {
@@ -52,8 +56,9 @@ const ServiceCodePicker = ({ value, onChange, creditLinkage, onCreditLinkageChan
         >
           {items}
         </Select>
-        <FormHelperText>Pick every SABER service this interaction delivered (optional).</FormHelperText>
+        <FormHelperText>{helperText}</FormHelperText>
       </FormControl>
+      {showCreditLinkage && (
       <FormControlLabel
         control={(
           <Checkbox
@@ -64,6 +69,7 @@ const ServiceCodePicker = ({ value, onChange, creditLinkage, onCreditLinkageChan
         )}
         label="Credit linkage (assistance linking investors to credit institutions)"
       />
+      )}
     </Box>
   );
 };

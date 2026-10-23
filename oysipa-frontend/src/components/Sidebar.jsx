@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Drawer,
@@ -6,11 +6,13 @@ import {
   ListItem,
   ListItemButton,
   ListItemText,
+  Badge,
   Toolbar,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
 import { jwtDecode } from 'jwt-decode';
+import { fetchUntaggedCount, UNTAGGED_CHANGED_EVENT } from '../api/evidence';
 
 const drawerWidth = 240;
 
@@ -30,10 +32,28 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
     }
   }
 
+  // Untagged evidence files, shown as a badge on "Evidence Library". Fetched on
+  // mount and whenever a library screen reports a change.
+  const [untagged, setUntagged] = useState(null);
+  useEffect(() => {
+    if (!token) return undefined;
+    let active = true;
+    const load = () => fetchUntaggedCount()
+      .then((count) => { if (active) setUntagged(count); })
+      .catch(() => { if (active) setUntagged(null); });
+    load();
+    window.addEventListener(UNTAGGED_CHANGED_EVENT, load);
+    return () => {
+      active = false;
+      window.removeEventListener(UNTAGGED_CHANGED_EVENT, load);
+    };
+  }, [token]);
+
   const navLinks = [
     { path: '/dashboard', name: 'Dashboard', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/users', name: 'User Management', roles: ['Director-General', 'Portal-Admin'] },
     { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
+    { path: '/evidence', name: 'Evidence Library', roles: ['Director-General', 'Portal-Admin', 'Staff'], badge: untagged },
     { path: '/admin', name: 'Admin Settings', roles: ['Portal-Admin'] },
   ];
 
@@ -51,6 +71,16 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
               <ListItem key={link.path} disablePadding>
                 <ListItemButton component={RouterLink} to={link.path} onClick={isMobile ? onDrawerToggle : null}>
                   <ListItemText primary={link.name} />
+                  {link.badge > 0 && (
+                    <Badge
+                      badgeContent={link.badge}
+                      max={999}
+                      color="primary"
+                      sx={{ mr: 1.5 }}
+                      aria-label={`${link.badge} untagged`}
+                      title="Untagged files"
+                    />
+                  )}
                 </ListItemButton>
               </ListItem>
             );

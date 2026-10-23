@@ -179,3 +179,23 @@ describe('InteractionLogList — dates and documents', () => {
     expect(await screen.findByText(/on 17 Mar 2025 · recorded 19 Oct 2026/)).toBeInTheDocument();
   }, 20000);
 });
+
+describe('InteractionDocuments — Library files', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('lists log.evidenceFiles under "Library files"; Open fetches the evidence link', async () => {
+    const InteractionDocuments = (await import('./InteractionDocuments')).default;
+    const popup = { location: { href: '' }, close: vi.fn(), opener: window };
+    vi.spyOn(window, 'open').mockImplementation(() => popup);
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { url: 'https://signed.example.test/ev-1' } });
+    const log = {
+      _id: 'log-9', description: 'Engagement', evidenceFiles: [{ _id: 'ev-1', fileName: 'post.pdf', documentDate: '2025-01-15T00:00:00.000Z', uploadedAt: '2026-10-23T09:00:00.000Z' }],
+    };
+    render(<InteractionDocuments log={log} />);
+    expect(screen.getByText('Library files')).toBeInTheDocument();
+    expect(screen.getByText('post.pdf (15 Jan 2025)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Open post.pdf' }));
+    await waitFor(() => expect(popup.location.href).toBe('https://signed.example.test/ev-1'));
+    expect(getSpy).toHaveBeenCalledWith('/api/evidence/files/ev-1/link');
+  });
+});

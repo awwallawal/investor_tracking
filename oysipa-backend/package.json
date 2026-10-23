@@ -11,7 +11,8 @@
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "dev": "nodemon src/index.js",
     "migrate:lead-source": "node scripts/migrate-lead-source.js",
-    "import:investors": "node scripts/import-investors.js"
+    "import:investors": "node scripts/import-investors.js",
+    "attach:documents": "node scripts/attach-documents.js"
   },
   "keywords": [],
   "author": "",

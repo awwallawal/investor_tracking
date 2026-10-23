@@ -14,6 +14,8 @@ const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
 const ChangeLog = require('../models/ChangeLog');
 const documentStorage = require('../services/documentStorage');
+const EvidenceFolder = require('../models/EvidenceFolder');
+const EvidenceFile = require('../models/EvidenceFile');
 
 // Document routes (11.4b) use a fake storage provider: no test reaches Cloudinary.
 const fakeStorage = {
@@ -70,7 +72,17 @@ beforeEach(async () => {
   const unassignedLog = await mkLog(unassignedProject);
   const otherLog = await mkLog(otherProject);
 
+  // Evidence library (rows 37-46): one folder pair and one linked file.
+  await Promise.all([EvidenceFile.deleteMany({}), EvidenceFolder.deleteMany({})]);
+  const evTop = await EvidenceFolder.create({ key: 'programmes', name: 'Programmes and events' });
+  const evSub = await EvidenceFolder.create({ key: 'programmes/matrix', name: 'Matrix', parent: evTop._id });
+  const evFile = await EvidenceFile.create({
+    folder: evSub._id, fileName: 'matrix.jpg', mimeType: 'image/jpeg', size: 4, sha256: 'matrix-sha', provider: 'fake', key: 'matrix-ev', resourceType: 'image', uploadedBy: staff._id, uploadedAt: new Date(),
+    links: [{ investor: assignedInvestor._id, interaction: assignedLog._id, linkedBy: staff._id, linkedAt: new Date() }],
+  });
+
   f = {
+    evSub, evFile,
     tokens: { [DG]: global.dgToken, [PA]: global.portalAdminToken, [STAFF]: sign(staff) },
     staff, revokeTarget, idea, lead, spare,
     assignedInvestor, unassignedInvestor, otherInvestor,
@@ -82,6 +94,7 @@ beforeEach(async () => {
 // ctx: { investorId, projectId } — the project/investor a request targets.
 const ctxFor = (investor, project, log) => ({
   investorId: investor._id.toString(), projectId: project._id.toString(), logId: log._id.toString(), docId: log.documents[0]._id.toString(),
+  folderId: f.evSub._id.toString(), fileId: f.evFile._id.toString(), linkId: f.evFile.links[0]._id.toString(),
 });
 const assignedCtx = () => ctxFor(f.assignedInvestor, f.assignedProject, f.assignedLog);
 const unassignedCtxs = () => [
@@ -94,6 +107,7 @@ const unassignedCtxs = () => [
 // investorWrite: also run Staff against unassigned investors (expect 403, nothing changed).
 // tagWrite: also run Staff against interactions of unassigned investors (expect 403, log unchanged).
 // adminDelete: Staff 403 leaves every investor, project, log and ChangeLog row in place.
+// evidenceLink: also run Staff against unassigned investors (expect 403, no link added).
 // attach: send as multipart with this file (document upload, 11.4b).
 // When you add or change a route, add it here and in access-matrix.md
 const ROUTES = [
@@ -145,6 +159,19 @@ const ROUTES = [
   { name: 'GET /api/interactions/:id/documents/:docId/link', method: 'get', path: (c) => `/api/interactions/${c.logId}/documents/${c.docId}/link`, allow: ALL, staffAnyProject: true },
   { name: 'DELETE /api/interactions/:id/documents/:docId', method: 'delete', path: (c) => `/api/interactions/${c.logId}/documents/${c.docId}`, allow: ADMINS, adminDelete: true },
 
+  // Evidence library. Reads and tagging: all roles (Staff tag only investors
+  // assigned to them). Folder writes, uploads, unlink and delete: DG/Admin.
+  { name: 'GET /api/evidence/untagged-count', method: 'get', path: () => '/api/evidence/untagged-count', allow: ALL },
+  { name: 'GET /api/evidence/folders', method: 'get', path: () => '/api/evidence/folders', allow: ALL },
+  { name: 'POST /api/evidence/folders', method: 'post', path: () => '/api/evidence/folders', body: () => ({ name: 'Matrix folder' }), allow: ADMINS },
+  { name: 'PUT /api/evidence/folders/:id', method: 'put', path: (c) => `/api/evidence/folders/${c.folderId}`, body: () => ({ description: 'changed' }), allow: ADMINS },
+  { name: 'GET /api/evidence/folders/:id/files', method: 'get', path: (c) => `/api/evidence/folders/${c.folderId}/files`, allow: ALL },
+  { name: 'POST /api/evidence/folders/:id/files', method: 'post', path: (c) => `/api/evidence/folders/${c.folderId}/files`, attach: { field: 'file', buffer: Buffer.from('%PDF-matrix'), filename: 'matrix.pdf', contentType: 'application/pdf' }, allow: ADMINS, adminDelete: true },
+  { name: 'GET /api/evidence/files/:id/link', method: 'get', path: (c) => `/api/evidence/files/${c.fileId}/link`, allow: ALL },
+  { name: 'POST /api/evidence/files/:id/links', method: 'post', path: (c) => `/api/evidence/files/${c.fileId}/links`, body: () => ({ serviceCodes: ['M4'] }), withInvestor: true, allow: ALL, evidenceLink: true },
+  { name: 'DELETE /api/evidence/files/:id/links/:linkId', method: 'delete', path: (c) => `/api/evidence/files/${c.fileId}/links/${c.linkId}`, allow: ADMINS, adminDelete: true },
+  { name: 'DELETE /api/evidence/files/:id', method: 'delete', path: (c) => `/api/evidence/files/${c.fileId}`, body: () => ({ reason: 'Matrix cleanup' }), allow: ADMINS, adminDelete: true },
+
   // Lifecycle statuses — Portal-Admin only
   { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: [PA] },
   { name: 'PUT /api/lifecycle-statuses/reorder', method: 'put', path: () => '/api/lifecycle-statuses/reorder', body: () => ({ orderedIds: [f.spare._id.toString(), f.lead._id.toString(), f.idea._id.toString()] }), allow: [PA] },
@@ -165,6 +192,7 @@ const send = (route, ctx, token) => {
     const { field, buffer, filename, contentType } = route.attach;
     return req.attach(field, buffer, { filename, contentType });
   }
+  if (route.withInvestor) return req.send({ ...route.body(), investor: ctx.investorId });
   return route.body ? req.send(route.body()) : req;
 };
 
@@ -246,11 +274,26 @@ describe('Access matrix', () => {
             logs: await InteractionLog.countDocuments(),
             documents: (await InteractionLog.find({}).lean()).reduce((n, l) => n + (l.documents || []).length, 0),
             changeLog: await ChangeLog.countDocuments(),
+            evidenceFiles: await EvidenceFile.countDocuments(),
+            evidenceLinks: (await EvidenceFile.find({}).lean()).reduce((n, e) => n + (e.links || []).length, 0),
           });
           const before = await count();
           const res = await send(route, assignedCtx(), f.tokens[STAFF]);
           expect(res.statusCode).toBe(403);
           expect(await count()).toEqual(before);
+        });
+      }
+
+      if (route.evidenceLink) {
+        it('Staff, not assigned → denied (403), no link added', async () => {
+          for (const ctx of unassignedCtxs()) {
+            const auditBefore = await ChangeLog.countDocuments({ action: 'link' });
+            const res = await send(route, ctx, f.tokens[STAFF]);
+            expect(res.statusCode).toBe(403);
+            expect(res.body).toEqual({ msg: 'Forbidden: You can only change investors assigned to you' });
+            expect((await EvidenceFile.findById(f.evFile._id).lean()).links).toHaveLength(1);
+            expect(await ChangeLog.countDocuments({ action: 'link' })).toBe(auditBefore);
+          }
         });
       }
 
@@ -270,8 +313,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 36 unique entries', () => {
-    expect(ROUTES.length).toBe(36);
+  it('ROUTES list has 46 unique entries', () => {
+    expect(ROUTES.length).toBe(46);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

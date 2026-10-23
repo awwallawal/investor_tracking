@@ -17,6 +17,8 @@ import InteractionListPage from './pages/InteractionListPage'; // Import the new
 import ProtectedRoute from './components/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import AppLayout from './components/AppLayout'; // Import the correct AppLayout
+import EvidenceLibraryPage from './pages/EvidenceLibraryPage';
+import EvidenceFolderPage from './pages/EvidenceFolderPage';
 
 // Define the theme based on front-end-spec.md
 const theme = createTheme({
@@ -98,6 +100,8 @@ function App() {
             <Route path="/projects" element={<AppLayout><ProjectListPage /></AppLayout>} />
             <Route path="/projects/:id" element={<AppLayout><ProjectDetailPage /></AppLayout>} />
             <Route path="/interactions" element={<AppLayout><InteractionListPage /></AppLayout>} />
+            <Route path="/evidence" element={<AppLayout><EvidenceLibraryPage /></AppLayout>} />
+            <Route path="/evidence/:folderId" element={<AppLayout><EvidenceFolderPage /></AppLayout>} />
           </Route>
 
           {/* Admin Protected Routes */}

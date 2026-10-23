@@ -5,9 +5,12 @@ const Investor = require('../models/InvestorModel');
 const { SERVICE_CODES } = require('../constants/serviceCodes');
 const { hasOperatorKey, canWriteInteraction } = require('../middleware/accessHelpers');
 const { DENIED_MSG } = require('../middleware/projectWriteAccess');
-const { recordDeletions } = require('../utils/recordDeletion');
+const { recordDeletions, recordActionGroups } = require('../utils/recordDeletion');
 const { parseHappenedDate } = require('../utils/happenedDate');
 const documentStorage = require('../services/documentStorage');
+const {
+  withEvidenceFiles, findLinksTo, unlinkSnapshots, pullLinks,
+} = require('../services/evidenceLibrary');
 
 // Signed document links live this long (FR-Y19: short-lived).
 const LINK_TTL_SECONDS = 5 * 60;
@@ -163,7 +166,8 @@ exports.getInteractionLogs = async (req, res) => {
     const interactionLogs = await InteractionLog.find({ project: id })
       .populate('loggedBy', 'name email');
 
-    return res.status(200).json(sortByHappened(interactionLogs));
+    // Library files linked to each interaction (one query).
+    return res.status(200).json(await withEvidenceFiles(sortByHappened(interactionLogs)));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Server Error' });
@@ -188,7 +192,8 @@ exports.getInvestorInteractionLogs = async (req, res) => {
       .populate('loggedBy', 'name email')
       .populate('project', 'projectTitle');
 
-    return res.status(200).json(sortByHappened(interactionLogs));
+    // Library files linked to each interaction (one query).
+    return res.status(200).json(await withEvidenceFiles(sortByHappened(interactionLogs)));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Server Error' });
@@ -255,7 +260,7 @@ exports.getAllInteractionLogs = async (req, res) => {
       .populate('project', 'projectTitle') // Populate project title for context
       .populate('investor', 'investorName');
 
-    res.status(200).json(sortByHappened(interactionLogs));
+    res.status(200).json(await withEvidenceFiles(sortByHappened(interactionLogs)));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
@@ -280,15 +285,22 @@ exports.deleteInteractionLog = async (req, res) => {
     }
     const trimmed = typeof reason === 'string' && reason.trim() ? reason.trim() : null;
 
+    // Evidence library links to this interaction are removed (audited); the files stay.
+    const links = await findLinksTo({ interactionIds: [log._id] });
     try {
-      await recordDeletions(req, 'InteractionLog', [log], { reason: trimmed });
+      // Delete and unlink rows in one insert: all are written or none.
+      await recordActionGroups(req, [
+        ['delete', 'InteractionLog', [log]],
+        ['unlink', 'EvidenceFile', unlinkSnapshots(links)],
+      ], { reason: trimmed });
     } catch (auditError) {
       console.error('ChangeLog write failed; interaction delete aborted:', auditError);
       return res.status(500).json({ message: 'Could not write the audit record. Nothing was deleted.' });
     }
 
+    await pullLinks(links);
     await InteractionLog.deleteOne({ _id: log._id });
-    return res.status(200).json({ deleted: { interactions: 1 } });
+    return res.status(200).json({ deleted: { interactions: 1, ...(links.length > 0 && { evidenceLinks: links.length }) } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Server Error' });

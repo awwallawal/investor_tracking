@@ -43,3 +43,18 @@ export const openInteractionDocument = async (logId, docId) => {
     throw err;
   }
 };
+
+// Evidence library file: same pattern as openInteractionDocument (tab first,
+// then the signed link).
+export const openEvidenceFile = async (fileId) => {
+  const win = window.open('', '_blank');
+  if (!win) throw new Error(POPUP_BLOCKED_MSG);
+  win.opener = null;
+  try {
+    const { data } = await apiClient.get(`/api/evidence/files/${fileId}/link`);
+    win.location.href = data.url;
+  } catch (err) {
+    win.close();
+    throw err;
+  }
+};

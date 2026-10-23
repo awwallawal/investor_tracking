@@ -11,6 +11,7 @@ const interactionRoutes = require('./api/interactions');
 const lifecycleStatusRoutes = require('./api/lifecyclestatuses');
 const staffRoutes = require('./api/staff');
 const adminRoutes = require('./api/admin');
+const evidenceRoutes = require('./api/evidence');
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use('/api/interactions', interactionRoutes); // Mount interaction routes
 app.use('/api/lifecycle-statuses', lifecycleStatusRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/evidence', evidenceRoutes);
 
 const PORT = process.env.PORT || 3001;
 

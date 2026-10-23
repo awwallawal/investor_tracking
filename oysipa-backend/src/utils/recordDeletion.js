@@ -42,6 +42,15 @@ const recordDeletionGroups = (req, groups, opts = {}) => recordChanges(req, 'del
 
 const recordDeletions = (req, entity, docs, opts = {}) => recordDeletionGroups(req, [[entity, docs]], opts);
 
+// Rows of several actions in ONE insertMany, so either all are written or none.
+// `groups` is [[action, entity, docs], ...]. Throws on failure.
+const recordActionGroups = async (actor, groups, { reason = null, batchId = newBatchId() } = {}) => {
+  const rows = groups.flatMap(([action, entity, docs]) => changeRows(actor, action, entity, docs, { reason, batchId }));
+  if (rows.length === 0) return [];
+  return ChangeLog.insertMany(rows, { ordered: true });
+};
+
 module.exports = {
+  recordActionGroups, changeRows,
   recordDeletions, recordDeletionGroups, recordChanges, newBatchId, deletionRows,
 };
