@@ -32,6 +32,7 @@ const InvestorIssue = require('../models/InvestorIssue');
 const EvidenceFile = require('../models/EvidenceFile');
 const documentStorage = require('./documentStorage');
 const { recordChanges, newBatchId } = require('../utils/recordDeletion');
+const { runAs } = require('../utils/auditContext');
 const { parseHappenedDate } = require('../utils/happenedDate');
 const { sha256, mimeFromName } = require('./evidenceLibrary');
 const {
@@ -288,7 +289,7 @@ const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = doc
 
 // Writes the plan: issues, then folders and files, then links. Per-row
 // failures are reported and the run continues. Returns { batchId, counts, errors }.
-const applyIssueImport = async (plan, actor, { batchId = newBatchId() } = {}) => {
+const writeIssueImport = async (plan, actor, batchId) => {
   const user = actor && actor.user ? actor.user : actor;
   const result = {
     issuesCreated: 0, foldersCreated: 0, filesUploaded: 0, linksAdded: 0, auditRows: 0,
@@ -490,6 +491,13 @@ const applyIssueImport = async (plan, actor, { batchId = newBatchId() } = {}) =>
 
   return { batchId, counts: result, errors };
 };
+
+// Story 11.10: runs with the import user as the audit actor and the run's
+// batchId. The plugin's create rows are suppressed (the import writes its own
+// `import` rows); updates of existing records still get update rows.
+const applyIssueImport = (plan, actor, { batchId = newBatchId() } = {}) => runAs(
+  actor, () => writeIssueImport(plan, actor, batchId), { batchId, suppress: ['create'] },
+);
 
 module.exports = {
   parseIssuesFile, planIssueImport, applyIssueImport,

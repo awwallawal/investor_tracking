@@ -52,6 +52,8 @@ beforeEach(async () => {
 
   // A bystander log on the global seed project; it must survive.
   await mkLog({ project: global.mockProjectId });
+  // Story 11.10: the fixtures above wrote audit create rows; start empty.
+  await ChangeLog.collection.deleteMany({});
 });
 
 describe('DELETE /api/investors/:id', () => {

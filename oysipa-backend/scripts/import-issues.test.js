@@ -74,6 +74,8 @@ beforeEach(async () => {
   dg = await User.findOne({ email: 'dg@example.com' });
   investorA = await Investor.create({ investorName: 'Synthetic Issues A', sector: 'Tourism', countryOfOrigin: 'NG' });
   await Investor.create({ investorName: 'Synthetic Issues B', sector: 'Agro', countryOfOrigin: 'NG' });
+  // Story 11.10: the fixtures above wrote audit create rows; start empty.
+  await ChangeLog.collection.deleteMany({});
 });
 
 afterEach(() => {
@@ -166,6 +168,8 @@ describe('import-issues CLI', () => {
     expect(await ChangeLog.countDocuments({ batchId: first.result.batchId, entity: 'InvestorIssue', action: 'import' })).toBe(3);
     expect(await ChangeLog.countDocuments({ batchId: first.result.batchId, entity: 'EvidenceFile', action: 'import' })).toBe(4);
     expect(await ChangeLog.countDocuments({ batchId: first.result.batchId, action: 'link' })).toBe(6);
+    // Story 11.10: only `import` rows for the loaded issues, no duplicate create rows.
+    expect(await ChangeLog.countDocuments({ entity: 'InvestorIssue', action: 'create' })).toBe(0);
 
     fake.upload.mockClear();
     const second = await run({

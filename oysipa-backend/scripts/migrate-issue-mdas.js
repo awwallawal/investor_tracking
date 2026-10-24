@@ -19,14 +19,17 @@
 //
 // Usage (from oysipa-backend/):
 //   npm run migrate:issue-mdas -- --uri-env MONGO_URI                         # dry run
-//   npm run migrate:issue-mdas -- --uri-env MONGO_URI --apply                 # write
-//   npm run migrate:issue-mdas -- --uri-env MONGO_URI_LIVE --allow-live [--apply]
+//   npm run migrate:issue-mdas -- --uri-env MONGO_URI --apply --as <email>    # write
+//   npm run migrate:issue-mdas -- --uri-env MONGO_URI_LIVE --allow-live [--apply --as <email>]
 //
 // --uri-env <NAME>  environment variable holding the MongoDB URI (default MONGO_URI).
 //                   Values are loaded from oysipa-backend/.env if present; the URI
 //                   itself is never printed.
 // --apply           write the changes (otherwise dry run).
 // --allow-live      required to run against the live database (named "test").
+// --as <email>      required with --apply: the active Director-General / Portal-Admin
+//                   user the run is recorded as. Each changed record gets a ChangeLog
+//                   update row (reason "migration: migrate-issue-mdas", one batchId per run).
 // Exit codes: 0 = done, 1 = error (bad args, missing env, connect failure,
 // live database refused).
 
@@ -35,9 +38,14 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true
 const mongoose = require('mongoose');
 const InvestorIssue = require('../src/models/InvestorIssue');
 const { MDA_CODES, resolveMda } = require('../src/constants/mdas');
-const { parseArgs, assertDbAllowed } = require('./migrate-interaction-investor');
+const {
+  parseArgs, assertDbAllowed, assertActor, resolveActor, auditMigrationRow,
+} = require('./migrate-interaction-investor');
+const { newBatchId } = require('../src/utils/recordDeletion');
 
 const DEPLOY_NOTE = 'Run this right after deploying 11.7c: until it runs, issues still holding MDA names cannot have their status changed.';
+
+const REASON = 'migration: migrate-issue-mdas';
 
 const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
 
@@ -59,8 +67,11 @@ const convert = (values) => {
 };
 
 // Runs on the current mongoose connection. Returns the summary counts.
-const migrate = async ({ apply = false, allowLive = false, log = console.log } = {}) => {
+const migrate = async ({
+  apply = false, allowLive = false, actor = null, batchId = newBatchId(), log = console.log,
+} = {}) => {
   assertDbAllowed(mongoose.connection.name, allowLive);
+  assertActor(apply, actor);
   log(DEPLOY_NOTE);
   log(`Mode: ${apply ? 'APPLY (writing changes)' : 'DRY RUN (no changes written)'}`);
 
@@ -71,7 +82,7 @@ const migrate = async ({ apply = false, allowLive = false, log = console.log } =
     .toArray();
 
   const summary = {
-    total: issues.length, noMda: 0, alreadyCodes: 0, wouldChange: 0, changed: 0, unresolvedIssues: 0, qualified: 0, unresolvedValues: [],
+    total: issues.length, noMda: 0, alreadyCodes: 0, wouldChange: 0, changed: 0, unresolvedIssues: 0, qualified: 0, unresolvedValues: [], auditRows: 0, auditFailed: 0,
   };
 
   for (const issue of issues) {
@@ -101,6 +112,9 @@ const migrate = async ({ apply = false, allowLive = false, log = console.log } =
       log(`  ${label}: would set ${got.codes.join(', ')}${got.qualified ? ' (qualifier dropped)' : ''}`);
       continue;
     }
+    // The full stored issue, for the ChangeLog snapshot.
+    // eslint-disable-next-line no-await-in-loop
+    const before = await InvestorIssue.collection.findOne({ _id: issue._id });
     // eslint-disable-next-line no-await-in-loop
     const res = await InvestorIssue.collection.updateOne(
       { _id: issue._id, mdaResponsible: old },
@@ -109,25 +123,44 @@ const migrate = async ({ apply = false, allowLive = false, log = console.log } =
     if (res.modifiedCount === 1) {
       summary.changed += 1;
       log(`  ${label}: set ${got.codes.join(', ')}${got.qualified ? ' (qualifier dropped)' : ''}`);
+      // eslint-disable-next-line no-await-in-loop
+      await auditMigrationRow({
+        actor,
+        entity: 'InvestorIssue',
+        snapshot: before || issue,
+        changes: [{ field: 'mdaResponsible', old, new: got.codes }],
+        reason: REASON,
+        batchId,
+        label,
+        log,
+        summary,
+      });
     } else {
       log(`  ${label}: unchanged (changed since it was read)`);
     }
   }
 
   log(`Issues: ${summary.total}; no MDA: ${summary.noMda}; already codes: ${summary.alreadyCodes}; ${apply ? `changed: ${summary.changed}` : `would change: ${summary.wouldChange} (dry run)`}`);
+  if (apply) log(`ChangeLog rows: ${summary.auditRows}${summary.auditFailed ? `; audit rows FAILED: ${summary.auditFailed}` : ''}`);
   log(`Unresolved: ${summary.unresolvedIssues} issue(s)${summary.unresolvedValues.length ? ` - values ${summary.unresolvedValues.join(', ')}` : ''}`);
   if (summary.qualified) log(`Qualifier dropped on ${summary.qualified} issue(s)`);
   return summary;
 };
 
 const main = async () => {
-  const { uriEnv, apply, allowLive } = parseArgs(process.argv.slice(2));
+  const {
+    uriEnv, apply, allowLive, as,
+  } = parseArgs(process.argv.slice(2));
   const uri = process.env[uriEnv];
   if (!uri) throw new Error(`Environment variable ${uriEnv} is not set`);
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
   try {
     console.log(`Database: ${mongoose.connection.name} (from ${uriEnv})`);
-    await migrate({ apply, allowLive });
+    assertDbAllowed(mongoose.connection.name, allowLive);
+    const actor = apply ? await resolveActor(as) : null;
+    const summary = await migrate({ apply, allowLive, actor });
+    // Data changed but an audit row is missing: fail the run so it is noticed.
+    if (summary.auditFailed) process.exitCode = 1;
   } finally {
     await mongoose.disconnect();
   }

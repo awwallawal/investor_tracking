@@ -3,6 +3,15 @@
 const mongoose = require('mongoose');
 const InvestorIssue = require('../src/models/InvestorIssue');
 const { migrate } = require('./migrate-issue-refs');
+const User = require('../src/models/User');
+const ChangeLog = require('../src/models/ChangeLog');
+
+// Story 11.10: an apply run is recorded as a DG / Portal-Admin user (jest.setup seeds dg@example.com).
+let actor;
+beforeEach(async () => {
+  actor = await User.findOne({ email: 'dg@example.com' });
+});
+
 
 let lines;
 const log = (line) => lines.push(line);
@@ -43,7 +52,7 @@ describe('migrate-issue-refs', () => {
     expect(await raw()).toEqual(before);
     expect(lines.join('\n')).toContain('DRY RUN');
 
-    const applied = await migrate({ apply: true, log });
+    const applied = await migrate({ apply: true, log, actor });
     expect(applied).toMatchObject({ set: 8, failed: 0 });
     for (let n = 1; n <= 8; n += 1) {
       // eslint-disable-next-line no-await-in-loop
@@ -57,7 +66,7 @@ describe('migrate-issue-refs', () => {
     });
 
     const snap = await raw();
-    const second = await migrate({ apply: true, log });
+    const second = await migrate({ apply: true, log, actor });
     expect(second).toMatchObject({ alreadySet: 8, set: 0, wouldSet: 0 });
     expect(await raw()).toEqual(snap);
   });
@@ -67,7 +76,7 @@ describe('migrate-issue-refs', () => {
     const kept = await insert({ reference: 'ISS-05' }, day('01-01'));
     const newer = await insert({}, day('06-01'));
     const older = await insert({ importRef: 'S-LEGACY' }, day('02-01'));
-    const s = await migrate({ apply: true, log });
+    const s = await migrate({ apply: true, log, actor });
     expect(s).toMatchObject({
       total: 4, alreadySet: 1, fromImportRef: 1, nextFree: 2, set: 3,
     });
@@ -80,7 +89,7 @@ describe('migrate-issue-refs', () => {
   it('an importRef already used as another issue\'s reference gets the next free number', async () => {
     await insert({ reference: 'ISS-01' }, day('01-01'));
     const clash = await insert({ importRef: 'ISS-01' }, day('02-01'));
-    await migrate({ apply: true, log });
+    await migrate({ apply: true, log, actor });
     expect(await refOf(clash)).toBe('ISS-02');
     expect(lines.some((l) => l.includes('importRef ISS-01 is already used'))).toBe(true);
   });
@@ -89,12 +98,12 @@ describe('migrate-issue-refs', () => {
     const empty = await insert({ reference: '', importRef: 'ISS-5' }, day('01-01'));
     const nul = await insert({ reference: null }, day('02-01'));
     await insert({ reference: 'ISS-07' }, day('03-01'));
-    const s = await migrate({ apply: true, log });
+    const s = await migrate({ apply: true, log, actor });
     expect(s).toMatchObject({ alreadySet: 1, set: 2, failed: 0 });
     expect(await refOf(empty)).toBe('ISS-05');
     expect(await refOf(nul)).toBe('ISS-08');
     expect(lines).toContain('Run right after deploying 11.7b; if a row reports FAILED, run it again.');
-    const second = await migrate({ apply: true, log });
+    const second = await migrate({ apply: true, log, actor });
     expect(second.set).toBe(0);
   });
 
@@ -109,10 +118,71 @@ describe('migrate-issue-refs', () => {
     let err;
     try {
       mongoose.connection.name = 'test';
-      await migrate({ apply: true, log }).catch((e) => { err = e; });
+      await migrate({ apply: true, log, actor }).catch((e) => { err = e; });
     } finally {
       mongoose.connection.name = realName;
     }
     expect(err && err.message).toMatch(/allow-live/);
+  });
+});
+
+describe('migrate-issue-refs audit rows (story 11.10)', () => {
+  it('--apply with an actor writes one update row per changed issue (reason, batchId, old/new); a second run writes none', async () => {
+    const a = await insert({ importRef: 'ISS-01' }, day('01-01'));
+    const b = await insert({}, day('02-01'));
+    await insert({ reference: 'ISS-09' }, day('03-01'));
+    await ChangeLog.collection.deleteMany({});
+    const s = await migrate({ apply: true, log, actor });
+    expect(s).toMatchObject({ set: 2, auditRows: 2, auditFailed: 0 });
+    const rows = await ChangeLog.find({ reason: 'migration: migrate-issue-refs' }).sort({ createdAt: 1 }).lean();
+    expect(rows).toHaveLength(2);
+    expect(new Set(rows.map((r) => r.batchId)).size).toBe(1);
+    rows.forEach((r) => {
+      expect(r).toMatchObject({ entity: 'InvestorIssue', action: 'update', byName: 'DG User', role: 'Director-General' });
+      expect(String(r.by)).toBe(String(actor._id));
+      expect(r.createdAt).toBeInstanceOf(Date);
+    });
+    const rowA = rows.find((r) => String(r.entityId) === String(a));
+    expect(rowA.changes).toEqual([{ field: 'reference', old: null, new: 'ISS-01' }]);
+    expect(rowA.snapshot.importRef).toBe('ISS-01');
+    const rowB = rows.find((r) => String(r.entityId) === String(b));
+    expect(rowB.changes).toEqual([{ field: 'reference', old: null, new: 'ISS-10' }]);
+
+    await migrate({ apply: true, log, actor });
+    expect(await ChangeLog.countDocuments({ reason: 'migration: migrate-issue-refs' })).toBe(2);
+  });
+
+  it('--apply without an actor is refused and nothing is written', async () => {
+    await insert({ importRef: 'ISS-01' }, day('01-01'));
+    const before = await raw();
+    await expect(migrate({ apply: true, log })).rejects.toThrow(/--apply needs --as/);
+    expect(await raw()).toEqual(before);
+    expect(await ChangeLog.countDocuments({ reason: 'migration: migrate-issue-refs' })).toBe(0);
+  });
+
+  it('a dry run writes no ChangeLog row', async () => {
+    await insert({ importRef: 'ISS-01' }, day('01-01'));
+    await migrate({ apply: false, log });
+    expect(await ChangeLog.countDocuments({ reason: 'migration: migrate-issue-refs' })).toBe(0);
+  });
+});
+
+describe('migrate-issue-refs when an audit write fails (story 11.10)', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('the run continues, the data changes, auditFailed is 1 and FAILED is logged', async () => {
+    const a = await insert({ importRef: 'ISS-01' }, day('01-01'));
+    const b = await insert({ importRef: 'ISS-02' }, day('02-01'));
+    await ChangeLog.collection.deleteMany({});
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(ChangeLog, 'insertMany').mockRejectedValueOnce(new Error('audit store down'));
+    const s = await migrate({ apply: true, log, actor });
+    expect(s).toMatchObject({ set: 2, auditRows: 1, auditFailed: 1 });
+    expect(await refOf(a)).toBe('ISS-01');
+    expect(await refOf(b)).toBe('ISS-02');
+    expect(lines.some((l) => l.includes('audit row FAILED'))).toBe(true);
+    expect(lines.some((l) => l.includes('audit rows FAILED: 1'))).toBe(true);
+    expect(errSpy).toHaveBeenCalledWith('[audit] ChangeLog write failed', expect.objectContaining({ entity: 'InvestorIssue', action: 'update' }));
+    expect(await ChangeLog.countDocuments({ reason: 'migration: migrate-issue-refs' })).toBe(1);
   });
 });

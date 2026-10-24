@@ -1,3 +1,4 @@
+const { AsyncResource } = require('async_hooks');
 const path = require('path');
 const multer = require('multer');
 const {
@@ -21,7 +22,8 @@ const importFile = (req, res, next) => {
     },
   }).single('file');
 
-  upload(req, res, (err) => {
+  // Bound to the request's audit context (multer calls back from stream events).
+  upload(req, res, AsyncResource.bind((err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ message: 'The import file is larger than 2 MB.' });
       if (err.code === 'BAD_FILE_TYPE') return res.status(400).json({ message: err.message });
@@ -31,7 +33,7 @@ const importFile = (req, res, next) => {
       return res.status(400).json({ message: 'Choose an import file (.json) in the form field "file".' });
     }
     return next();
-  });
+  }));
 };
 
 const readPlan = async (req) => planImport(parseImportFile(req.file.buffer));

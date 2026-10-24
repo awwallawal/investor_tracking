@@ -5,7 +5,7 @@ const InteractionLog = require('../models/InteractionLog');
 const InvestorIssue = require('../models/InvestorIssue');
 const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { investorSearchFilter } = require('../services/investorSearch');
-const { recordActionGroups, newBatchId } = require('../utils/recordDeletion');
+const { recordActionGroups } = require('../utils/recordDeletion');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 const { isAdminRole } = require('../middleware/accessHelpers');
 const { findLinksTo, unlinkSnapshots, pullLinks } = require('../services/evidenceLibrary');
@@ -249,7 +249,7 @@ exports.deleteInvestor = async (req, res) => {
         ['delete', 'InvestorIssue', issues],
         ['delete', 'InvestmentAnnouncement', announcements],
         ['unlink', 'EvidenceFile', unlinkSnapshots(links)],
-      ], { reason: trimmed, batchId: newBatchId() });
+      ], { reason: trimmed });
     } catch (auditError) {
       console.error('ChangeLog write failed; investor delete aborted:', auditError);
       return res.status(500).json({ message: 'Could not write the audit record. Nothing was deleted.' });

@@ -4,6 +4,15 @@ const mongoose = require('mongoose');
 const Investor = require('../src/models/InvestorModel');
 const InvestmentProject = require('../src/models/InvestmentProject');
 const { migrate } = require('./migrate-lead-source');
+const User = require('../src/models/User');
+const ChangeLog = require('../src/models/ChangeLog');
+
+// Story 11.10: an apply run is recorded as a DG / Portal-Admin user (jest.setup seeds dg@example.com).
+let actor;
+beforeEach(async () => {
+  actor = await User.findOne({ email: 'dg@example.com' });
+});
+
 
 let lines;
 const log = (line) => lines.push(line);
@@ -44,7 +53,7 @@ describe('migrate-lead-source', () => {
   });
 
   it('apply sets only missing values, keeps updatedAt and set values; a second run changes 0', async () => {
-    const first = await migrate({ apply: true, log });
+    const first = await migrate({ apply: true, log, actor });
     expect(first.leadSource.changed).toBe(2);
     expect(first.organisationType.changed).toBe(2);
     expect(first.currency.changed).toBe(2);
@@ -61,7 +70,7 @@ describe('migrate-lead-source', () => {
     expect(lines.some((l) => l.includes(String(oldInv)) && l.includes('set leadSource'))).toBe(true);
 
     const snap = await raw();
-    const second = await migrate({ apply: true, log });
+    const second = await migrate({ apply: true, log, actor });
     expect(second.leadSource.changed).toBe(0);
     expect(second.organisationType.changed).toBe(0);
     expect(second.currency.changed).toBe(0);
@@ -73,10 +82,30 @@ describe('migrate-lead-source', () => {
     let err;
     try {
       mongoose.connection.name = 'test';
-      await migrate({ apply: true, log }).catch((e) => { err = e; });
+      await migrate({ apply: true, log, actor }).catch((e) => { err = e; });
     } finally {
       mongoose.connection.name = realName;
     }
     expect(err && err.message).toMatch(/allow-live/);
+  });
+});
+
+describe('migrate-lead-source audit rows (story 11.10)', () => {
+  it('writes an update row for each value it sets', async () => {
+    await ChangeLog.collection.deleteMany({});
+    await migrate({ apply: true, log, actor });
+    const rows = await ChangeLog.find({ reason: 'migration: migrate-lead-source' }).lean();
+    const lead = rows.find((r) => String(r.entityId) === String(oldInv) && r.changes[0].field === 'leadSource');
+    expect(lead).toMatchObject({ entity: 'Investor', action: 'update', byName: 'DG User' });
+    expect(lead.changes).toEqual([{ field: 'leadSource', old: null, new: 'Unknown (pre-T11)' }]);
+    const currency = rows.find((r) => String(r.entityId) === String(oldProject));
+    expect(currency).toMatchObject({ entity: 'InvestmentProject' });
+    expect(currency.changes).toEqual([{ field: 'currency', old: null, new: 'NGN' }]);
+    await migrate({ apply: true, log, actor });
+    expect(await ChangeLog.countDocuments({ reason: 'migration: migrate-lead-source' })).toBe(rows.length);
+  });
+
+  it('--apply without an actor is refused', async () => {
+    await expect(migrate({ apply: true, log })).rejects.toThrow(/--apply needs --as/);
   });
 });

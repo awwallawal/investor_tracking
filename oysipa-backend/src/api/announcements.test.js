@@ -315,7 +315,8 @@ describe('Files', () => {
     const top = await EvidenceFolder.findById(folder.parent).lean();
     expect(top.key).toBe('announcements');
     expect(top.name).toBe('Announcements');
-    const rows = await ChangeLog.find({}).lean();
+    // (11.10: the fixtures' own create rows are other entities.)
+    const rows = await ChangeLog.find({ entity: 'EvidenceFile' }).lean();
     expect(rows.map((r) => r.action).sort()).toEqual(['link', 'upload']);
     const detail = await request(app).get(`/api/announcements/${ann._id}`).set('Authorization', bearer(staffToken)).expect(200);
     expect(detail.body.files.map((f) => f._id)).toEqual([res.body._id]);

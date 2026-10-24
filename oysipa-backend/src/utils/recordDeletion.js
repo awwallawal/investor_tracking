@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const ChangeLog = require('../models/ChangeLog');
+const { contextBatchId } = require('./auditContext');
 
 // `actor` is either the request (req.user is the DB user set by the auth
 // middleware, so `role` is the stored role, not the token's) or a User document
@@ -26,10 +27,12 @@ const changeRows = (actor, action, entity, docs, { reason = null, batchId }) => 
 const deletionRows = (req, entity, docs, opts) => changeRows(req, 'delete', entity, docs, opts);
 
 const newBatchId = () => crypto.randomUUID();
+// Default batch: the request's (or runAs') batchId, else a new one.
+const defaultBatchId = () => contextBatchId() || newBatchId();
 
 // Writes audit rows for any action in one insertMany. Throws on failure.
 // `groups` is [[entity, docs], ...].
-const recordChanges = async (actor, action, groups, { reason = null, batchId = newBatchId() } = {}) => {
+const recordChanges = async (actor, action, groups, { reason = null, batchId = defaultBatchId() } = {}) => {
   const rows = groups.flatMap(([entity, docs]) => changeRows(actor, action, entity, docs, { reason, batchId }));
   if (rows.length === 0) return [];
   return ChangeLog.insertMany(rows, { ordered: true });
@@ -44,13 +47,41 @@ const recordDeletions = (req, entity, docs, opts = {}) => recordDeletionGroups(r
 
 // Rows of several actions in ONE insertMany, so either all are written or none.
 // `groups` is [[action, entity, docs], ...]. Throws on failure.
-const recordActionGroups = async (actor, groups, { reason = null, batchId = newBatchId() } = {}) => {
+const recordActionGroups = async (actor, groups, { reason = null, batchId = defaultBatchId() } = {}) => {
   const rows = groups.flatMap(([action, entity, docs]) => changeRows(actor, action, entity, docs, { reason, batchId }));
   if (rows.length === 0) return [];
   return ChangeLog.insertMany(rows, { ordered: true });
 };
 
+// Explicit update rows (story 11.10), for writes the audit plugin cannot see
+// (raw collection calls in migrations and record-backup-diff).
+// `items` is [{ snapshot, changes: [{ field, old, new }] }]; snapshot is the
+// document before the change. Items without changes are skipped. Throws on failure.
+const recordUpdates = async (actor, entity, items, { reason = null, batchId = defaultBatchId() } = {}) => {
+  const user = actorUser(actor);
+  const rows = items
+    .filter((i) => i && i.snapshot && Array.isArray(i.changes) && i.changes.length > 0)
+    .map((i) => ({
+      entity,
+      entityId: i.snapshot._id,
+      action: 'update',
+      by: user._id,
+      byName: user.name,
+      role: user.role,
+      reason,
+      snapshot: i.snapshot,
+      changes: i.changes.map((c) => ({
+        field: c.field,
+        old: c.old === undefined ? null : c.old,
+        new: c.new === undefined ? null : c.new,
+      })),
+      batchId,
+    }));
+  if (rows.length === 0) return [];
+  return ChangeLog.insertMany(rows, { ordered: true });
+};
+
 module.exports = {
-  recordActionGroups, changeRows,
+  recordActionGroups, changeRows, recordUpdates,
   recordDeletions, recordDeletionGroups, recordChanges, newBatchId, deletionRows,
 };

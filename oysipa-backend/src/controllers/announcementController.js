@@ -12,7 +12,7 @@ const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const InvestmentProject = require('../models/InvestmentProject');
 const EvidenceFile = require('../models/EvidenceFile');
 const documentStorage = require('../services/documentStorage');
-const { recordActionGroups, newBatchId } = require('../utils/recordDeletion');
+const { recordActionGroups } = require('../utils/recordDeletion');
 const { parseHappenedDate } = require('../utils/happenedDate');
 const { isAdminRole, isAssignedTo, hasOperatorKey } = require('../middleware/accessHelpers');
 const {
@@ -459,7 +459,7 @@ exports.deleteAnnouncement = async (req, res) => {
       await recordActionGroups(req, [
         ['delete', 'InvestmentAnnouncement', [announcement]],
         ['unlink', 'EvidenceFile', unlinkSnapshots(links)],
-      ], { reason: trimmed, batchId: newBatchId() });
+      ], { reason: trimmed });
     } catch (auditError) {
       console.error('ChangeLog write failed; announcement delete aborted:', auditError);
       return res.status(500).json({ message: 'Could not write the audit record. Nothing was deleted.' });

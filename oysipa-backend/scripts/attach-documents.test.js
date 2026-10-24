@@ -87,6 +87,8 @@ beforeEach(async () => {
   });
   for (let i = 1; i <= 6; i += 1) await mk(`INT-SYN-${i}`, { investor: investorA._id });
   await mk('INT-SYN-7', { project: project._id });
+  // Story 11.10: the fixtures above wrote audit create rows; start empty.
+  await ChangeLog.collection.deleteMany({});
 });
 
 afterEach(() => {

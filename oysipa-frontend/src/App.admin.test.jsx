@@ -37,3 +37,33 @@ describe('/admin route guard', () => {
     expect(screen.queryByRole('heading', { name: 'MoU MDAs' })).not.toBeInTheDocument();
   });
 });
+
+describe('/changelog route guard (11.10)', () => {
+  beforeEach(() => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url) => Promise.resolve({
+      data: url === '/api/changelog' ? {
+        rows: [], total: 0, page: 1, pageSize: 50,
+      } : [],
+    }));
+    window.history.pushState({}, '', '/changelog');
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem('token');
+    window.history.pushState({}, '', '/');
+  });
+
+  it.each(['Director-General', 'Portal-Admin'])('%s → the Change log page renders', async (role) => {
+    localStorage.setItem('token', tokenFor(role));
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Change log' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/changelog');
+  });
+
+  it('Staff → redirected to /dashboard', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    render(<App />);
+    await waitFor(() => expect(window.location.pathname).toBe('/dashboard'));
+    expect(screen.queryByRole('heading', { name: 'Change log' })).not.toBeInTheDocument();
+  });
+});

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const auditContext = require('../utils/auditContext');
 
 module.exports = async function (req, res, next) {
   const authHeader = req.header('Authorization');
@@ -23,9 +24,11 @@ module.exports = async function (req, res, next) {
     if (!req.user) {
         return res.status(401).json({ msg: 'Token is not valid, user not found' });
     }
-
-    next();
   } catch (err) {
-    res.status(401).json({ msg: 'Token is not valid' });
+    return res.status(401).json({ msg: 'Token is not valid' });
   }
+
+  // Story 11.10: the rest of the request runs with this user as the audit
+  // actor (ChangeLog `by`), see utils/auditContext.js.
+  return auditContext.middleware(req, res, next);
 };

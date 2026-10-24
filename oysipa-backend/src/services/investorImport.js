@@ -29,6 +29,7 @@ const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
 const { recordChanges, newBatchId } = require('../utils/recordDeletion');
+const { runAs } = require('../utils/auditContext');
 const { parseHappenedDate, todayLagos } = require('../utils/happenedDate');
 const { SERVICE_CODES } = require('../constants/serviceCodes');
 const {
@@ -561,10 +562,9 @@ const confirmationText = (plan) => `IMPORT ${plan.report.counts.create}`;
 // Writes the plan. `actor` is the DG/Admin user (a User document or req).
 // Returns { batchId, counts, errors[] }; per-item write failures are reported,
 // not thrown, so the rest of the plan still runs.
-const applyImport = async (plan, actor) => {
+const writeImport = async (plan, actor, batchId) => {
   const user = actor && actor.user ? actor.user : actor;
   if (!user || !user._id) throw new Error('applyImport needs the user running the import.');
-  const batchId = newBatchId();
   const counts = {
     created: 0, updated: 0, fieldsFilled: 0, projectsCreated: 0, interactionsCreated: 0, auditRows: 0,
   };
@@ -675,6 +675,14 @@ const applyImport = async (plan, actor) => {
   return {
     batchId, counts, errors, skipped,
   };
+};
+
+// Story 11.10: runs with the import user as the audit actor and the run's
+// batchId. The plugin's create rows are suppressed (the import writes its own
+// `import` rows); updates of existing records still get update rows.
+const applyImport = (plan, actor) => {
+  const batchId = newBatchId();
+  return runAs(actor, () => writeImport(plan, actor, batchId), { batchId, suppress: ['create'] });
 };
 
 module.exports = {

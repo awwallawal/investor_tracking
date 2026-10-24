@@ -48,6 +48,18 @@ describe('Sidebar — Investor Directory link', () => {
     expect(screen.getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/announcements');
   });
 
+  it.each(['Director-General', 'Portal-Admin'])('%s sees "Change log" (11.10)', (role) => {
+    localStorage.setItem('token', tokenFor(role));
+    renderSidebar();
+    expect(screen.getByRole('link', { name: 'Change log' })).toHaveAttribute('href', '/changelog');
+  });
+
+  it('Staff has no "Change log" item (11.10)', () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderSidebar();
+    expect(screen.queryByText('Change log')).not.toBeInTheDocument();
+  });
+
   it.each(['Director-General', 'Portal-Admin'])('%s sees Admin Settings (MoU MDAs, 11.7c)', (role) => {
     localStorage.setItem('token', tokenFor(role));
     renderSidebar();

@@ -3,6 +3,15 @@
 const mongoose = require('mongoose');
 const InvestorIssue = require('../src/models/InvestorIssue');
 const { migrate } = require('./migrate-issue-mdas');
+const User = require('../src/models/User');
+const ChangeLog = require('../src/models/ChangeLog');
+
+// Story 11.10: an apply run is recorded as a DG / Portal-Admin user (jest.setup seeds dg@example.com).
+let actor;
+beforeEach(async () => {
+  actor = await User.findOne({ email: 'dg@example.com' });
+});
+
 
 // The 11.7 hand-written names, as stored before 11.7c.
 const OLD_NAMES = [
@@ -70,7 +79,7 @@ describe('migrate-issue-mdas', () => {
 
   it('apply converts every old name, leaves other fields and unresolved issues untouched; a second run changes 0', async () => {
     const before = await raw();
-    const s = await migrate({ apply: true, log });
+    const s = await migrate({ apply: true, log, actor });
     expect(s.changed).toBe(2);
 
     const old = await InvestorIssue.collection.findOne({ _id: oldId });
@@ -93,7 +102,7 @@ describe('migrate-issue-mdas', () => {
     await expect(InvestorIssue.hydrate(old).validate()).resolves.toBeUndefined();
 
     const snap = await raw();
-    const second = await migrate({ apply: true, log });
+    const second = await migrate({ apply: true, log, actor });
     expect(second.changed).toBe(0);
     expect(second.alreadyCodes).toBe(3);
     expect(await raw()).toEqual(snap);
@@ -105,7 +114,7 @@ describe('migrate-issue-mdas', () => {
     const emptyId = await insert('ISS-M7', []);
     const stringId = await insert('ISS-M8', 'Ministry of Finance');
     const before = await raw();
-    const s = await migrate({ apply: true, log });
+    const s = await migrate({ apply: true, log, actor });
     expect(s).toMatchObject({
       total: 8, noMda: 3, alreadyCodes: 1, changed: 2, unresolvedIssues: 2,
     });
@@ -128,10 +137,35 @@ describe('migrate-issue-mdas', () => {
     let err;
     try {
       mongoose.connection.name = 'test';
-      await migrate({ apply: true, log }).catch((e) => { err = e; });
+      await migrate({ apply: true, log, actor }).catch((e) => { err = e; });
     } finally {
       mongoose.connection.name = realName;
     }
     expect(err && err.message).toMatch(/allow-live/);
+  });
+});
+
+describe('migrate-issue-mdas audit rows (story 11.10)', () => {
+  it('writes one update row per changed issue with the old names and new codes', async () => {
+    await ChangeLog.collection.deleteMany({});
+    const s = await migrate({ apply: true, log, actor });
+    expect(s.auditRows).toBe(s.changed);
+    expect(s.changed).toBeGreaterThan(0);
+    const rows = await ChangeLog.find({ reason: 'migration: migrate-issue-mdas' }).lean();
+    expect(rows).toHaveLength(s.changed);
+    const row = rows.find((r) => String(r.entityId) === String(oldId));
+    expect(row).toMatchObject({ entity: 'InvestorIssue', action: 'update', byName: 'DG User' });
+    expect(row.changes).toHaveLength(1);
+    expect(row.changes[0].field).toBe('mdaResponsible');
+    expect(row.changes[0].old).toEqual(OLD_NAMES);
+    const stored = await InvestorIssue.collection.findOne({ _id: oldId });
+    expect(row.changes[0].new).toEqual(stored.mdaResponsible);
+    // Repeat-safe: nothing changes, no new rows.
+    await migrate({ apply: true, log, actor });
+    expect(await ChangeLog.countDocuments({ reason: 'migration: migrate-issue-mdas' })).toBe(s.changed);
+  });
+
+  it('--apply without an actor is refused', async () => {
+    await expect(migrate({ apply: true, log })).rejects.toThrow(/--apply needs --as/);
   });
 });

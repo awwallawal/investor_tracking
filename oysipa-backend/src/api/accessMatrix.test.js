@@ -242,6 +242,9 @@ const ROUTES = [
   { name: 'GET /api/admin/dashboard-kpis', method: 'get', path: () => '/api/admin/dashboard-kpis', allow: ADMINS },
   { name: 'GET /api/admin/issues-metric', method: 'get', path: () => '/api/admin/issues-metric?year=2026', allow: ADMINS },
   { name: 'GET /api/admin/announcements-metric', method: 'get', path: () => '/api/admin/announcements-metric?year=2026', allow: ADMINS },
+  // ChangeLog viewer (story 11.10): read-only, DG / Portal-Admin.
+  { name: 'GET /api/changelog', method: 'get', path: () => '/api/changelog?entity=Investor&page=1', allow: ADMINS },
+  { name: 'GET /api/changelog/health', method: 'get', path: () => '/api/changelog/health', allow: ADMINS },
 ];
 
 const send = (route, ctx, token) => {
@@ -434,8 +437,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 67 unique entries', () => {
-    expect(ROUTES.length).toBe(67);
+  it('ROUTES list has 69 unique entries', () => {
+    expect(ROUTES.length).toBe(69);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

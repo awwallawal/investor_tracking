@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const auditPlugin = require('../utils/auditPlugin');
 
 // Announcements register (story 11.8, SABER DLR 4.4): a public investment
 // announcement and whether it names OYSIPA's support. The investor is the
@@ -53,5 +54,8 @@ InvestmentAnnouncementSchema.index({ project: 1 });
 InvestmentAnnouncementSchema.index({ announcementDate: 1 });
 InvestmentAnnouncementSchema.index({ supportingInteractions: 1 });
 InvestmentAnnouncementSchema.index({ importRef: 1 }, { unique: true, sparse: true });
+
+// Story 11.10: ChangeLog create/update rows with old/new values.
+InvestmentAnnouncementSchema.plugin(auditPlugin, { entity: 'InvestmentAnnouncement' });
 
 module.exports = mongoose.model('InvestmentAnnouncement', InvestmentAnnouncementSchema);

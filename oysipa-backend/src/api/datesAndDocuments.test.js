@@ -536,7 +536,7 @@ describe('Documents', () => {
     expect(order).toEqual(['changelog', 'remove']);
     expect(fake.remove).toHaveBeenCalledWith(expect.objectContaining({ key: 'fake-key-1' }));
 
-    const row = await ChangeLog.findOne({ entity: 'InteractionLog', entityId: log._id }).lean();
+    const row = await ChangeLog.findOne({ entity: 'InteractionLog', entityId: log._id, action: 'delete' }).lean();
     expect(row).toBeTruthy();
     expect(row.reason).toBe('Wrong file');
     expect(row.snapshot.document.fileName).toBe('scan.pdf');

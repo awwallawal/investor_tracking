@@ -77,6 +77,8 @@ beforeEach(async () => {
   logOther = await InteractionLog.create({ investor: other._id, loggedBy: dgUser._id, description: 'Call', category: 'Call' });
   top = await EvidenceFolder.create({ key: 'programmes', name: 'Programmes and events', order: 1 });
   sub = await EvidenceFolder.create({ key: 'programmes/forum', name: 'Forum', parent: top._id, folderDate: new Date('2025-05-15') });
+  // Story 11.10: the fixtures above wrote audit create rows; start empty.
+  await ChangeLog.collection.deleteMany({});
 });
 
 afterEach(() => {

@@ -23,6 +23,7 @@ import IssuesPage from './pages/IssuesPage';
 import IssueDetailPage from './pages/IssueDetailPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import AnnouncementDetailPage from './pages/AnnouncementDetailPage';
+import ChangeLogPage from './pages/ChangeLogPage';
 
 // Define the theme based on front-end-spec.md
 const theme = createTheme({
@@ -115,6 +116,8 @@ function App() {
           {/* Admin Protected Routes (MoU MDAs: DG + Portal-Admin; lifecycle statuses: Portal-Admin only, inside the page) */}
           <Route element={<ProtectedRoute allowedRoles={['Director-General', 'Portal-Admin']} />}>
             <Route path="/admin" element={<AppLayout><AdminPage /></AppLayout>} />
+            {/* Read-only ChangeLog viewer (story 11.10) */}
+            <Route path="/changelog" element={<AppLayout><ChangeLogPage /></AppLayout>} />
           </Route>
 
         </Routes>

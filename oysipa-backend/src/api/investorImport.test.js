@@ -226,6 +226,16 @@ describe('POST /api/investors/import/run', () => {
     });
     expect(res.body.errors).toEqual([]);
     const { batchId } = res.body;
+    // Story 11.10: only `import` rows, no duplicate create rows from the audit plugin;
+    // the fill of the existing investor also gets an update row with old/new values.
+    expect(await ChangeLog.countDocuments({ batchId, action: 'create' })).toBe(0);
+    expect(await ChangeLog.countDocuments({ byName: 'DG User', action: 'create' })).toBe(0);
+    expect(await ChangeLog.countDocuments({ batchId, action: 'import' })).toBeGreaterThan(0);
+    const fill = await ChangeLog.findOne({ batchId, action: 'update', entity: 'Investor', entityId: existing._id }).lean();
+    expect(fill).toBeTruthy();
+    expect(fill.byName).toBe('DG User');
+    expect(String(fill.by)).toBe(String(dgUser._id)); // actor kept through the multipart upload
+    expect(fill.changes.length).toBeGreaterThan(0);
 
     // Created investor: fields, .africa email, notes with company email, stamps.
     const alpha = await Investor.findOne({ investorName: 'Alpha Agro Limited' }).lean();
@@ -280,7 +290,8 @@ describe('POST /api/investors/import/run', () => {
     expect(String(logs[1].investor)).toBe(String(existing._id));
 
     // Audit: 3 created + 1 updated investor, 3 projects, 2 interactions.
-    const rows = await ChangeLog.find({}).lean();
+    // (11.10: plus the fixtures' create rows and the fill's update rows, checked above.)
+    const rows = await ChangeLog.find({ action: 'import' }).lean();
     expect(rows).toHaveLength(9);
     rows.forEach((r) => {
       expect(r).toMatchObject({ action: 'import', batchId, role: 'Director-General' });

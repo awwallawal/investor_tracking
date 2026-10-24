@@ -4,21 +4,40 @@ const mongoose = require('mongoose');
 // inserted; the hooks below refuse the Mongoose model/query/document update and
 // delete paths (and bulkWrite ops other than insertOne). Raw driver calls
 // (ChangeLog.collection.*) are NOT covered. There is no API to change it either.
-const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog', 'EvidenceFolder', 'EvidenceFile', 'InvestorIssue', 'InvestmentAnnouncement'];
+const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog', 'EvidenceFolder', 'EvidenceFile', 'InvestorIssue', 'InvestmentAnnouncement', 'Setting'];
 // upload: a file added in the Evidence library screen; link/unlink: a library
 // file linked to (or unlinked from) an investor / interaction.
-const ACTIONS = ['delete', 'import', 'upload', 'link', 'unlink'];
+// create/update (story 11.10): written by the audit plugin (utils/auditPlugin.js)
+// and by migrations, with field-level `changes`.
+const ACTIONS = ['delete', 'import', 'upload', 'link', 'unlink', 'create', 'update'];
+
+// byName of a row written with no user in the request context (e.g. a write
+// from a script that did not call runAs). Only these rows may have a null `by`.
+const SYSTEM_ACTOR_NAME = 'system (no user context)';
+
+const ChangeSchema = new mongoose.Schema({
+  field: { type: String, required: true },
+  old: { type: mongoose.Schema.Types.Mixed, default: null },
+  new: { type: mongoose.Schema.Types.Mixed, default: null },
+}, { _id: false, minimize: false });
 
 const ChangeLogSchema = new mongoose.Schema({
   entity: { type: String, enum: ENTITIES, required: true },
   entityId: { type: mongoose.Schema.Types.ObjectId, required: true },
   action: { type: String, enum: ACTIONS, required: true },
-  by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [function byRequired() { return this.byName !== SYSTEM_ACTOR_NAME; }, 'by is required'],
+  },
   byName: { type: String },
   role: { type: String },
   reason: { type: String, default: null },
-  // The full document as it was just before the change.
+  // The full document as it was just before the change (create rows: the new
+  // document).
   snapshot: { type: mongoose.Schema.Types.Mixed, required: true },
+  // Field-level old/new values (update rows; top-level paths).
+  changes: { type: [ChangeSchema], default: undefined },
   // Shared by every row written for one request (e.g. one investor cascade).
   batchId: { type: String, required: true },
 }, {
@@ -27,6 +46,10 @@ const ChangeLogSchema = new mongoose.Schema({
 });
 
 ChangeLogSchema.index({ entity: 1, entityId: 1 });
+// The viewer lists newest first, optionally by entity / action.
+ChangeLogSchema.index({ createdAt: -1 });
+ChangeLogSchema.index({ entity: 1, createdAt: -1 });
+ChangeLogSchema.index({ action: 1, createdAt: -1 });
 
 const APPEND_ONLY_MSG = 'ChangeLog is append-only: rows cannot be updated or deleted.';
 const refuse = () => { throw new Error(APPEND_ONLY_MSG); };
@@ -53,5 +76,6 @@ const ChangeLog = mongoose.model('ChangeLog', ChangeLogSchema);
 ChangeLog.APPEND_ONLY_MSG = APPEND_ONLY_MSG;
 ChangeLog.ENTITIES = ENTITIES;
 ChangeLog.ACTIONS = ACTIONS;
+ChangeLog.SYSTEM_ACTOR_NAME = SYSTEM_ACTOR_NAME;
 
 module.exports = ChangeLog;

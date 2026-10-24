@@ -15,6 +15,7 @@ const evidenceRoutes = require('./api/evidence');
 const issueRoutes = require('./api/issues');
 const mdaRoutes = require('./api/mdas');
 const announcementRoutes = require('./api/announcements');
+const changeLogRoutes = require('./api/changelog');
 
 const app = express();
 
@@ -86,6 +87,7 @@ app.use('/api/evidence', evidenceRoutes);
 app.use('/api/issues', issueRoutes);
 app.use('/api/mdas', mdaRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/changelog', changeLogRoutes);
 
 const PORT = process.env.PORT || 3001;
 

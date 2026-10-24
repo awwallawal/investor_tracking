@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const auditPlugin = require('../utils/auditPlugin');
 const { CURRENCIES, DEFAULT_CURRENCY } = require('../constants/investorFields');
 
 const investmentProjectSchema = new mongoose.Schema({
@@ -59,6 +60,9 @@ const investmentProjectSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+// Story 11.10: ChangeLog create/update rows with old/new values.
+investmentProjectSchema.plugin(auditPlugin, { entity: 'InvestmentProject' });
 
 const InvestmentProject = mongoose.model('InvestmentProject', investmentProjectSchema);
 

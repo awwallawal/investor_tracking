@@ -1,3 +1,4 @@
+const { AsyncResource } = require('async_hooks');
 const path = require('path');
 const multer = require('multer');
 const storage = require('../services/documentStorage');
@@ -56,7 +57,9 @@ const singleDocument = (req, res, next) => {
     },
   }).single('file');
 
-  upload(req, res, (err) => {
+  // Bound to the current async context: multer calls back from the request
+  // stream's events, which would otherwise lose the audit actor (story 11.10).
+  upload(req, res, AsyncResource.bind((err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         const mb = maxBytes / (1024 * 1024);
@@ -76,7 +79,7 @@ const singleDocument = (req, res, next) => {
       return res.status(400).json({ message: 'Choose a file to upload (form field "file").' });
     }
     return next();
-  });
+  }));
 };
 
 module.exports = {

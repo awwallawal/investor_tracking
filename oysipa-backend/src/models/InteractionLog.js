@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const auditPlugin = require('../utils/auditPlugin');
 const { SERVICE_CODES } = require('../constants/serviceCodes');
 
 // A privately stored file (FR-Y19). provider/key/resourceType are internal:
@@ -104,6 +105,9 @@ InteractionLogSchema.pre('validate', async function setInvestorFromProject() {
     this.investor = project.investor;
   }
 });
+
+// Story 11.10: ChangeLog create/update rows with old/new values.
+InteractionLogSchema.plugin(auditPlugin, { entity: 'InteractionLog' });
 
 const InteractionLog = mongoose.model('InteractionLog', InteractionLogSchema);
 InteractionLog.INTERNAL_DOCUMENT_FIELDS = INTERNAL_DOCUMENT_FIELDS;

@@ -6,6 +6,7 @@ const InvestmentProject = require('./src/models/InvestmentProject');
 const User = require('./src/models/User');
 const InteractionLog = require('./src/models/InteractionLog');
 const LifecycleStatus = require('./src/models/LifecycleStatusModel'); // Import LifecycleStatusModel
+const ChangeLog = require('./src/models/ChangeLog');
 
 jest.setTimeout(60000);
 
@@ -70,6 +71,10 @@ beforeEach(async () => {
 
   const portalAdminPayload = { user: { id: portalAdminUser._id, role: 'Portal-Admin' } };
   global.portalAdminToken = jwt.sign(portalAdminPayload, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+  // Story 11.10: the seed above writes audit create rows; start each test with
+  // an empty ChangeLog (raw driver call: the model refuses deletes).
+  await ChangeLog.collection.deleteMany({});
 });
 
 // Disconnect after all tests are done

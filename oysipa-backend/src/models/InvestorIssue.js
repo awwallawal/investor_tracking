@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const auditPlugin = require('../utils/auditPlugin');
 const {
   ISSUE_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
@@ -70,5 +71,8 @@ InvestorIssueSchema.index({ dateReported: 1 });
 InvestorIssueSchema.index({ status: 1 });
 InvestorIssueSchema.index({ importRef: 1 }, { unique: true, sparse: true });
 InvestorIssueSchema.index({ reference: 1 }, { unique: true, sparse: true });
+
+// Story 11.10: ChangeLog create/update rows with old/new values.
+InvestorIssueSchema.plugin(auditPlugin, { entity: 'InvestorIssue' });
 
 module.exports = mongoose.model('InvestorIssue', InvestorIssueSchema);

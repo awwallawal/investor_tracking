@@ -156,6 +156,8 @@ describe('import-announcements CLI', () => {
     expect(actions.filter((a) => a === 'import:InvestmentAnnouncement')).toHaveLength(2);
     expect(actions.filter((a) => a === 'link:EvidenceFile')).toHaveLength(3);
     expect(actions.filter((a) => a === 'import:EvidenceFile')).toHaveLength(2);
+    // Story 11.10: only `import` rows for the loaded announcements, no duplicate create rows.
+    expect(await ChangeLog.countDocuments({ entity: 'InvestmentAnnouncement', action: 'create' })).toBe(0);
 
     lines = [];
     const again = await run({

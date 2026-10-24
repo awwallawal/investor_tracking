@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const auditPlugin = require('../utils/auditPlugin');
 const {
   LEAD_SOURCES, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE, EMAIL_RE,
 } = require('../constants/investorFields');
@@ -86,6 +87,9 @@ const investorSchema = new mongoose.Schema({
     default: undefined
   }
 }, { timestamps: true }); // ✅ correct way
+
+// Story 11.10: ChangeLog create/update rows with old/new values.
+investorSchema.plugin(auditPlugin, { entity: 'Investor' });
 
 const Investor = mongoose.model('Investor', investorSchema);
 
