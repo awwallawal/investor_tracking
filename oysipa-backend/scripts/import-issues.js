@@ -5,6 +5,8 @@
 // DRY RUN BY DEFAULT. Nothing is written or uploaded unless --apply is given.
 // A dry run needs no storage credentials. Prints counts, issue refs (ISS-05),
 // file numbers and reasons only: never names, emails or phones.
+// Loaded issues that differ from the file are listed by ref with the names of
+// the differing fields only; the loader never overwrites them (story 11.7b).
 //
 // Usage (from oysipa-backend/):
 //   npm run import:issues -- --file <json> --files-root <dir> --uri-env MONGO_URI                 # dry run
@@ -64,6 +66,8 @@ const printPlan = (plan, log) => {
   log(`Files referenced: ${c.files} (file errors: ${c.fileErrors})`);
   log(`Files to upload: ${c.filesToUpload}; already stored: ${c.filesAlreadyStored}`);
   log(`Links to add: ${c.linksToAdd}; already linked: ${c.linksExisting}`);
+  log(`${c.changed} loaded issues differ from the file (a difference can also be an edit made in the app since loading; never overwritten; field names only)`);
+  (plan.changes || []).forEach((d) => log(`  ${d.ref}: ${d.fields.join(', ')}`));
   log(`Errors: ${c.errors}; warnings: ${c.warnings}`);
   plan.errors.forEach((e) => log(`  ERROR row ${e.row} ${e.ref}: ${e.reason}`));
   plan.warnings.forEach((w) => log(`  WARNING row ${w.row} ${w.ref}: ${w.message}`));

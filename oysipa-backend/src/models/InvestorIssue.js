@@ -7,7 +7,7 @@ const { MDA_CODES } = require('../constants/mdas');
 // Investor issues register (story 11.7, SABER DLR 4.5). Field names are kept
 // compatible with the parked v2 Grievance Redress epic so the data can migrate.
 //
-// Server-owned: dateRegistered, resolvedDate, actions[].recordedBy/recordedAt,
+// Server-owned: reference, dateRegistered, resolvedDate, actions[].recordedBy/recordedAt,
 // importRef, importBatchId, createdAt/updatedAt. Never taken from the client.
 const IssueActionSchema = new mongoose.Schema({
   // Happened date of the action (officer-entered, never in the future).
@@ -52,6 +52,10 @@ const InvestorIssueSchema = new mongoose.Schema({
   resolution: { type: String, trim: true },
   // Server time the issue was set to Resolved; cleared when it leaves Resolved.
   resolvedDate: { type: Date },
+  // Readable number officers quote (story 11.7b): ISS- plus at least 2 digits
+  // (ISS-09, ISS-100). Set by the server once (create, loader or the
+  // migrate:issue-refs backfill) and never changed.
+  reference: { type: String, trim: true, immutable: true },
   // Import stamps (loader). importRef is the file's id (e.g. ISS-05).
   importRef: { type: String, trim: true },
   importBatchId: { type: String },
@@ -65,5 +69,6 @@ InvestorIssueSchema.index({ investor: 1 });
 InvestorIssueSchema.index({ dateReported: 1 });
 InvestorIssueSchema.index({ status: 1 });
 InvestorIssueSchema.index({ importRef: 1 }, { unique: true, sparse: true });
+InvestorIssueSchema.index({ reference: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('InvestorIssue', InvestorIssueSchema);

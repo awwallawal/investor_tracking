@@ -409,6 +409,167 @@ describe('Delete and cascades', () => {
   });
 });
 
+describe('11.7b: reference (ISS-NN)', () => {
+  const refOf = async (token = global.dgToken, extra = {}) => (await create(token, valid(extra)).expect(201)).body.reference;
+
+  it('first app issue after the loaded ISS-01..08 is ISS-09; the client cannot set it on POST or PUT', async () => {
+    for (let n = 1; n <= 8; n += 1) {
+      const ref = `ISS-0${n}`;
+      // eslint-disable-next-line no-await-in-loop
+      await mkIssue({ importRef: ref, reference: ref });
+    }
+    const res = await create(staffToken, valid({ reference: 'ISS-77' })).expect(201);
+    expect(res.body.reference).toBe('ISS-09');
+    const put = await update(staffToken, res.body._id, { reference: 'ISS-55', description: 'Changed' }).expect(200);
+    expect(put.body.reference).toBe('ISS-09');
+    expect((await InvestorIssue.findById(res.body._id).lean()).reference).toBe('ISS-09');
+    const list = await request(app).get('/api/issues').set('Authorization', bearer(staffToken)).expect(200);
+    expect(list.body.find((i) => i._id === res.body._id).reference).toBe('ISS-09');
+  });
+
+  it('numbering: ISS-01 when none; padded to at least 2 digits (ISS-99 → ISS-100); a loaded ISS-NN importRef not yet backfilled counts', async () => {
+    expect(await refOf()).toBe('ISS-01');
+    await mkIssue({ reference: 'ISS-99' });
+    expect(await refOf()).toBe('ISS-100');
+    await InvestorIssue.deleteMany({});
+    await mkIssue({ importRef: 'ISS-05' });
+    await mkIssue({ importRef: 'ISS-S1' }); // not the format: ignored
+    expect(await refOf()).toBe('ISS-06');
+  });
+
+  it('a duplicate number (another create took it) is recomputed and retried', async () => {
+    const realCreate = InvestorIssue.create.bind(InvestorIssue);
+    jest.spyOn(InvestorIssue, 'create').mockImplementationOnce(async (doc) => {
+      await InvestorIssue.collection.insertOne({
+        investor: assigned._id, dateRegistered: new Date(), dateReported: new Date(), category: 'other', description: 'Competitor', reference: doc.reference,
+      });
+      return realCreate(doc);
+    });
+    expect(await refOf()).toBe('ISS-02');
+    expect(await InvestorIssue.countDocuments({ reference: 'ISS-01' })).toBe(1);
+  });
+
+  it('every retry hits a taken number → 409 "Could not assign an issue number; please try again."', async () => {
+    jest.spyOn(InvestorIssue, 'create').mockImplementation(async () => {
+      throw Object.assign(new Error('E11000 duplicate key'), { code: 11000, keyPattern: { reference: 1 }, keyValue: { reference: 'ISS-01' } });
+    });
+    const res = await create(global.dgToken, valid());
+    expect(res.statusCode).toBe(409);
+    expect(res.body.message).toBe('Could not assign an issue number; please try again.');
+    expect(InvestorIssue.create).toHaveBeenCalledTimes(5);
+  });
+
+  it('a duplicate on another index is not retried as a reference clash', async () => {
+    const { isReferenceDuplicate } = require('../services/issueRegister');
+    expect(isReferenceDuplicate({ code: 11000, keyPattern: { importRef: 1 }, message: 'reference in text' })).toBe(false);
+    expect(isReferenceDuplicate({ code: 11000, keyValue: { reference: 'ISS-01' } })).toBe(true);
+  });
+
+  it('references are canonical: ISS-5 = ISS-05, ISS-0 is not a reference', () => {
+    const { canonicalReference, referenceNumber } = require('../services/issueRegister');
+    expect(canonicalReference('ISS-5')).toBe('ISS-05');
+    expect(canonicalReference('ISS-005')).toBe('ISS-05');
+    expect(canonicalReference('ISS-100')).toBe('ISS-100');
+    expect(canonicalReference('ISS-0')).toBeNull();
+    expect(canonicalReference('ISS-S1')).toBeNull();
+    expect(referenceNumber('ISS-00')).toBe(0);
+  });
+
+  it('parallel creates get different references', async () => {
+    const results = await Promise.all([1, 2, 3, 4].map(() => create(global.dgToken, valid())));
+    results.forEach((r) => expect(r.statusCode).toBe(201));
+    const refs = results.map((r) => r.body.reference).sort();
+    expect(refs).toEqual(['ISS-01', 'ISS-02', 'ISS-03', 'ISS-04']);
+  });
+
+  it('new app issue files go into investor-issues/<reference>, named "Issue <reference>"', async () => {
+    const created = await create(global.dgToken, valid()).expect(201);
+    await request(app).post(`/api/issues/${created.body._id}/files`).set('Authorization', bearer(global.dgToken))
+      .attach('file', Buffer.from('%PDF-ref'), { filename: 'r.pdf', contentType: 'application/pdf' }).expect(201);
+    const folder = await EvidenceFolder.findOne({ key: 'investor-issues/ISS-01' }).lean();
+    expect(folder).toBeTruthy();
+    expect(folder.name).toBe('Issue ISS-01');
+  });
+
+  it('an existing folder (made before the reference) is kept, not renamed or split', async () => {
+    const issue = await mkIssue();
+    const up = (c) => request(app).post(`/api/issues/${issue._id}/files`).set('Authorization', bearer(global.dgToken))
+      .attach('file', Buffer.from(c), { filename: `${c}.pdf`, contentType: 'application/pdf' }).expect(201);
+    await up('%PDF-before');
+    await InvestorIssue.collection.updateOne({ _id: issue._id }, { $set: { reference: 'ISS-04' } });
+    await up('%PDF-after');
+    const folders = await EvidenceFolder.find({ key: /^investor-issues\// }).lean();
+    expect(folders.map((f) => f.key)).toEqual([`investor-issues/${issue._id}`]);
+    expect(await EvidenceFile.countDocuments({ folder: folders[0]._id })).toBe(2);
+  });
+});
+
+describe('11.7b: edit details', () => {
+  it('assigned Staff changes category and MDAs → saved and returned; unassigned Staff → 403; bad MDA → 400', async () => {
+    const issue = await mkIssue({ mdaResponsible: ['BIR'] });
+    const res = await update(staffToken, issue._id, { category: 'tax/levies', mdaResponsible: ['TRADE', 'LANDS AND HOUSING'] }).expect(200);
+    expect(res.body).toMatchObject({ category: 'tax/levies', mdaResponsible: ['TRADE', 'LANDS AND HOUSING'] });
+    const bad = await update(staffToken, issue._id, { mdaResponsible: ['Ministry of Magic'] });
+    expect(bad.statusCode).toBe(400);
+    const theirs = await mkIssue({ investor: other._id });
+    const denied = await update(staffToken, theirs._id, { category: 'tax/levies' });
+    expect(denied.statusCode).toBe(403);
+    expect((await InvestorIssue.findById(theirs._id).lean()).category).toBe('other');
+    expect((await InvestorIssue.findById(issue._id).lean()).mdaResponsible).toEqual(['TRADE', 'LANDS AND HOUSING']);
+  });
+
+  it.each([[''], [null]])('reportedVia, project and projectText %p → unset', async (clear) => {
+    const issue = await mkIssue({ reportedVia: 'visit', project: project._id, projectText: 'Old text' });
+    await update(staffToken, issue._id, { reportedVia: clear, project: clear, projectText: clear }).expect(200);
+    const after = await InvestorIssue.findById(issue._id).lean();
+    expect(after.reportedVia).toBeUndefined();
+    expect(after.project).toBeUndefined();
+    expect(after.projectText).toBeUndefined();
+  });
+
+  it('a PUT without mdaResponsible succeeds on an issue holding an unknown MDA code', async () => {
+    const issue = await mkIssue();
+    await InvestorIssue.collection.updateOne({ _id: issue._id }, { $set: { mdaResponsible: ['GONE'] } });
+    const res = await update(staffToken, issue._id, { category: 'security' });
+    expect(res.statusCode).toBe(200);
+    const after = await InvestorIssue.collection.findOne({ _id: issue._id });
+    expect(after.category).toBe('security');
+    expect(after.mdaResponsible).toEqual(['GONE']);
+  });
+
+  it('a field not sent is kept', async () => {
+    const issue = await mkIssue({ reportedVia: 'visit', projectText: 'Kept' });
+    await update(staffToken, issue._id, { category: 'security' }).expect(200);
+    const after = await InvestorIssue.findById(issue._id).lean();
+    expect(after).toMatchObject({ reportedVia: 'visit', projectText: 'Kept', category: 'security' });
+  });
+
+  it('future dateReported → 400 and unchanged; a past one is saved', async () => {
+    const issue = await mkIssue();
+    await update(staffToken, issue._id, { dateReported: tomorrow(), category: 'security' }).expect(400);
+    const after = await InvestorIssue.findById(issue._id).lean();
+    expect(after.dateReported.toISOString()).toBe('2026-03-01T00:00:00.000Z');
+    expect(after.category).toBe('other');
+    const ok = await update(staffToken, issue._id, { dateReported: '2025-12-31' }).expect(200);
+    expect(ok.body.dateReported).toBe('2025-12-31T00:00:00.000Z');
+  });
+
+  it('a project of another investor → 400; a project of the same investor is saved', async () => {
+    const issue = await mkIssue();
+    const otherProject = await InvestmentProject.create({ projectTitle: 'Not theirs', investor: other._id, lifecycleStatus: idea._id });
+    await update(staffToken, issue._id, { project: otherProject._id.toString() }).expect(400);
+    expect((await InvestorIssue.findById(issue._id).lean()).project).toBeUndefined();
+    const ok = await update(staffToken, issue._id, { project: project._id.toString() }).expect(200);
+    expect(ok.body.project.projectTitle).toBe('Issue Plant');
+  });
+
+  it('the investor never changes', async () => {
+    const issue = await mkIssue();
+    await update(global.dgToken, issue._id, { investor: other._id.toString(), category: 'security' }).expect(200);
+    expect(String((await InvestorIssue.findById(issue._id).lean()).investor)).toBe(String(assigned._id));
+  });
+});
+
 describe('Investor Directory search', () => {
   const names = async (qs, token = staffToken) => {
     const res = await request(app).get(`/api/investors${qs}`).set('Authorization', bearer(token)).expect(200);

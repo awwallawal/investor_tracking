@@ -4,8 +4,8 @@
 // issue, adds actions, changes status / resolves and attaches files, Staff only
 // on investors assigned to them. Delete is DG/Admin only, with a reason.
 //
-// Server-owned: dateRegistered, resolvedDate, action recordedBy/recordedAt,
-// import stamps and timestamps. Resolved, Closed unresolved and Withdrawn need a
+// Server-owned: reference (ISS-NN, story 11.7b), dateRegistered, resolvedDate,
+// action recordedBy/recordedAt, import stamps and timestamps. Resolved, Closed unresolved and Withdrawn need a
 // non-empty note in `resolution` (owner rule 24 Oct 2026).
 // Files live in the Evidence library (investor-issues/<ref>), linked to the
 // investor and the issue.
@@ -21,7 +21,9 @@ const { isAdminRole, isAssignedTo, hasOperatorKey } = require('../middleware/acc
 const {
   sha256, findLinksTo, unlinkSnapshots, pullLinks,
 } = require('../services/evidenceLibrary');
-const { ensureIssueFolder, parseYear, yearRange } = require('../services/issueRegister');
+const {
+  ensureIssueFolder, parseYear, yearRange, createWithReference, REFERENCE_EXHAUSTED,
+} = require('../services/issueRegister');
 const {
   ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
@@ -144,7 +146,8 @@ exports.getIssue = async (req, res) => {
 
 // @route POST /api/issues { investor, project?, projectText?, dateReported?,
 //        reportedVia?, mdaResponsible?, category, description }
-// A new issue is always Open; dateRegistered is the server time.
+// A new issue is always Open; dateRegistered is the server time; reference is
+// the next free ISS-NN (retried when two creates pick the same number).
 exports.createIssue = async (req, res) => {
   try {
     const body = req.body || {};
@@ -170,7 +173,7 @@ exports.createIssue = async (req, res) => {
     if (date.error) return res.status(400).json({ message: date.error });
 
     const now = new Date();
-    const issue = await InvestorIssue.create({
+    const issue = await createWithReference({
       investor: investor._id,
       ...(project.value && { project: project.value }),
       ...(projectText.value && { projectText: projectText.value }),
@@ -186,6 +189,9 @@ exports.createIssue = async (req, res) => {
     const populated = await populateIssue(InvestorIssue.findById(issue._id));
     return res.status(201).json(populated);
   } catch (error) {
+    if (error && error.code === REFERENCE_EXHAUSTED) {
+      return res.status(409).json({ message: 'Could not assign an issue number; please try again.' });
+    }
     return handleError(res, error);
   }
 };
@@ -205,7 +211,8 @@ exports.issueWriteAccess = async (req, res, next) => {
 
 // @route PUT /api/issues/:id { project?, projectText?, dateReported?, reportedVia?,
 //        mdaResponsible?, category?, description?, status?, resolution? }
-// Runs after issueWriteAccess. The investor never changes here.
+// Runs after issueWriteAccess. The investor and reference never change here.
+// reportedVia, project and projectText: '' or null clears (unsets) the field.
 exports.updateIssue = async (req, res) => {
   try {
     const body = req.body || {};
@@ -240,9 +247,11 @@ exports.updateIssue = async (req, res) => {
 
     if (category.value) issue.category = category.value;
     if (reportedVia.value) issue.reportedVia = reportedVia.value;
+    else if (body.reportedVia === '' || body.reportedVia === null) issue.reportedVia = undefined;
     if (mdas.value) issue.mdaResponsible = mdas.value;
     if (description.value) issue.description = description.value;
     if (projectText.value !== undefined) issue.projectText = projectText.value || undefined;
+    else if (body.projectText === null) issue.projectText = undefined;
     if (resolution.value !== undefined) issue.resolution = resolution.value || undefined;
     if (project.value !== undefined) issue.project = project.value || undefined;
     if (date.value) issue.dateReported = date.value;
@@ -251,7 +260,9 @@ exports.updateIssue = async (req, res) => {
       else if (issue.status === RESOLVED) issue.resolvedDate = undefined;
       issue.status = nextStatus;
     }
-    await issue.save();
+    // Only the changed paths are validated: a stored value no longer on a list
+    // (e.g. an unknown MDA code) does not block edits of other fields.
+    await issue.save({ validateModifiedOnly: true });
     const populated = await populateIssue(InvestorIssue.findById(issue._id));
     return res.status(200).json(populated);
   } catch (error) {

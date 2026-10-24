@@ -65,4 +65,22 @@ describe('IssuesPage', () => {
     // In the always-visible investor cell, not the category column hidden on phones.
     expect(line.closest('td')).toBe(screen.getByText('Investor 1').closest('td'));
   });
+
+  it('shows the reference beside the investor (11.7b); a loaded issue without one shows its importRef', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(routeGet(() => Promise.resolve({
+      data: [{ ...issue('1', 'Open'), reference: 'ISS-09' }, { ...issue('2', 'Open'), importRef: 'ISS-03' }],
+    })));
+    renderPage();
+    expect((await screen.findByText(/ISS-09/)).closest('td')).toBe(screen.getByText('Investor 1').closest('td'));
+    expect(screen.getByText(/ISS-03/).closest('td')).toBe(screen.getByText('Investor 2').closest('td'));
+  });
+
+  it('an importRef that is not ISS-NN (e.g. S-LEGACY) is never shown as the reference', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(routeGet(() => Promise.resolve({
+      data: [{ ...issue('1', 'Open'), importRef: 'S-LEGACY' }],
+    })));
+    renderPage();
+    expect(await screen.findByText('Investor 1')).toBeInTheDocument();
+    expect(screen.queryByText(/S-LEGACY/)).not.toBeInTheDocument();
+  });
 });

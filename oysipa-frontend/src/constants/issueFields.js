@@ -26,6 +26,12 @@ export const REPORTED_VIA = ['web form', 'email', 'phone', 'visit', 'event', 'MD
 
 // MDAs: the list comes from GET /api/mdas (src/api/mdas.js, story 11.7c).
 
+// The issue's readable number (ISS-NN, story 11.7b, server-owned). A loaded
+// issue not yet backfilled falls back to its importRef, only when that is
+// ISS-NN (never e.g. S-LEGACY); otherwise ''.
+export const issueReference = (issue) => issue?.reference
+  || (/^ISS-\d+$/.test(issue?.importRef || '') ? issue.importRef : '');
+
 // Resolved-share bands (DLR 4.5): basic 50–75%, stretch above 75%.
 export const BAND_LABELS = {
   'below basic': 'Below basic (under 50%)',

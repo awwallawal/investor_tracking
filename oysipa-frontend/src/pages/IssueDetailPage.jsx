@@ -2,17 +2,19 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert, Box, Breadcrumbs, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  Link as MuiLink, List, ListItem, ListItemText, Paper, Stack, TextField, Typography,
+  FormControl, InputLabel, Link as MuiLink, List, ListItem, ListItemText, MenuItem, Paper, Select, Stack, TextField, Typography,
 } from '@mui/material';
 import HappenedDateField from '../components/HappenedDateField';
+import MdaPicker from '../components/MdaPicker';
 import IssueStatusForm from '../components/IssueStatusForm';
 import {
-  addIssueAction, deleteIssue, fetchIssue, issueErrorMessage, uploadIssueFile,
+  addIssueAction, deleteIssue, fetchIssue, issueErrorMessage, updateIssue, uploadIssueFile,
 } from '../api/issues';
+import apiClient from '../api/api';
 import { DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile } from '../api/documents';
 import { notifyUntaggedChanged } from '../api/evidence';
 import {
-  NOTE_REQUIRED_STATUSES, RESOLVED, STATUS_COLORS,
+  ISSUE_CATEGORIES, NOTE_REQUIRED_STATUSES, REPORTED_VIA, RESOLVED, STATUS_COLORS, issueReference,
 } from '../constants/issueFields';
 import { useMdas } from '../api/mdas';
 import { dateLine, formatDate } from '../utils/dates';
@@ -137,6 +139,139 @@ const DeleteDialog = ({ issue, onClose, onDeleted }) => {
   );
 };
 
+// Edit details (story 11.7b): category, MDAs, date reported, reported via,
+// project (the investor's own) and project text. Status and resolution keep
+// their own form; the investor never changes. The server validates as on register.
+const EditDetailsDialog = ({ issue, onClose, onSaved }) => {
+  const projectId = issue.project?._id || issue.project || '';
+  const [initial] = useState(() => ({
+    category: issue.category || '',
+    description: issue.description || '',
+    mdaResponsible: issue.mdaResponsible || [],
+    dateReported: issue.dateReported ? String(issue.dateReported).slice(0, 10) : '',
+    reportedVia: issue.reportedVia || '',
+    project: projectId,
+    projectText: issue.projectText || '',
+  }));
+  const [form, setForm] = useState(initial);
+  const [projects, setProjects] = useState([]);
+  const [projectsError, setProjectsError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const { mdas, error: mdaError } = useMdas();
+  const investorId = issue.investor?._id || issue.investor;
+
+  useEffect(() => {
+    if (!investorId) return undefined;
+    let active = true;
+    apiClient.get(`/api/projects/investors/${investorId}/projects`)
+      .then(({ data }) => { if (active) { setProjects(Array.isArray(data) ? data : []); setProjectsError(''); } })
+      .catch(() => {
+        if (active) { setProjects([]); setProjectsError("Could not load this investor's projects."); }
+      });
+    return () => { active = false; };
+  }, [investorId]);
+
+  const set = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+  // The current project stays choosable even before (or without) the list.
+  const projectOptions = projectId && issue.project?.projectTitle && !projects.some((p) => String(p._id) === String(projectId))
+    ? [{ _id: projectId, projectTitle: issue.project.projectTitle }, ...projects]
+    : projects;
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      // Only the fields the user changed are sent, so a stored value no longer
+      // on a list (e.g. an unknown MDA code) never blocks other edits.
+      // '' clears reported via, project and project text on the server.
+      const sameList = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
+      const body = {
+        ...(form.category !== initial.category && { category: form.category }),
+        ...(form.description.trim() !== initial.description && { description: form.description.trim() }),
+        ...(!sameList(form.mdaResponsible, initial.mdaResponsible) && { mdaResponsible: form.mdaResponsible }),
+        ...(form.dateReported && form.dateReported !== initial.dateReported && { dateReported: form.dateReported }),
+        ...(form.reportedVia !== initial.reportedVia && { reportedVia: form.reportedVia }),
+        ...(String(form.project) !== String(initial.project) && { project: form.project }),
+        ...(form.projectText.trim() !== initial.projectText && { projectText: form.projectText.trim() }),
+      };
+      const updated = Object.keys(body).length ? await updateIssue(issue._id, body) : issue;
+      onSaved(updated);
+    } catch (err) {
+      setError(issueErrorMessage(err, 'Failed to save the details.'));
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Edit details</DialogTitle>
+      <DialogContent>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FormControl fullWidth margin="dense" variant="standard" required>
+          <InputLabel id="edit-issue-category-label">Category</InputLabel>
+          <Select labelId="edit-issue-category-label" value={form.category} onChange={(e) => set('category')(e.target.value)} disabled={saving}>
+            {ISSUE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Description"
+          required
+          fullWidth
+          multiline
+          minRows={3}
+          margin="dense"
+          variant="standard"
+          value={form.description}
+          onChange={(e) => set('description')(e.target.value)}
+          disabled={saving}
+          error={!form.description.trim()}
+          helperText={!form.description.trim() ? 'A description is required.' : ' '}
+        />
+        {mdaError && <Alert severity="warning" sx={{ mt: 1 }}>Could not load the MDA list.</Alert>}
+        <MdaPicker
+          id="edit-issue-mda"
+          mdas={mdas}
+          value={form.mdaResponsible}
+          onChange={set('mdaResponsible')}
+          disabled={saving}
+          placeholder="Search by name or abbreviation"
+        />
+        <HappenedDateField label="Date reported" value={form.dateReported} onChange={set('dateReported')} disabled={saving} helperText="Leave empty to keep it" />
+        <FormControl fullWidth margin="dense" variant="standard">
+          <InputLabel id="edit-issue-via-label">Reported via</InputLabel>
+          <Select labelId="edit-issue-via-label" value={form.reportedVia} onChange={(e) => set('reportedVia')(e.target.value)} disabled={saving}>
+            <MenuItem value="">Not recorded</MenuItem>
+            {REPORTED_VIA.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+          </Select>
+        </FormControl>
+        {projectsError && <Alert severity="warning" sx={{ mt: 1 }}>{projectsError}</Alert>}
+        <FormControl fullWidth margin="dense" variant="standard" disabled={saving}>
+          <InputLabel id="edit-issue-project-label">Project</InputLabel>
+          <Select labelId="edit-issue-project-label" value={form.project} onChange={(e) => set('project')(e.target.value)}>
+            <MenuItem value="">No project</MenuItem>
+            {projectOptions.map((p) => <MenuItem key={p._id} value={p._id}>{p.projectTitle}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <TextField
+          label="Project text"
+          fullWidth
+          margin="dense"
+          variant="standard"
+          value={form.projectText}
+          onChange={(e) => set('projectText')(e.target.value)}
+          disabled={saving}
+          helperText="Free text, e.g. the project as named in a loaded issue"
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button variant="contained" onClick={save} disabled={saving || !form.category || !form.description.trim()}>{saving ? 'Saving...' : 'Save details'}</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
 // One investor issue: details, actions timeline, status / resolve and files.
 const IssueDetailPage = () => {
   const { id } = useParams();
@@ -146,6 +281,7 @@ const IssueDetailPage = () => {
   const [fileError, setFileError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
   const { nameOf: mdaName } = useMdas();
   const user = getCurrentUser();
   const isAdmin = isAdminRole(user?.role);
@@ -179,15 +315,17 @@ const IssueDetailPage = () => {
   if (!issue) return <div>Loading...</div>;
 
   const actions = [...(issue.actions || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const reference = issueReference(issue);
 
   return (
     <Box>
       <Breadcrumbs sx={{ mb: 1 }}>
         <MuiLink component={RouterLink} to="/issues">Investor issues</MuiLink>
-        <Typography color="text.primary">{issue.importRef || 'Issue'}</Typography>
+        <Typography color="text.primary">{reference || 'Issue'}</Typography>
       </Breadcrumbs>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
         <Box>
+          {reference && <Typography variant="overline" component="p" color="text.secondary">{`Issue ${reference}`}</Typography>}
           <Typography variant="h4" component="h1" sx={{ overflowWrap: 'anywhere' }}>
             {issue.investor ? (
               <MuiLink component={RouterLink} to={`/investors/${issue.investor._id}`} underline="hover">{issue.investor.investorName}</MuiLink>
@@ -198,7 +336,10 @@ const IssueDetailPage = () => {
             <Chip label={issue.category} variant="outlined" />
           </Stack>
         </Box>
-        {isAdmin && <Button color="error" onClick={() => setDeleting(true)}>Delete</Button>}
+        <Stack direction="row" spacing={1}>
+          {canWrite && <Button variant="outlined" onClick={() => setEditing(true)}>Edit details</Button>}
+          {isAdmin && <Button color="error" onClick={() => setDeleting(true)}>Delete</Button>}
+        </Stack>
       </Stack>
 
       <Section title="Issue">
@@ -262,6 +403,9 @@ const IssueDetailPage = () => {
 
       {uploading && (
         <UploadDialog issue={issue} onClose={() => setUploading(false)} onUploaded={() => { setUploading(false); notifyUntaggedChanged(); load(); }} />
+      )}
+      {editing && (
+        <EditDetailsDialog issue={issue} onClose={() => setEditing(false)} onSaved={(updated) => { setEditing(false); merge(updated); }} />
       )}
       {deleting && <DeleteDialog issue={issue} onClose={() => setDeleting(false)} onDeleted={() => navigate('/issues')} />}
     </Box>

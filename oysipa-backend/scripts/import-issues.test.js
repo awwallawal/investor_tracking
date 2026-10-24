@@ -151,13 +151,16 @@ describe('import-issues CLI', () => {
     expect(s1.mdaResponsible).toEqual(['CULTURE AND TOURISM']);
     const s2 = await InvestorIssue.findOne({ importRef: 'ISS-S2' }).lean();
     expect(s2.mdaResponsible).toEqual(['OYSIPA']);
+    // 11.7b: an id that is not ISS-NN gets the next free reference (file order).
+    expect([s1.reference, s2.reference]).toEqual(['ISS-01', 'ISS-02']);
 
     // Shared files: stored once in the first issue's folder, linked to both issues.
     const shared = await EvidenceFile.findOne({ fileName: 'visit.pdf' }).populate('folder').lean();
-    expect(shared.folder.key).toBe('investor-issues/ISS-S2');
+    expect(shared.folder.key).toBe('investor-issues/ISS-02'); // reference first (11.7b)
+    expect(shared.folder.name).toBe('Issue ISS-02');
     expect(shared.links.map((l) => String(l.issue)).sort()).toEqual([String(s2._id), String((await InvestorIssue.findOne({ importRef: 'ISS-S3' }))._id)].sort());
     expect(await EvidenceFolder.exists({ key: 'investor-issues' })).toBeTruthy();
-    expect(await EvidenceFolder.exists({ key: 'investor-issues/ISS-S3' })).toBeNull(); // received no file of its own
+    expect(await EvidenceFolder.exists({ key: /^investor-issues\/ISS-(S3|03)$/ })).toBeNull(); // received no file of its own
     expect(await EvidenceFile.countDocuments(EvidenceFile.UNTAGGED)).toBe(0);
 
     expect(await ChangeLog.countDocuments({ batchId: first.result.batchId, entity: 'InvestorIssue', action: 'import' })).toBe(3);
@@ -289,5 +292,151 @@ describe('import-issues CLI', () => {
     await expect(run({
       data: fileData(), filesRoot: dir, apply: true, actor: staff, log,
     })).rejects.toThrow(/Director-General or Portal-Admin/);
+  });
+});
+
+describe('import-issues 11.7b: references and the change report', () => {
+  const one = (o = {}) => ({ issues: [issue({ id: 'ISS-03', ...o })] });
+
+  it('a new ISS-NN row gets reference = importRef; another id gets the next free number', async () => {
+    const data = { issues: [issue({ id: 'ISS-03' }), issue({ id: 'S-LEGACY', investorName: 'Synthetic Issues B' })] };
+    const { result } = await run({
+      data, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    expect(result.counts.issuesCreated).toBe(2);
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-03' }).lean()).reference).toBe('ISS-03');
+    expect((await InvestorIssue.findOne({ importRef: 'S-LEGACY' }).lean()).reference).toBe('ISS-04');
+    // The audit snapshot holds the reference.
+    const row = await ChangeLog.findOne({ entity: 'InvestorIssue', action: 'import', 'snapshot.importRef': 'ISS-03' }).lean();
+    expect(row.snapshot.reference).toBe('ISS-03');
+  });
+
+  it('a new row whose ISS-NN is already used by an app issue is a row error (dry run too); the rest loads', async () => {
+    await InvestorIssue.create({
+      investor: investorA._id, dateRegistered: new Date(), dateReported: new Date('2026-01-01T00:00:00.000Z'), category: 'other', description: 'App issue', reference: 'ISS-09',
+    });
+    const data = { issues: [issue({ id: 'ISS-09' }), issue({ id: 'ISS-10' })] };
+    const dry = await run({ data, filesRoot: dir, log });
+    expect(dry.plan.errors.map((e) => `${e.ref}: ${e.reason}`)).toEqual(['ISS-09: reference ISS-09 is already used']);
+    expect(lines.join('\n')).toContain('ERROR row 1 ISS-09: reference ISS-09 is already used');
+    const { result } = await run({
+      data, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    expect(result.counts.issuesCreated).toBe(1);
+    expect(await InvestorIssue.exists({ importRef: 'ISS-09' })).toBeNull();
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-10' }).lean()).reference).toBe('ISS-10');
+  });
+
+  it('repeat with a changed file: dry run lists "ISS-03: status, actions"; nothing is written, also on --apply', async () => {
+    await run({
+      data: one(), filesRoot: dir, apply: true, actor: dg, log,
+    });
+    const before = await InvestorIssue.collection.find({}).toArray();
+    const changed = one({
+      status: 'In progress',
+      actions: [{ date: '2025-04-26', by: 'Synthetic desk', note: 'Letter sent again' }],
+    });
+    lines = [];
+    const dry = await run({ data: changed, filesRoot: dir, log });
+    expect(dry.plan.counts.changed).toBe(1);
+    expect(dry.plan.changes).toEqual([{ row: 1, ref: 'ISS-03', fields: ['status', 'actions'] }]);
+    const out = lines.join('\n');
+    expect(out).toContain('1 loaded issues differ from the file');
+    expect(out).toContain('  ISS-03: status, actions');
+    expect(out).not.toContain('In progress');
+    expect(out).not.toContain('Letter sent again');
+    lines = [];
+    await run({
+      data: changed, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    expect(lines.join('\n')).toContain('  ISS-03: status, actions');
+    expect(await InvestorIssue.collection.find({}).toArray()).toEqual(before);
+  });
+
+  it('file order [S-LEGACY, ISS-01] on an empty database: ISS-01 keeps its number, S-LEGACY gets ISS-02', async () => {
+    const data = { issues: [issue({ id: 'S-LEGACY' }), issue({ id: 'ISS-01', investorName: 'Synthetic Issues B' })] };
+    const { result } = await run({
+      data, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    expect(result.errors).toEqual([]);
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-01' }).lean()).reference).toBe('ISS-01');
+    expect((await InvestorIssue.findOne({ importRef: 'S-LEGACY' }).lean()).reference).toBe('ISS-02');
+  });
+
+  it('ISS-5 is stored as ISS-05; ISS-5 and ISS-05 in one file clash; an app ISS-05 makes ISS-5 a row error; ISS-0 gets a new number', async () => {
+    const data = { issues: [issue({ id: 'ISS-5' }), issue({ id: 'ISS-05' }), issue({ id: 'ISS-0' })] };
+    const { plan } = await run({
+      data, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    expect(plan.errors.map((e) => `${e.ref}: ${e.reason}`)).toEqual(['ISS-05: reference ISS-05 is already used']);
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-5' }).lean()).reference).toBe('ISS-05');
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-0' }).lean()).reference).toBe('ISS-06');
+
+    await InvestorIssue.deleteMany({});
+    await InvestorIssue.create({
+      investor: investorA._id, dateRegistered: new Date(), dateReported: new Date('2026-01-01T00:00:00.000Z'), category: 'other', description: 'App issue', reference: 'ISS-05',
+    });
+    const again = await run({ data: { issues: [issue({ id: 'ISS-005' })] }, filesRoot: dir, log });
+    expect(again.plan.errors.map((e) => e.reason)).toEqual(['reference ISS-05 is already used']);
+  });
+
+  it('change report: action "by" is compared; no investorName in the file is not a difference; an invalid stored date does not throw', async () => {
+    await run({
+      data: one(), filesRoot: dir, apply: true, actor: dg, log,
+    });
+    let { plan } = await run({ data: one({ actions: [{ date: '2025-04-26', by: 'Other desk', note: 'Letter sent' }] }), filesRoot: dir, log });
+    expect(plan.changes).toEqual([{ row: 1, ref: 'ISS-03', fields: ['actions'] }]);
+    ({ plan } = await run({ data: one({ investorName: '' }), filesRoot: dir, log }));
+    expect(plan.changes).toEqual([]);
+    await InvestorIssue.collection.updateOne({ importRef: 'ISS-03' }, { $set: { dateReported: 'not a date' } });
+    lines = [];
+    ({ plan } = await run({ data: one(), filesRoot: dir, log }));
+    expect(plan.changes).toEqual([{ row: 1, ref: 'ISS-03', fields: ['dateReported'] }]);
+    expect(lines.join('\n')).toContain('a difference can also be an edit made in the app since loading');
+  });
+
+  it('an unchanged repeat reports 0 differences', async () => {
+    await run({
+      data: one(), filesRoot: dir, apply: true, actor: dg, log,
+    });
+    const { plan } = await run({ data: one(), filesRoot: dir, log });
+    expect(plan.counts.changed).toBe(0);
+    expect(plan.changes).toEqual([]);
+  });
+
+  it('every compared field is named; MDA names are resolved first; the investor name is compared with its current name', async () => {
+    await run({
+      data: one(), filesRoot: dir, apply: true, actor: dg, log,
+    });
+    // Same MDA by another spelling (code) → no difference.
+    let { plan } = await run({ data: one({ mdaResponsible: ['CULTURE AND TOURISM'] }), filesRoot: dir, log });
+    expect(plan.counts.changed).toBe(0);
+
+    ({ plan } = await run({
+      data: one({
+        category: 'other',
+        description: 'Changed',
+        reportedVia: 'email',
+        mdaResponsible: ['OYSIPA'],
+        dateReported: '2025-04-27',
+        project: 'Changed project',
+        status: 'Withdrawn',
+        resolution: 'Withdrawn note',
+        note: 'Changed note',
+        actions: [{ date: '2025-04-27', note: 'Letter sent' }],
+      }),
+      filesRoot: dir,
+      log,
+    }));
+    expect(plan.changes[0].fields).toEqual([
+      'category', 'description', 'status', 'reportedVia', 'mdaResponsible', 'dateReported', 'projectText', 'resolution', 'importNote', 'actions',
+    ]);
+
+    // The stored investor was renamed: the file's name now differs.
+    await Investor.updateOne({ _id: investorA._id }, { investorName: 'Synthetic Issues A Renamed' });
+    lines = [];
+    ({ plan } = await run({ data: one(), filesRoot: dir, log }));
+    expect(plan.changes).toEqual([{ row: 1, ref: 'ISS-03', fields: ['investorName'] }]);
+    expect(lines.join('\n')).not.toContain('Synthetic Issues');
   });
 });

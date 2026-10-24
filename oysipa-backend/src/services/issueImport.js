@@ -9,6 +9,14 @@
 //   the file's project text is kept in `projectText`.
 // - Repeat-safe by importRef (the file's `id`, e.g. ISS-05): an issue that
 //   exists is not created again; its files are still checked.
+// - Change report (story 11.7b): a loaded issue whose file row differs from the
+//   database is listed with the names of the differing fields (never values).
+//   Those changes are never written.
+// - Reference (11.7b): a new issue gets reference = its importRef when that is
+//   ISS-NN and free (taken → row error), stored in the canonical form (ISS-5 →
+//   ISS-05); any other importRef gets the next free number. Rows with their own
+//   number are created first, so a numbered row never loses its number.
+// - The report says a difference can also be an edit made in the app since loading.
 // - Files go through the same storage, type list and size limit as uploads and
 //   are stored once by SHA-256 in the first issue's library subfolder
 //   (investor-issues/<ref>); each file is linked to the investor and the issue.
@@ -26,7 +34,9 @@ const documentStorage = require('./documentStorage');
 const { recordChanges, newBatchId } = require('../utils/recordDeletion');
 const { parseHappenedDate } = require('../utils/happenedDate');
 const { sha256, mimeFromName } = require('./evidenceLibrary');
-const { ensureIssueFolder } = require('./issueRegister');
+const {
+  ensureIssueFolder, canonicalReference, isReferenceDuplicate, createWithReference,
+} = require('./issueRegister');
 const {
   ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
@@ -111,6 +121,37 @@ const checkRow = (r) => {
   };
 };
 
+// Field names of a loaded issue that differ from its file row (no values).
+const same = (a, b) => (a === undefined || a === null ? '' : a) === (b === undefined || b === null ? '' : b);
+// ISO string of a date, or '' when missing or invalid (never throws).
+const isoOrEmpty = (d) => {
+  if (!d) return '';
+  const t = new Date(d);
+  return Number.isNaN(t.getTime()) ? '' : t.toISOString();
+};
+const changedFields = (doc, investorName, stored, storedInvestorName) => {
+  const fields = [];
+  ['category', 'description', 'status', 'reportedVia'].forEach((f) => {
+    if (!same(doc[f], stored[f])) fields.push(f);
+  });
+  const sortedCodes = (l) => [...(Array.isArray(l) ? l : [])].sort().join('|');
+  if (sortedCodes(doc.mdaResponsible) !== sortedCodes(stored.mdaResponsible)) fields.push('mdaResponsible');
+  if (isoOrEmpty(doc.dateReported) !== isoOrEmpty(stored.dateReported)) fields.push('dateReported');
+  ['projectText', 'resolution', 'importNote'].forEach((f) => {
+    if (!same(doc[f], stored[f])) fields.push(f);
+  });
+  const fileActions = doc.actions || [];
+  const dbActions = stored.actions || [];
+  if (fileActions.length !== dbActions.length
+    || fileActions.some((a, i) => isoOrEmpty(a.date) !== isoOrEmpty(dbActions[i].date)
+      || !same(a.note, dbActions[i].note) || !same(a.by, dbActions[i].by))) {
+    fields.push('actions');
+  }
+  // Only when the file gives a name.
+  if (investorName && !same(investorName, storedInvestorName)) fields.push('investorName');
+  return fields;
+};
+
 // Plans one run. `filesRoot` resolves relative evidence paths.
 const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = documentStorage.maxBytes() } = {}) => {
   const rows = data.issues || [];
@@ -118,6 +159,7 @@ const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = doc
     issues: rows.length,
     toCreate: 0,
     existing: 0,
+    changed: 0,
     errors: 0,
     warnings: 0,
     files: 0,
@@ -129,14 +171,26 @@ const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = doc
   };
   const errors = []; // { row, ref, reason }
   const warnings = []; // { row, ref, message }
-  const issues = []; // valid rows: { row, ref, investor, existingId, doc }
+  const issues = []; // valid rows: { row, ref, investor, existingId, reference, doc }
+  const changes = []; // loaded issues that differ from the file: { row, ref, fields[] }
   const files = new Map(); // sha → { sha256, abs, fileName, mimeType, size, firstRef, existingId, existingLinks, links: [{ref,row}] }
 
   const refs = rows.map((r) => text(r && r.id)).filter(Boolean);
   const existingIssues = refs.length
-    ? await InvestorIssue.find({ importRef: { $in: refs } }).select('importRef investor').lean()
+    ? await InvestorIssue.find({ importRef: { $in: refs } }).lean()
     : [];
   const existingByRef = new Map(existingIssues.map((i) => [i.importRef, i]));
+  const storedInvestors = existingIssues.length
+    ? await Investor.find({ _id: { $in: existingIssues.map((i) => i.investor) } }).select('investorName').lean()
+    : [];
+  const investorNameById = new Map(storedInvestors.map((v) => [String(v._id), v.investorName]));
+  // References already used by other issues (a new ISS-NN row cannot take
+  // one), compared in the canonical form.
+  const formatRefs = [...new Set(refs.map(canonicalReference).filter(Boolean))];
+  const takenRefs = new Set(formatRefs.length
+    ? (await InvestorIssue.find({ reference: { $in: formatRefs } }).select('reference').lean()).map((i) => i.reference)
+    : []);
+  const plannedRefs = new Set(); // canonical references of new rows in this file
   const seenRefs = new Set();
 
   for (let i = 0; i < rows.length; i += 1) {
@@ -154,7 +208,12 @@ const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = doc
     if (existing) {
       investorId = existing.investor;
       counts.existing += 1;
+      const fields = changedFields(checked.doc, checked.investorName, existing, investorNameById.get(String(existing.investor)));
+      if (fields.length) { counts.changed += 1; changes.push({ row, ref: checked.ref, fields }); }
     } else {
+      const wanted = canonicalReference(checked.ref);
+      if (wanted && (takenRefs.has(wanted) || plannedRefs.has(wanted))) { fail(`reference ${wanted} is already used`); continue; }
+      if (wanted) plannedRefs.add(wanted);
       if (!checked.investorName) { fail('no investorName'); continue; }
       // eslint-disable-next-line no-await-in-loop
       const found = await Investor.find({ investorName: checked.investorName }).select('_id').limit(2).lean();
@@ -164,7 +223,12 @@ const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = doc
       counts.toCreate += 1;
     }
     issues.push({
-      row, ref: checked.ref, investor: investorId, existingId: existing ? existing._id : null, doc: checked.doc,
+      row,
+      ref: checked.ref,
+      investor: investorId,
+      existingId: existing ? existing._id : null,
+      reference: existing ? null : canonicalReference(checked.ref),
+      doc: checked.doc,
     });
 
     checked.files.forEach((p, j) => {
@@ -218,7 +282,7 @@ const planIssueImport = async (data, { filesRoot = process.cwd(), maxBytes = doc
   });
 
   return {
-    counts, errors, warnings, issues, files: [...files.values()],
+    counts, errors, warnings, changes, issues, files: [...files.values()],
   };
 };
 
@@ -235,11 +299,17 @@ const applyIssueImport = async (plan, actor, { batchId = newBatchId() } = {}) =>
   }
 
   // 1. Issues.
-  const issueByRef = new Map(); // ref → { _id, investor, importRef, category, dateReported }
-  for (const p of plan.issues) {
+  const issueByRef = new Map(); // ref → { _id, investor, reference, importRef, category, dateReported }
+  const ISSUE_FIELDS = 'investor reference importRef category dateReported';
+  // Rows with their own ISS-NN first; rows that need a new number after them.
+  const ordered = [
+    ...plan.issues.filter((p) => p.existingId || p.reference),
+    ...plan.issues.filter((p) => !p.existingId && !p.reference),
+  ];
+  for (const p of ordered) {
     if (p.existingId) {
       // eslint-disable-next-line no-await-in-loop
-      const ex = await InvestorIssue.findById(p.existingId).select('investor importRef category dateReported').lean();
+      const ex = await InvestorIssue.findById(p.existingId).select(ISSUE_FIELDS).lean();
       if (ex) issueByRef.set(p.ref, ex);
       else errors.push({ ref: p.ref, stage: 'issue gone since the plan' });
       continue;
@@ -255,11 +325,13 @@ const applyIssueImport = async (plan, actor, { batchId = newBatchId() } = {}) =>
         _id: new mongoose.Types.ObjectId(), ...a, recordedBy: user._id, recordedAt: now,
       })),
       importBatchId: batchId,
+      ...(p.reference && { reference: p.reference }),
     };
     let stage = 'save';
     try {
+      // ISS-NN importRef: that reference; any other: the next free number.
       // eslint-disable-next-line no-await-in-loop
-      await InvestorIssue.create(doc);
+      if (p.reference) await InvestorIssue.create(doc); else await createWithReference(doc);
       stage = 'audit';
       // eslint-disable-next-line no-await-in-loop
       await recordChanges(user, 'import', [['InvestorIssue', [doc]]], { batchId });
@@ -267,10 +339,15 @@ const applyIssueImport = async (plan, actor, { batchId = newBatchId() } = {}) =>
       result.issuesCreated += 1;
       issueByRef.set(p.ref, doc);
     } catch (err) {
+      if (stage === 'save' && p.reference && isReferenceDuplicate(err)) {
+        // Taken by an app issue since the plan.
+        errors.push({ ref: p.ref, stage: `reference ${p.reference} is already used` });
+        continue;
+      }
       if (stage === 'save' && err && err.code === 11000) {
         // Created by another run meanwhile: use it.
         // eslint-disable-next-line no-await-in-loop
-        const ex = await InvestorIssue.findOne({ importRef: p.ref }).select('investor importRef category dateReported').lean();
+        const ex = await InvestorIssue.findOne({ importRef: p.ref }).select(ISSUE_FIELDS).lean();
         if (ex) { issueByRef.set(p.ref, ex); continue; }
       }
       console.error(`Issue ${p.ref}: ${stage} failed:`, err.message);

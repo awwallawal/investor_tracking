@@ -11,7 +11,7 @@ import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
 import IssueForm from '../components/IssueForm';
 import { fetchIssues } from '../api/issues';
-import { STATUS_COLORS } from '../constants/issueFields';
+import { STATUS_COLORS, issueReference } from '../constants/issueFields';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { dateLine } from '../utils/dates';
@@ -218,6 +218,7 @@ const InvestorProfilePage = () => {
                             <ListItemText
                                 primary={(
                                     <MuiLink component={Link} to={`/issues/${issue._id}`}>
+                                        {issueReference(issue) ? `${issueReference(issue)} · ` : ''}
                                         {issue.category || 'Issue'}
                                     </MuiLink>
                                 )}

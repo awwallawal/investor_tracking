@@ -12,8 +12,11 @@ const MdaPicker = ({
   mdas, value, onChange, label = 'MDA responsible', showMou = true, disabled = false, id = 'mda-picker', placeholder,
 }) => {
   const byCode = Object.fromEntries((mdas || []).map((m) => [m.code, m]));
+  // A stored code not on the list shows as the raw code, marked once the list
+  // has loaded, so the user can remove it.
+  const listLoaded = (mdas || []).length > 0;
   const selected = (value || []).map((code) => byCode[code] || {
-    code, name: code, abbreviation: '', mou: false,
+    code, name: listLoaded ? `${code} (not on the MDA list)` : code, abbreviation: '', mou: false,
   });
   const optionLabel = (m) => (showMou ? mdaOptionLabel(m) : m.name);
 

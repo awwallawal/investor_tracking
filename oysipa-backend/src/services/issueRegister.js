@@ -12,11 +12,67 @@ const ISSUES_TOP_KEY = 'investor-issues';
 const ISSUES_TOP_NAME = 'Investor issues';
 const ISSUES_TOP_DESCRIPTION = 'Files of investor issues (DLR 4.5), one subfolder per issue.';
 
-// The issue's own subfolder: investor-issues/<importRef or id>.
-const issueRef = (issue) => {
-  const ref = issue.importRef && /^[A-Za-z0-9_-]{1,60}$/.test(issue.importRef) ? issue.importRef : null;
-  return ref || String(issue._id);
+// Readable issue reference (story 11.7b): ISS- plus a number padded to at least
+// 2 digits. Server-owned; set once, never changed.
+// ISS-5, ISS-05 and ISS-005 are the same number: references are always stored
+// in the canonical form (canonicalReference). Number 0 is refused.
+const REFERENCE_RE = /^ISS-(\d+)$/;
+const formatReference = (n) => `ISS-${String(n).padStart(2, '0')}`;
+// The number of an ISS-NN string; 0 when it is not one (or is ISS-0).
+const referenceNumber = (s) => {
+  const m = typeof s === 'string' ? REFERENCE_RE.exec(s) : null;
+  const n = m ? Number(m[1]) : 0;
+  return Number.isSafeInteger(n) && n > 0 ? n : 0;
 };
+const isReference = (s) => referenceNumber(s) > 0;
+// 'ISS-5' → 'ISS-05'; null when not a valid reference.
+const canonicalReference = (s) => (isReference(s) ? formatReference(referenceNumber(s)) : null);
+
+// The next number after the highest ISS-NN in use. Format importRefs count too,
+// so an app issue never takes the number of a loaded issue that is not yet
+// backfilled (migrate:issue-refs).
+const nextReference = async () => {
+  const rows = await InvestorIssue.collection.find(
+    { $or: [{ reference: { $regex: REFERENCE_RE.source } }, { importRef: { $regex: REFERENCE_RE.source } }] },
+    { projection: { reference: 1, importRef: 1 } },
+  ).toArray();
+  const max = rows.reduce((n, r) => Math.max(n, referenceNumber(r.reference), referenceNumber(r.importRef)), 0);
+  return formatReference(max + 1);
+};
+
+const isReferenceDuplicate = (err) => !!(err && err.code === 11000
+  && ((err.keyPattern && 'reference' in err.keyPattern) || (err.keyValue && 'reference' in err.keyValue)));
+
+// Thrown when every retry hit a taken number.
+const REFERENCE_EXHAUSTED = 'REFERENCE_EXHAUSTED';
+
+// Creates an issue with the next free reference. Two creates at once can pick
+// the same number: the unique index refuses the second, which recomputes and
+// retries (up to `attempts` times). `doc.reference` is set on the doc passed in.
+const createWithReference = async (doc, { attempts = 5 } = {}) => {
+  let lastError;
+  for (let i = 0; i < attempts; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    doc.reference = await nextReference();
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      return await InvestorIssue.create(doc);
+    } catch (err) {
+      if (!isReferenceDuplicate(err)) throw err;
+      lastError = err;
+    }
+  }
+  const exhausted = new Error(`Could not assign an issue number after ${attempts} tries`);
+  exhausted.code = REFERENCE_EXHAUSTED;
+  exhausted.cause = lastError;
+  throw exhausted;
+};
+
+// The issue's own subfolder: investor-issues/<reference or importRef or id>.
+const SAFE_REF = /^[A-Za-z0-9_-]{1,60}$/;
+const refCandidates = (issue) => [issue.reference, issue.importRef]
+  .filter((r) => typeof r === 'string' && SAFE_REF.test(r));
+const issueRef = (issue) => refCandidates(issue)[0] || String(issue._id);
 const issueFolderKey = (issue) => `${ISSUES_TOP_KEY}/${issueRef(issue)}`;
 
 // Find or create one folder by key. A folder created here can be audited
@@ -55,10 +111,16 @@ const ensureIssueFolder = async (issue, audit) => {
     parent: null,
     order: topOrder(ISSUES_TOP_KEY),
   }, audit);
-  const sub = await findOrCreateFolder({
-    key: issueFolderKey(issue),
-    name: issue.importRef ? `Issue ${issue.importRef}` : `Issue ${String(issue._id).slice(-6)}`,
-    description: `Files of investor issue ${issueRef(issue)}${issue.category ? ` (${issue.category})` : ''}.`,
+  // A folder made before the issue had its reference (keyed by importRef or
+  // id) is kept and used: existing folders are never renamed.
+  const keys = [...new Set([...refCandidates(issue), String(issue._id)].map((r) => `${ISSUES_TOP_KEY}/${r}`))];
+  const existing = await EvidenceFolder.find({ key: { $in: keys } }).select('_id key').lean();
+  const found = keys.map((k) => existing.find((f) => f.key === k)).find(Boolean);
+  const ref = issueRef(issue);
+  const sub = found ? { folder: found, created: false } : await findOrCreateFolder({
+    key: keys[0],
+    name: refCandidates(issue).length ? `Issue ${ref}` : `Issue ${String(issue._id).slice(-6)}`,
+    description: `Files of investor issue ${ref}${issue.category ? ` (${issue.category})` : ''}.`,
     ...(issue.dateReported && { folderDate: issue.dateReported }),
     parent: top.folder._id,
     order: 0,
@@ -101,6 +163,15 @@ const issuesMetric = async (year) => {
 module.exports = {
   ISSUES_TOP_KEY,
   ISSUES_TOP_NAME,
+  REFERENCE_RE,
+  isReference,
+  formatReference,
+  referenceNumber,
+  canonicalReference,
+  REFERENCE_EXHAUSTED,
+  nextReference,
+  isReferenceDuplicate,
+  createWithReference,
   issueRef,
   issueFolderKey,
   ensureIssueFolder,

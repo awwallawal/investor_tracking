@@ -6,7 +6,9 @@ import {
 } from '@mui/material';
 import IssueForm from '../components/IssueForm';
 import { fetchIssues, issueErrorMessage } from '../api/issues';
-import { ISSUE_STATUSES, STATUS_COLORS, issueYears } from '../constants/issueFields';
+import {
+  ISSUE_STATUSES, STATUS_COLORS, issueReference, issueYears,
+} from '../constants/issueFields';
 import { dateLine } from '../utils/dates';
 import { useMdas } from '../api/mdas';
 
@@ -89,7 +91,7 @@ const IssuesPage = () => {
                     <MuiLink component={RouterLink} to={`/issues/${issue._id}`} onClick={(e) => e.stopPropagation()}>
                       {issue.investor?.investorName || 'Investor'}
                     </MuiLink>
-                    {issue.importRef && <Typography component="span" variant="body2" color="text.secondary">{` · ${issue.importRef}`}</Typography>}
+                    {issueReference(issue) && <Typography component="span" variant="body2" color="text.secondary">{` · ${issueReference(issue)}`}</Typography>}
                     <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
                       {issue.description?.length > 120 ? `${issue.description.slice(0, 120)}…` : issue.description}
                     </Typography>

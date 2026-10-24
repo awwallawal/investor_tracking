@@ -273,6 +273,14 @@ describe('InvestorProfilePage — Issues section (11.7)', () => {
     expect(screen.queryByText('No issues registered for this investor.')).not.toBeInTheDocument();
   });
 
+  it('shows the issue reference in the link (11.7b)', async () => {
+    mockData({ issueList: [{ ...issues[0], reference: 'ISS-09' }] });
+    localStorage.setItem('token', tokenFor('Director-General', 'dg'));
+    renderPage();
+    const list = await screen.findByRole('list', { name: 'Investor issues' });
+    expect(within(list).getByRole('link', { name: 'ISS-09 · land/title' })).toHaveAttribute('href', '/issues/iss1');
+  });
+
   it('shows the empty state when the investor has no issues', async () => {
     mockData();
     localStorage.setItem('token', tokenFor('Director-General'));
