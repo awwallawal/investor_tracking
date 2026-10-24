@@ -11,6 +11,8 @@ const { SERVICE_CODES } = require('../constants/serviceCodes');
 const EvidenceLinkSchema = new mongoose.Schema({
   investor: { type: mongoose.Schema.Types.ObjectId, ref: 'Investor', required: true },
   interaction: { type: mongoose.Schema.Types.ObjectId, ref: 'InteractionLog' },
+  // Investor issue the file belongs to (story 11.7). Optional, like interaction.
+  issue: { type: mongoose.Schema.Types.ObjectId, ref: 'InvestorIssue' },
   serviceCodes: {
     type: [{ type: String, enum: { values: SERVICE_CODES, message: 'Invalid service code: {VALUE}' } }],
     default: [],
@@ -41,6 +43,7 @@ const EvidenceFileSchema = new mongoose.Schema({
 
 EvidenceFileSchema.index({ 'links.investor': 1 });
 EvidenceFileSchema.index({ 'links.interaction': 1 });
+EvidenceFileSchema.index({ 'links.issue': 1 });
 EvidenceFileSchema.index({ folder: 1 });
 
 const INTERNAL_FIELDS = ['provider', 'key', 'resourceType'];

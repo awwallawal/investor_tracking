@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getDashboardKpis } = require('../controllers/adminController');
+const { getDashboardKpis, getIssuesMetric } = require('../controllers/adminController');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
@@ -8,5 +8,10 @@ const authorize = require('../middleware/authorize');
 // @desc    Get dashboard KPIs for Director-General and Portal-Admin
 // @access  Private (Director-General, Portal-Admin)
 router.get('/dashboard-kpis', auth, authorize('Director-General', 'Portal-Admin'), getDashboardKpis);
+
+// @route   GET api/admin/issues-metric?year=
+// @desc    Resolved share of investor issues for a year (DLR 4.5)
+// @access  Private (Director-General, Portal-Admin)
+router.get('/issues-metric', auth, authorize('Director-General', 'Portal-Admin'), getIssuesMetric);
 
 module.exports = router;

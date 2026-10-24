@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { vi } from 'vitest';
 import InvestorDirectoryPage from './InvestorDirectoryPage';
 import apiClient from '../api/api';
@@ -147,5 +147,103 @@ describe('InvestorDirectoryPage — T11 filters, type chip and Import (11.5 + 11
     await userEvent.click(screen.getByRole('button', { name: 'Import investors' }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByRole('button', { name: 'Run import' })).toBeDisabled();
+  });
+});
+
+describe('InvestorDirectoryPage — search (11.7)', () => {
+  const all = [
+    { _id: '1', investorName: 'Lakeside Marine & Tourism', sector: 'Tourism', countryOfOrigin: 'Nigeria' },
+    { _id: '2', investorName: 'Nutco Synthetic', sector: 'Agro', countryOfOrigin: 'Nigeria' },
+  ];
+  const Location = () => <div data-testid="location">{useLocation().search}</div>;
+  const renderAt = (entry = '/investors') => render(
+    <MemoryRouter initialEntries={[entry]}>
+      <InvestorDirectoryPage />
+      <Location />
+    </MemoryRouter>
+  );
+  const respond = (url, config) => {
+    const q = config?.params?.q;
+    if (q === 'lakeview') return Promise.resolve({ data: [all[0]], headers: { 'x-total-count': '177' } });
+    if (q) return Promise.resolve({ data: [], headers: { 'x-total-count': '177' } });
+    return Promise.resolve({ data: all, headers: { 'x-total-count': '177' } });
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem('token');
+  });
+
+  it('typing "lakeview": one request after the 300 ms pause, count "1 of 177", ?q= in the URL', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockImplementation(respond);
+    renderAt();
+    expect(await screen.findByText('2 of 177 investors')).toBeInTheDocument();
+    expect(getSpy).toHaveBeenCalledWith('/api/investors');
+    await userEvent.type(screen.getByLabelText('Search investors'), 'lakeview');
+    // Debounced: no request per keystroke.
+    expect(getSpy).not.toHaveBeenCalledWith('/api/investors', { params: { q: 'eley' } });
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith('/api/investors', { params: { q: 'lakeview' } }));
+    expect(getSpy.mock.calls.filter(([, c]) => c?.params?.q).length).toBe(1);
+    expect(await screen.findByText('1 of 177 investors')).toBeInTheDocument();
+    expect(screen.queryByText('Nutco Synthetic')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('?q=lakeview'));
+  });
+
+  it('empty state names the query; clear (x) restores the full list and the URL', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockImplementation(respond);
+    renderAt('/investors?q=zzz');
+    expect(await screen.findByText('No investors match "zzz"')).toBeInTheDocument();
+    expect(getSpy).toHaveBeenCalledWith('/api/investors', { params: { q: 'zzz' } });
+    expect(screen.getByLabelText('Search investors')).toHaveValue('zzz');
+    await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(await screen.findByText('Nutco Synthetic')).toBeInTheDocument();
+    expect(screen.getByText('2 of 177 investors')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^$/));
+    expect(getSpy).toHaveBeenLastCalledWith('/api/investors');
+  });
+
+  it('search combines with a filter in one request', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockImplementation(respond);
+    renderAt('/investors?q=lakeview');
+    await screen.findByText('1 of 177 investors');
+    await userEvent.click(screen.getByRole('combobox', { name: /organisation type/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Intermediary' }));
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith('/api/investors', { params: { organisationType: 'Intermediary', q: 'lakeview' } }));
+  });
+
+  it('a slower, older response never overwrites the newer list', async () => {
+    let releaseOld;
+    vi.spyOn(apiClient, 'get').mockImplementation((url, config) => {
+      if (!config) return new Promise((r) => { releaseOld = r; });
+      return respond(url, config);
+    });
+    renderAt();
+    await userEvent.type(screen.getByLabelText('Search investors'), 'lakeview');
+    expect(await screen.findByText('1 of 177 investors')).toBeInTheDocument();
+    releaseOld({ data: all, headers: { 'x-total-count': '177' } });
+    await new Promise((r) => { setTimeout(r, 50); });
+    expect(screen.getByText('1 of 177 investors')).toBeInTheDocument();
+    expect(screen.queryByText('Nutco Synthetic')).not.toBeInTheDocument();
+  });
+
+  it('a ?q= change from outside (back/forward, a link) updates the box and the list', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockImplementation(respond);
+    const Nav = () => {
+      const navigate = useNavigate();
+      return <button type="button" onClick={() => navigate('/investors?q=lakeview')}>go</button>;
+    };
+    render(
+      <MemoryRouter initialEntries={['/investors']}>
+        <InvestorDirectoryPage />
+        <Nav />
+        <Location />
+      </MemoryRouter>
+    );
+    await screen.findByText('2 of 177 investors');
+    await userEvent.click(screen.getByRole('button', { name: 'go' }));
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith('/api/investors', { params: { q: 'lakeview' } }));
+    expect(screen.getByLabelText('Search investors')).toHaveValue('lakeview');
+    expect(await screen.findByText('1 of 177 investors')).toBeInTheDocument();
+    expect(screen.getByTestId('location')).toHaveTextContent('?q=lakeview');
   });
 });

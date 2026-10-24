@@ -12,7 +12,8 @@
     "dev": "nodemon src/index.js",
     "migrate:lead-source": "node scripts/migrate-lead-source.js",
     "import:investors": "node scripts/import-investors.js",
-    "attach:documents": "node scripts/attach-documents.js"
+    "attach:documents": "node scripts/attach-documents.js",
+    "import:issues": "node scripts/import-issues.js"
   },
   "keywords": [],
   "author": "",

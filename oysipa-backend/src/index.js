@@ -12,6 +12,7 @@ const lifecycleStatusRoutes = require('./api/lifecyclestatuses');
 const staffRoutes = require('./api/staff');
 const adminRoutes = require('./api/admin');
 const evidenceRoutes = require('./api/evidence');
+const issueRoutes = require('./api/issues');
 
 const app = express();
 
@@ -24,6 +25,8 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: allowedOrigins,
+  // The directory reads the unfiltered investor total from this header.
+  exposedHeaders: ['X-Total-Count'],
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 app.use(cors(corsOptions));
@@ -78,6 +81,7 @@ app.use('/api/lifecycle-statuses', lifecycleStatusRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/evidence', evidenceRoutes);
+app.use('/api/issues', issueRoutes);
 
 const PORT = process.env.PORT || 3001;
 

@@ -53,6 +53,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
     { path: '/dashboard', name: 'Dashboard', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/users', name: 'User Management', roles: ['Director-General', 'Portal-Admin'] },
     { path: '/investors', name: 'Investor Directory', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
+    { path: '/issues', name: 'Issues', roles: ['Director-General', 'Portal-Admin', 'Staff'] },
     { path: '/evidence', name: 'Evidence Library', roles: ['Director-General', 'Portal-Admin', 'Staff'], badge: untagged },
     { path: '/admin', name: 'Admin Settings', roles: ['Portal-Admin'] },
   ];

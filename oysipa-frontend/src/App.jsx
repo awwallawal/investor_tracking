@@ -19,6 +19,8 @@ import DashboardPage from './pages/DashboardPage';
 import AppLayout from './components/AppLayout'; // Import the correct AppLayout
 import EvidenceLibraryPage from './pages/EvidenceLibraryPage';
 import EvidenceFolderPage from './pages/EvidenceFolderPage';
+import IssuesPage from './pages/IssuesPage';
+import IssueDetailPage from './pages/IssueDetailPage';
 
 // Define the theme based on front-end-spec.md
 const theme = createTheme({
@@ -102,6 +104,8 @@ function App() {
             <Route path="/interactions" element={<AppLayout><InteractionListPage /></AppLayout>} />
             <Route path="/evidence" element={<AppLayout><EvidenceLibraryPage /></AppLayout>} />
             <Route path="/evidence/:folderId" element={<AppLayout><EvidenceFolderPage /></AppLayout>} />
+            <Route path="/issues" element={<AppLayout><IssuesPage /></AppLayout>} />
+            <Route path="/issues/:id" element={<AppLayout><IssueDetailPage /></AppLayout>} />
           </Route>
 
           {/* Admin Protected Routes */}

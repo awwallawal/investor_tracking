@@ -4,6 +4,7 @@ const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
 const EvidenceFile = require('../models/EvidenceFile');
+const InvestorIssue = require('../models/InvestorIssue');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 // Import stamps are server-owned (set only by the investor import).
 const stripImportStamps = (body) => {
@@ -208,6 +209,12 @@ exports.updateProject = async (req, res) => {
         { project: req.params.id },
         { $set: { investor: newInvestorId } },
         { timestamps: false },
+      );
+      // Issues of the old investor that named this project keep their
+      // investor; the project link is removed (it now belongs to someone else).
+      await InvestorIssue.updateMany(
+        { project: req.params.id, investor: { $ne: newInvestorId } },
+        { $unset: { project: 1 } },
       );
       // Library links to those logs follow too, so the library shows the right
       // investor and deleting the old investor does not drop these tags.

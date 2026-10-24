@@ -2,6 +2,8 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const { INVESTOR_COUNT_FILTER } = require('../constants/investorFields');
+const { parseYear, issuesMetric } = require('../services/issueRegister');
+const { todayLagos } = require('../utils/happenedDate');
 
 const getDashboardKpis = async (req, res) => {
   try {
@@ -55,6 +57,21 @@ const getDashboardKpis = async (req, res) => {
   }
 };
 
+// GET /api/admin/issues-metric?year= (default: the current Lagos year)
+// Resolved share (DLR 4.5) by dateReported, Withdrawn left out.
+const getIssuesMetric = async (req, res) => {
+  try {
+    const raw = req.query && req.query.year;
+    const year = raw === undefined || raw === '' ? Number(todayLagos().slice(0, 4)) : parseYear(raw);
+    if (!year) return res.status(400).json({ message: 'Invalid year.' });
+    return res.json(await issuesMetric(year));
+  } catch (error) {
+    console.error('Error fetching the issues metric:', error);
+    return res.status(500).json({ msg: 'Server error' });
+  }
+};
+
 module.exports = {
   getDashboardKpis,
+  getIssuesMetric,
 };

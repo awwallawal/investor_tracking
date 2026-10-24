@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
+const InvestorIssue = require('../models/InvestorIssue');
+const { investorSearchFilter } = require('../services/investorSearch');
 const { recordActionGroups, newBatchId } = require('../utils/recordDeletion');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 const { isAdminRole } = require('../middleware/accessHelpers');
@@ -110,8 +112,10 @@ exports.createInvestor = async (req, res) => {
   }
 };
 
-// GET /api/investors?leadSource=&organisationType=
+// GET /api/investors?leadSource=&organisationType=&q=
 // organisationType=Investor also matches old records with no type set.
+// q: search (see services/investorSearch.js), ANDed with the filters.
+// The response stays an array; X-Total-Count holds the unfiltered total.
 exports.getAllInvestors = async (req, res) => {
     try {
         const filter = {};
@@ -126,7 +130,17 @@ exports.getAllInvestors = async (req, res) => {
                 ? INVESTOR_COUNT_FILTER.organisationType
                 : organisationType;
         }
-        const investors = await Investor.find(filter);
+        const { q } = req.query || {};
+        if (q !== undefined && typeof q !== 'string') return res.status(400).json({ message: 'Invalid search.' });
+        const search = q ? await investorSearchFilter(q) : null;
+        // A query with nothing searchable left (e.g. "!!!") matches nothing.
+        if (q && !search) {
+            res.set('X-Total-Count', String(await Investor.countDocuments({})));
+            return res.send([]);
+        }
+        const query = search ? { $and: [filter, search] } : filter;
+        const [investors, total] = await Promise.all([Investor.find(query), Investor.countDocuments({})]);
+        res.set('X-Total-Count', String(total));
         res.send(investors);
     } catch (error) {
         res.status(500).send(error);
@@ -211,9 +225,14 @@ exports.deleteInvestor = async (req, res) => {
       $or: [{ investor: id }, { project: { $in: projectIds } }],
     }).lean();
 
-    // Evidence library links to the investor or its interactions are removed
-    // (audited, same batch); the files stay in the library.
-    const links = await findLinksTo({ investorIds: [investor._id], interactionIds: logs.map((l) => l._id) });
+    // The investor's issues (story 11.7) go too.
+    const issues = await InvestorIssue.find({ investor: id }).lean();
+
+    // Evidence library links to the investor, its interactions or its issues
+    // are removed (audited, same batch); the files stay in the library.
+    const links = await findLinksTo({
+      investorIds: [investor._id], interactionIds: logs.map((l) => l._id), issueIds: issues.map((i) => i._id),
+    });
 
     try {
       // Delete and unlink rows in one insert: all are written or none.
@@ -221,6 +240,7 @@ exports.deleteInvestor = async (req, res) => {
         ['delete', 'Investor', [investor]],
         ['delete', 'InvestmentProject', projects],
         ['delete', 'InteractionLog', logs],
+        ['delete', 'InvestorIssue', issues],
         ['unlink', 'EvidenceFile', unlinkSnapshots(links)],
       ], { reason: trimmed, batchId: newBatchId() });
     } catch (auditError) {
@@ -230,6 +250,7 @@ exports.deleteInvestor = async (req, res) => {
 
     // Delete exactly the documents (and links) that were audited.
     await pullLinks(links);
+    await InvestorIssue.deleteMany({ _id: { $in: issues.map((i) => i._id) } });
     await InteractionLog.deleteMany({ _id: { $in: logs.map((l) => l._id) } });
     await InvestmentProject.deleteMany({ _id: { $in: projectIds } });
     await Investor.deleteOne({ _id: id });
@@ -239,6 +260,7 @@ exports.deleteInvestor = async (req, res) => {
         investors: 1,
         projects: projects.length,
         interactions: logs.length,
+        ...(issues.length > 0 && { issues: issues.length }),
         ...(links.length > 0 && { evidenceLinks: links.length }),
       },
     });

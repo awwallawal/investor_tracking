@@ -11,6 +11,11 @@ vi.mock('../api/api');
 vi.mock('../utils/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }));
+// A fixed "today" so the year selector (and the snapshot) do not change with the calendar.
+vi.mock('../utils/dates', async (importOriginal) => ({
+  ...(await importOriginal()),
+  todayLagos: () => '2026-06-15',
+}));
 
 describe('DGDashboard', () => {
   const mockKpiData = {
@@ -31,7 +36,11 @@ describe('DGDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getAuthenticatedUser.mockReturnValue(mockUser);
-    apiClient.get.mockResolvedValue({ data: mockKpiData });
+    apiClient.get.mockImplementation((url) => Promise.resolve({
+      data: url === '/api/admin/issues-metric'
+        ? { year: 2026, total: 0, resolved: 0, withdrawn: 0, share: null, band: null }
+        : mockKpiData,
+    }));
   });
 
   it('fetches and displays KPI data and welcome message correctly', async () => {
@@ -59,6 +68,10 @@ describe('DGDashboard', () => {
 
     // Ensure API was called correctly
     expect(apiClient.get).toHaveBeenCalledWith('/api/admin/dashboard-kpis');
+
+    // Resolved-share widget (DLR 4.5)
+    expect(await screen.findByText('Investor issues resolved')).toBeInTheDocument();
+    expect(await screen.findByText('No issues registered')).toBeInTheDocument();
   });
 
   it('displays an error message if API call fails', async () => {
@@ -86,6 +99,7 @@ describe('DGDashboard', () => {
     );
 
     await screen.findByText(`Welcome ${mockUser.role}, ${mockUser.name}`);
+    await screen.findByText('No issues registered');
     expect(document.body).toMatchSnapshot();
   });
 

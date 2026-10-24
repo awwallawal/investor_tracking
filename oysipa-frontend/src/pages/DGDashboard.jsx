@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import KpiWidget from '../components/KpiWidget';
 import LifecycleChart from '../components/LifecycleChart';
+import IssuesShareWidget from '../components/IssuesShareWidget';
 import apiClient from '../api/api';
 import { getAuthenticatedUser } from '../utils/auth';
 
@@ -45,10 +46,11 @@ const DGDashboard = () => {
       )}
       {kpiData && (
         <>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' } }}>
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
             <KpiWidget title="Total Investors" value={kpiData.totalInvestors} navigateTo="/investors" />
             <KpiWidget title="Total Projects" value={kpiData.totalProjects} navigateTo="/projects" />
             <KpiWidget title="All-Time Interactions" value={kpiData.recentInteractions} navigateTo="/interactions" />
+            <IssuesShareWidget />
           </Box>
           <LifecycleChart data={kpiData.projectsByStage} />
         </>

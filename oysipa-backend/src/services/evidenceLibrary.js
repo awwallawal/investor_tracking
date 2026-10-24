@@ -55,20 +55,24 @@ const parseLinkCodes = (raw) => {
   return { codes: SERVICE_CODES.filter((c) => raw.includes(c)) };
 };
 
-// Links that point at any of these investors or interactions, as
-// [{ fileId, link }]. Used by the investor and interaction delete cascades.
-const findLinksTo = async ({ investorIds = [], interactionIds = [] }) => {
-  if (investorIds.length === 0 && interactionIds.length === 0) return [];
+// Links that point at any of these investors, interactions or investor issues,
+// as [{ fileId, link }]. Used by the investor, interaction and issue delete cascades.
+const findLinksTo = async ({ investorIds = [], interactionIds = [], issueIds = [] }) => {
+  if (investorIds.length === 0 && interactionIds.length === 0 && issueIds.length === 0) return [];
   const files = await EvidenceFile.find({
     $or: [
       { 'links.investor': { $in: investorIds } },
       { 'links.interaction': { $in: interactionIds } },
+      { 'links.issue': { $in: issueIds } },
     ],
   }).select('links').lean();
   const inv = new Set(investorIds.map(String));
   const ints = new Set(interactionIds.map(String));
+  const iss = new Set(issueIds.map(String));
   return files.flatMap((f) => (f.links || [])
-    .filter((l) => inv.has(String(l.investor)) || (l.interaction && ints.has(String(l.interaction))))
+    .filter((l) => inv.has(String(l.investor))
+      || (l.interaction && ints.has(String(l.interaction)))
+      || (l.issue && iss.has(String(l.issue))))
     .map((link) => ({ fileId: f._id, link })));
 };
 
