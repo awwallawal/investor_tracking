@@ -10,6 +10,7 @@ const InteractionLog = require('../models/InteractionLog');
 const InvestmentProject = require('../models/InvestmentProject');
 // Registered for populate('links.issue').
 require('../models/InvestorIssue');
+require('../models/InvestmentAnnouncement');
 const documentStorage = require('../services/documentStorage');
 const { recordChanges, recordDeletions } = require('../utils/recordDeletion');
 const { parseHappenedDate } = require('../utils/happenedDate');
@@ -196,6 +197,7 @@ const populateFile = (query) => query
   .populate('links.investor', 'investorName')
   .populate('links.interaction', 'description category interactionDate createdAt')
   .populate('links.issue', 'importRef category status')
+  .populate('links.announcement', 'announcementDate outlet')
   .populate('links.linkedBy', 'name')
   .populate('uploadedBy', 'name');
 
@@ -407,7 +409,10 @@ exports.addLink = async (req, res) => {
     // Conditional push: only when no link has the same investor and interaction
     // (safe against two requests at once).
     // Issue links (story 11.7) are separate: they never block an investor tag.
-    const sameLink = { investor: investorDoc._id, interaction: interactionId || { $exists: false }, issue: { $exists: false } };
+    // Announcement links (story 11.8) likewise.
+    const sameLink = {
+      investor: investorDoc._id, interaction: interactionId || { $exists: false }, issue: { $exists: false }, announcement: { $exists: false },
+    };
     const result = await EvidenceFile.updateOne(
       { _id: file._id, links: { $not: { $elemMatch: sameLink } } },
       { $push: { links: link } },

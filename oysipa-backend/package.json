@@ -15,7 +15,8 @@
     "attach:documents": "node scripts/attach-documents.js",
     "import:issues": "node scripts/import-issues.js",
     "migrate:issue-mdas": "node scripts/migrate-issue-mdas.js",
-    "migrate:issue-refs": "node scripts/migrate-issue-refs.js"
+    "migrate:issue-refs": "node scripts/migrate-issue-refs.js",
+    "import:announcements": "node scripts/import-announcements.js"
   },
   "keywords": [],
   "author": "",

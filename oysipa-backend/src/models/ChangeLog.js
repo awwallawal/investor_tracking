@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 // inserted; the hooks below refuse the Mongoose model/query/document update and
 // delete paths (and bulkWrite ops other than insertOne). Raw driver calls
 // (ChangeLog.collection.*) are NOT covered. There is no API to change it either.
-const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog', 'EvidenceFolder', 'EvidenceFile', 'InvestorIssue'];
+const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog', 'EvidenceFolder', 'EvidenceFile', 'InvestorIssue', 'InvestmentAnnouncement'];
 // upload: a file added in the Evidence library screen; link/unlink: a library
 // file linked to (or unlinked from) an investor / interaction.
 const ACTIONS = ['delete', 'import', 'upload', 'link', 'unlink'];

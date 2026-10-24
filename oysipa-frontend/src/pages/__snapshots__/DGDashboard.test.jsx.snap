@@ -17,7 +17,7 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
         Welcome Director-General, Test User
       </h6>
       <div
-        class="MuiBox-root css-1ijt0xn"
+        class="MuiBox-root css-yk6m85"
       >
         <div
           class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
@@ -166,6 +166,85 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
               class="MuiTypography-root MuiTypography-h6 css-1miy0lu-MuiTypography-root"
             >
               No issues registered
+            </p>
+          </div>
+        </div>
+        <div
+          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
+        >
+          <div
+            class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
+          >
+            <div
+              class="MuiBox-root css-1wrcl4x"
+            >
+              <h2
+                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
+              >
+                <button
+                  class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
+                >
+                  Investment announcements
+                </button>
+              </h2>
+              <div
+                class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
+              >
+                <label
+                  class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
+                  data-shrink="true"
+                  id="announcements-year-label"
+                >
+                  Year
+                </label>
+                <div
+                  class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+                >
+                  <div
+                    aria-expanded="false"
+                    aria-haspopup="listbox"
+                    aria-labelledby="announcements-year-label"
+                    class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+                    role="combobox"
+                    tabindex="0"
+                  >
+                    2026
+                  </div>
+                  <input
+                    aria-hidden="true"
+                    aria-invalid="false"
+                    class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
+                    tabindex="-1"
+                    value="2026"
+                  />
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
+                    data-testid="ArrowDropDownIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7 10l5 5 5-5z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
+            >
+              1 of 5
+            </p>
+            <p
+              class="MuiTypography-root MuiTypography-body2 css-7ctihp-MuiTypography-root"
+            >
+              OYSIPA named
+            </p>
+            <p
+              class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
+            >
+              Basic band (1–4)
             </p>
           </div>
         </div>

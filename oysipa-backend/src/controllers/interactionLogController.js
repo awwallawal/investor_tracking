@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const InteractionLog = require('../models/InteractionLog');
 const InvestmentProject = require('../models/InvestmentProject');
 const Investor = require('../models/InvestorModel');
+const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { SERVICE_CODES } = require('../constants/serviceCodes');
 const { hasOperatorKey, canWriteInteraction } = require('../middleware/accessHelpers');
 const { DENIED_MSG } = require('../middleware/projectWriteAccess');
@@ -299,6 +300,11 @@ exports.deleteInteractionLog = async (req, res) => {
     }
 
     await pullLinks(links);
+    // Announcements that cited it as support drop it (story 11.8).
+    await InvestmentAnnouncement.updateMany(
+      { supportingInteractions: log._id },
+      { $pull: { supportingInteractions: log._id } },
+    );
     await InteractionLog.deleteOne({ _id: log._id });
     return res.status(200).json({ deleted: { interactions: 1, ...(links.length > 0 && { evidenceLinks: links.length }) } });
   } catch (error) {

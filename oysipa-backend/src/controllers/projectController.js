@@ -5,6 +5,7 @@ const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
 const EvidenceFile = require('../models/EvidenceFile');
 const InvestorIssue = require('../models/InvestorIssue');
+const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 // Import stamps are server-owned (set only by the investor import).
 const stripImportStamps = (body) => {
@@ -228,6 +229,34 @@ exports.updateProject = async (req, res) => {
           { $set: { 'links.$[l].investor': newInvestorId } },
           { arrayFilters: [{ 'l.interaction': { $in: logIds } }], timestamps: false },
         );
+      }
+      // The project's announcements stay with it (story 11.8): their
+      // archived-copy links follow to the new investor, and supporting
+      // interactions that are neither on this project nor of the new investor
+      // (e.g. the old investor's own) are removed, so the link-scope rule holds.
+      const announcements = await InvestmentAnnouncement.find({ project: req.params.id }).select('_id supportingInteractions').lean();
+      if (announcements.length > 0) {
+        const announcementIds = announcements.map((a) => a._id);
+        await EvidenceFile.updateMany(
+          { 'links.announcement': { $in: announcementIds } },
+          { $set: { 'links.$[a].investor': newInvestorId } },
+          { arrayFilters: [{ 'a.announcement': { $in: announcementIds } }], timestamps: false },
+        );
+        const linked = [...new Set(announcements.flatMap((a) => (a.supportingInteractions || []).map(String)))];
+        if (linked.length > 0) {
+          const newProjectIds = await InvestmentProject.find({ investor: newInvestorId }).distinct('_id');
+          const inScope = new Set((await InteractionLog.find({
+            _id: { $in: linked },
+            $or: [{ project: req.params.id }, { project: { $in: newProjectIds } }, { investor: newInvestorId }],
+          }).distinct('_id')).map(String));
+          const outOfScope = linked.filter((id) => !inScope.has(id));
+          if (outOfScope.length > 0) {
+            await InvestmentAnnouncement.updateMany(
+              { _id: { $in: announcementIds } },
+              { $pull: { supportingInteractions: { $in: outOfScope } } },
+            );
+          }
+        }
       }
     }
 

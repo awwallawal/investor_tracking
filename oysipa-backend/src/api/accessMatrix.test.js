@@ -17,6 +17,7 @@ const documentStorage = require('../services/documentStorage');
 const EvidenceFolder = require('../models/EvidenceFolder');
 const EvidenceFile = require('../models/EvidenceFile');
 const InvestorIssue = require('../models/InvestorIssue');
+const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 
 // Document routes (11.4b) use a fake storage provider: no test reaches Cloudinary.
 const fakeStorage = {
@@ -91,8 +92,18 @@ beforeEach(async () => {
   const unassignedIssue = await mkIssue(unassignedInvestor);
   const otherIssue = await mkIssue(otherInvestor);
 
+  // Announcements (rows 58-67): one announcement per project.
+  await InvestmentAnnouncement.deleteMany({});
+  const mkAnnouncement = (project) => InvestmentAnnouncement.create({
+    project: project._id, announcementDate: new Date('2026-04-23T00:00:00.000Z'), outlet: 'Matrix Daily', oysipaNamed: false,
+  });
+  const assignedAnnouncement = await mkAnnouncement(assignedProject);
+  const unassignedAnnouncement = await mkAnnouncement(unassignedProject);
+  const otherAnnouncement = await mkAnnouncement(otherProject);
+
   f = {
     evSub, evFile, assignedIssue, unassignedIssue, otherIssue,
+    assignedAnnouncement, unassignedAnnouncement, otherAnnouncement,
     tokens: { [DG]: global.dgToken, [PA]: global.portalAdminToken, [STAFF]: sign(staff) },
     staff, revokeTarget, idea, lead, spare,
     assignedInvestor, unassignedInvestor, otherInvestor,
@@ -103,8 +114,10 @@ beforeEach(async () => {
 
 // ctx: { investorId, projectId } — the project/investor a request targets.
 const issueFor = (investor) => [f.assignedIssue, f.unassignedIssue, f.otherIssue].find((i) => String(i.investor) === String(investor._id));
+const announcementFor = (project) => [f.assignedAnnouncement, f.unassignedAnnouncement, f.otherAnnouncement].find((a) => String(a.project) === String(project._id));
 const ctxFor = (investor, project, log) => ({
   issueId: issueFor(investor)._id.toString(),
+  announcementId: announcementFor(project)._id.toString(),
   investorId: investor._id.toString(), projectId: project._id.toString(), logId: log._id.toString(), docId: log.documents[0]._id.toString(),
   folderId: f.evSub._id.toString(), fileId: f.evFile._id.toString(), linkId: f.evFile.links[0]._id.toString(),
 });
@@ -122,6 +135,9 @@ const unassignedCtxs = () => [
 // evidenceLink: also run Staff against unassigned investors (expect 403, no link added).
 // issueWrite: also run Staff against issues of unassigned investors (expect 403, issue unchanged, no file).
 // issueCreate: also run Staff with an unassigned investor in the body (expect 403, no issue).
+// announcementWrite: also run Staff against announcements of unassigned investors' projects (expect 403, unchanged, no file).
+// announcementCreate: also run Staff with a project of an unassigned investor in the body (expect 403, none created).
+// withProject: the body gets `project` = the targeted project.
 // attach: send as multipart with this file (document upload, 11.4b).
 // When you add or change a route, add it here and in access-matrix.md
 const ROUTES = [
@@ -197,6 +213,18 @@ const ROUTES = [
   { name: 'POST /api/issues/:id/files', method: 'post', path: (c) => `/api/issues/${c.issueId}/files`, attach: { field: 'file', buffer: Buffer.from('%PDF-matrix-issue'), filename: 'issue.pdf', contentType: 'application/pdf' }, allow: ALL, issueWrite: true },
   { name: 'DELETE /api/issues/:id', method: 'delete', path: (c) => `/api/issues/${c.issueId}`, body: () => ({ reason: 'Matrix cleanup' }), allow: ADMINS, adminDelete: true },
 
+  // Announcements (story 11.8). Reads: all roles. Writes: all roles, Staff only
+  // on projects of investors assigned to them. Delete: DG/Admin with a reason.
+  { name: 'GET /api/announcements', method: 'get', path: () => '/api/announcements', allow: ALL },
+  { name: 'POST /api/announcements', method: 'post', path: () => '/api/announcements', body: () => ({ announcementDate: '2026-04-23', outlet: 'Matrix new' }), withProject: true, allow: ALL, announcementCreate: true },
+  { name: 'GET /api/announcements/:id', method: 'get', path: (c) => `/api/announcements/${c.announcementId}`, allow: ALL },
+  { name: 'PUT /api/announcements/:id', method: 'put', path: (c) => `/api/announcements/${c.announcementId}`, body: () => ({ outlet: 'Matrix edited' }), allow: ALL, announcementWrite: true },
+  { name: 'POST /api/announcements/:id/interactions', method: 'post', path: (c) => `/api/announcements/${c.announcementId}/interactions`, body: () => ({ interactions: [] }), withLog: true, allow: ALL, announcementWrite: true },
+  { name: 'DELETE /api/announcements/:id/interactions/:interactionId', method: 'delete', path: (c) => `/api/announcements/${c.announcementId}/interactions/${c.logId}`, allow: ALL, announcementWrite: true },
+  { name: 'GET /api/announcements/:id/files', method: 'get', path: (c) => `/api/announcements/${c.announcementId}/files`, allow: ALL },
+  { name: 'POST /api/announcements/:id/files', method: 'post', path: (c) => `/api/announcements/${c.announcementId}/files`, attach: { field: 'file', buffer: Buffer.from('%PDF-matrix-announcement'), filename: 'copy.pdf', contentType: 'application/pdf' }, allow: ALL, announcementWrite: true },
+  { name: 'DELETE /api/announcements/:id', method: 'delete', path: (c) => `/api/announcements/${c.announcementId}`, body: () => ({ reason: 'Matrix cleanup' }), allow: ADMINS, adminDelete: true },
+
   // Oyo MDA list (story 11.7c). Read: all roles. MoU setting: DG/Admin.
   { name: 'GET /api/mdas', method: 'get', path: () => '/api/mdas', allow: ALL },
   { name: 'PUT /api/mdas/mou', method: 'put', path: () => '/api/mdas/mou', body: () => ({ codes: ['LANDS AND HOUSING', 'ENVIRONMENT', 'BIR', 'TRADE'] }), allow: ADMINS },
@@ -213,6 +241,7 @@ const ROUTES = [
   // Admin KPIs
   { name: 'GET /api/admin/dashboard-kpis', method: 'get', path: () => '/api/admin/dashboard-kpis', allow: ADMINS },
   { name: 'GET /api/admin/issues-metric', method: 'get', path: () => '/api/admin/issues-metric?year=2026', allow: ADMINS },
+  { name: 'GET /api/admin/announcements-metric', method: 'get', path: () => '/api/admin/announcements-metric?year=2026', allow: ADMINS },
 ];
 
 const send = (route, ctx, token) => {
@@ -223,6 +252,8 @@ const send = (route, ctx, token) => {
     return req.attach(field, buffer, { filename, contentType });
   }
   if (route.withInvestor) return req.send({ ...route.body(), investor: ctx.investorId });
+  if (route.withProject) return req.send({ ...route.body(), project: ctx.projectId });
+  if (route.withLog) return req.send({ ...route.body(), interactions: [ctx.logId] });
   return route.body ? req.send(route.body()) : req;
 };
 
@@ -307,6 +338,7 @@ describe('Access matrix', () => {
             evidenceFiles: await EvidenceFile.countDocuments(),
             evidenceLinks: (await EvidenceFile.find({}).lean()).reduce((n, e) => n + (e.links || []).length, 0),
             issues: await InvestorIssue.countDocuments(),
+            announcements: await InvestmentAnnouncement.countDocuments(),
           });
           const before = await count();
           const res = await send(route, assignedCtx(), f.tokens[STAFF]);
@@ -357,6 +389,35 @@ describe('Access matrix', () => {
         });
       }
 
+      if (route.announcementWrite) {
+        it('Staff, not assigned → denied (403), announcement unchanged, no file', async () => {
+          for (const ctx of unassignedCtxs()) {
+            const before = await InvestmentAnnouncement.findById(ctx.announcementId).lean();
+            const files = await EvidenceFile.countDocuments();
+            const res = await send(route, ctx, f.tokens[STAFF]);
+            expect(res.statusCode).toBe(403);
+            expect(res.body).toEqual({ msg: 'Forbidden: You can only change investors assigned to you' });
+            const after = await InvestmentAnnouncement.findById(ctx.announcementId).lean();
+            expect(after.outlet).toBe(before.outlet);
+            expect(after.supportingInteractions).toHaveLength(before.supportingInteractions.length);
+            expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+            expect(await EvidenceFile.countDocuments()).toBe(files);
+          }
+        });
+      }
+
+      if (route.announcementCreate) {
+        it('Staff, project of an unassigned investor → denied (403), no announcement', async () => {
+          for (const ctx of unassignedCtxs()) {
+            const before = await InvestmentAnnouncement.countDocuments();
+            const res = await send(route, ctx, f.tokens[STAFF]);
+            expect(res.statusCode).toBe(403);
+            expect(res.body).toEqual({ msg: 'Forbidden: You can only change investors assigned to you' });
+            expect(await InvestmentAnnouncement.countDocuments()).toBe(before);
+          }
+        });
+      }
+
       if (route.investorWrite) {
         it('Staff, not assigned → denied (403), nothing changed', async () => {
           for (const ctx of unassignedCtxs()) {
@@ -373,8 +434,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 57 unique entries', () => {
-    expect(ROUTES.length).toBe(57);
+  it('ROUTES list has 67 unique entries', () => {
+    expect(ROUTES.length).toBe(67);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

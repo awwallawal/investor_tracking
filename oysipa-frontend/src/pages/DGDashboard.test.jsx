@@ -36,11 +36,15 @@ describe('DGDashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getAuthenticatedUser.mockReturnValue(mockUser);
-    apiClient.get.mockImplementation((url) => Promise.resolve({
-      data: url === '/api/admin/issues-metric'
-        ? { year: 2026, total: 0, resolved: 0, withdrawn: 0, share: null, band: null }
-        : mockKpiData,
-    }));
+    apiClient.get.mockImplementation((url) => {
+      if (url === '/api/admin/issues-metric') {
+        return Promise.resolve({ data: { year: 2026, total: 0, resolved: 0, withdrawn: 0, share: null, band: null } });
+      }
+      if (url === '/api/admin/announcements-metric') {
+        return Promise.resolve({ data: { year: 2026, counted: 1, band: 'basic' } });
+      }
+      return Promise.resolve({ data: mockKpiData });
+    });
   });
 
   it('fetches and displays KPI data and welcome message correctly', async () => {
@@ -72,6 +76,11 @@ describe('DGDashboard', () => {
     // Resolved-share widget (DLR 4.5)
     expect(await screen.findByText('Investor issues resolved')).toBeInTheDocument();
     expect(await screen.findByText('No issues registered')).toBeInTheDocument();
+
+    // Announcements widget (DLR 4.4)
+    expect(await screen.findByText('Investment announcements')).toBeInTheDocument();
+    expect(await screen.findByText('1 of 5')).toBeInTheDocument();
+    expect(screen.getByText('Basic band (1–4)')).toBeInTheDocument();
   });
 
   it('displays an error message if API call fails', async () => {
@@ -100,6 +109,7 @@ describe('DGDashboard', () => {
 
     await screen.findByText(`Welcome ${mockUser.role}, ${mockUser.name}`);
     await screen.findByText('No issues registered');
+    await screen.findByText('1 of 5');
     expect(document.body).toMatchSnapshot();
   });
 

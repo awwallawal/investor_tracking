@@ -174,6 +174,7 @@ module.exports = {
   createWithReference,
   issueRef,
   issueFolderKey,
+  findOrCreateFolder,
   ensureIssueFolder,
   parseYear,
   yearRange,

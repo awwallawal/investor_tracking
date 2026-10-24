@@ -4,6 +4,7 @@ import { Box, Typography, Button, Paper, Divider } from '@mui/material';
 import ProjectForm from '../components/ProjectForm';
 import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
+import ProjectAnnouncements from '../components/ProjectAnnouncements';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { dateLine } from '../utils/dates';
@@ -96,6 +97,8 @@ const ProjectDetailPage = () => {
                     <Button variant="contained" color="secondary" onClick={handleLogFormOpen}>Log Interaction</Button>
                 </Box>
             </Paper>
+
+            <ProjectAnnouncements projectId={project._id} canWrite={canWrite} />
 
             <InteractionLogList projectId={project._id} canWrite={canWrite} canDelete={canDelete} key={logRefreshKey} />
 

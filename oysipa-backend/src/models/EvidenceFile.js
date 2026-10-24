@@ -13,6 +13,8 @@ const EvidenceLinkSchema = new mongoose.Schema({
   interaction: { type: mongoose.Schema.Types.ObjectId, ref: 'InteractionLog' },
   // Investor issue the file belongs to (story 11.7). Optional, like interaction.
   issue: { type: mongoose.Schema.Types.ObjectId, ref: 'InvestorIssue' },
+  // Investment announcement the file is an archived copy of (story 11.8). Optional.
+  announcement: { type: mongoose.Schema.Types.ObjectId, ref: 'InvestmentAnnouncement' },
   serviceCodes: {
     type: [{ type: String, enum: { values: SERVICE_CODES, message: 'Invalid service code: {VALUE}' } }],
     default: [],
@@ -44,6 +46,7 @@ const EvidenceFileSchema = new mongoose.Schema({
 EvidenceFileSchema.index({ 'links.investor': 1 });
 EvidenceFileSchema.index({ 'links.interaction': 1 });
 EvidenceFileSchema.index({ 'links.issue': 1 });
+EvidenceFileSchema.index({ 'links.announcement': 1 });
 EvidenceFileSchema.index({ folder: 1 });
 
 const INTERNAL_FIELDS = ['provider', 'key', 'resourceType'];

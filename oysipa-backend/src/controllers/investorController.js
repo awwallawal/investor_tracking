@@ -3,6 +3,7 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const InvestorIssue = require('../models/InvestorIssue');
+const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { investorSearchFilter } = require('../services/investorSearch');
 const { recordActionGroups, newBatchId } = require('../utils/recordDeletion');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
@@ -227,11 +228,16 @@ exports.deleteInvestor = async (req, res) => {
 
     // The investor's issues (story 11.7) go too.
     const issues = await InvestorIssue.find({ investor: id }).lean();
+    // And the announcements of its projects (story 11.8).
+    const announcements = projectIds.length ? await InvestmentAnnouncement.find({ project: { $in: projectIds } }).lean() : [];
 
     // Evidence library links to the investor, its interactions or its issues
     // are removed (audited, same batch); the files stay in the library.
     const links = await findLinksTo({
-      investorIds: [investor._id], interactionIds: logs.map((l) => l._id), issueIds: issues.map((i) => i._id),
+      investorIds: [investor._id],
+      interactionIds: logs.map((l) => l._id),
+      issueIds: issues.map((i) => i._id),
+      announcementIds: announcements.map((a) => a._id),
     });
 
     try {
@@ -241,6 +247,7 @@ exports.deleteInvestor = async (req, res) => {
         ['delete', 'InvestmentProject', projects],
         ['delete', 'InteractionLog', logs],
         ['delete', 'InvestorIssue', issues],
+        ['delete', 'InvestmentAnnouncement', announcements],
         ['unlink', 'EvidenceFile', unlinkSnapshots(links)],
       ], { reason: trimmed, batchId: newBatchId() });
     } catch (auditError) {
@@ -251,6 +258,14 @@ exports.deleteInvestor = async (req, res) => {
     // Delete exactly the documents (and links) that were audited.
     await pullLinks(links);
     await InvestorIssue.deleteMany({ _id: { $in: issues.map((i) => i._id) } });
+    await InvestmentAnnouncement.deleteMany({ _id: { $in: announcements.map((a) => a._id) } });
+    // Deleted interactions leave the supporting lists of any other announcement.
+    if (logs.length > 0) {
+      await InvestmentAnnouncement.updateMany(
+        { supportingInteractions: { $in: logs.map((l) => l._id) } },
+        { $pull: { supportingInteractions: { $in: logs.map((l) => l._id) } } },
+      );
+    }
     await InteractionLog.deleteMany({ _id: { $in: logs.map((l) => l._id) } });
     await InvestmentProject.deleteMany({ _id: { $in: projectIds } });
     await Investor.deleteOne({ _id: id });
@@ -261,6 +276,7 @@ exports.deleteInvestor = async (req, res) => {
         projects: projects.length,
         interactions: logs.length,
         ...(issues.length > 0 && { issues: issues.length }),
+        ...(announcements.length > 0 && { announcements: announcements.length }),
         ...(links.length > 0 && { evidenceLinks: links.length }),
       },
     });

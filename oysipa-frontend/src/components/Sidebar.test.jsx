@@ -42,6 +42,12 @@ describe('Sidebar — Investor Directory link', () => {
     expect(screen.queryByText('Admin Settings')).not.toBeInTheDocument();
   });
 
+  it.each(['Director-General', 'Portal-Admin', 'Staff'])('%s sees Announcements (11.8)', (role) => {
+    localStorage.setItem('token', tokenFor(role));
+    renderSidebar();
+    expect(screen.getByRole('link', { name: 'Announcements' })).toHaveAttribute('href', '/announcements');
+  });
+
   it.each(['Director-General', 'Portal-Admin'])('%s sees Admin Settings (MoU MDAs, 11.7c)', (role) => {
     localStorage.setItem('token', tokenFor(role));
     renderSidebar();

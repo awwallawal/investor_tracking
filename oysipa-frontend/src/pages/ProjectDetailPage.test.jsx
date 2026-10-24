@@ -76,6 +76,41 @@ describe('ProjectDetailPage — write actions (Attach document, Tag services)', 
   });
 });
 
+describe('ProjectDetailPage — announcements section (11.8)', () => {
+  const projectFor = (assignedTo) => ({ ...project, investor: { ...project.investor, assignedTo } });
+  const setup = (proj) => {
+    apiClient.get.mockImplementation((url, config) => {
+      if (url === '/api/projects/p1') return Promise.resolve({ data: proj });
+      if (url === '/api/announcements' && config?.params?.project === 'p1') {
+        return Promise.resolve({
+          data: [{ _id: 'a1', outlet: 'Synthetic Gazette', oysipaNamed: true, announcementDate: '2026-04-23T00:00:00.000Z', createdAt: '2026-04-23T10:00:00.000Z' }],
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => localStorage.removeItem('token'));
+
+  it("lists the project's announcements; assigned Staff can register one", async () => {
+    setup(projectFor('u1'));
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+    expect(await screen.findByRole('link', { name: 'Synthetic Gazette' })).toHaveAttribute('href', '/announcements/a1');
+    expect(screen.getByText('OYSIPA named')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Register announcement' })).toBeInTheDocument();
+  });
+
+  it('unassigned Staff sees them but cannot register', async () => {
+    setup(projectFor('someone-else'));
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+    expect(await screen.findByRole('link', { name: 'Synthetic Gazette' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Register announcement' })).not.toBeInTheDocument();
+  });
+});
+
 describe('ProjectDetailPage — interaction Delete (DG/Admin only)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

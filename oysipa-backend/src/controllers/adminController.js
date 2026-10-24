@@ -3,6 +3,7 @@ const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const { INVESTOR_COUNT_FILTER } = require('../constants/investorFields');
 const { parseYear, issuesMetric } = require('../services/issueRegister');
+const { announcementsMetric } = require('../services/announcementRegister');
 const { todayLagos } = require('../utils/happenedDate');
 
 const getDashboardKpis = async (req, res) => {
@@ -71,7 +72,23 @@ const getIssuesMetric = async (req, res) => {
   }
 };
 
+// GET /api/admin/announcements-metric?year= (default: the current Lagos year)
+// DLR 4.4: OYSIPA-named announcements by announcementDate; projects of
+// Intermediaries / Promotion agents left out. Bands: 0 none yet, 1-4 basic, 5+ stretch.
+const getAnnouncementsMetric = async (req, res) => {
+  try {
+    const raw = req.query && req.query.year;
+    const year = raw === undefined || raw === '' ? Number(todayLagos().slice(0, 4)) : parseYear(raw);
+    if (!year) return res.status(400).json({ message: 'Invalid year.' });
+    return res.json(await announcementsMetric(year));
+  } catch (error) {
+    console.error('Error fetching the announcements metric:', error);
+    return res.status(500).json({ msg: 'Server error' });
+  }
+};
+
 module.exports = {
   getDashboardKpis,
   getIssuesMetric,
+  getAnnouncementsMetric,
 };
