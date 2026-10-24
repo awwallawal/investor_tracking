@@ -2,9 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import {
   Alert, Box, Breadcrumbs, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText,
-  DialogTitle, FormControlLabel, Link as MuiLink, Paper, Stack, Switch, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TextField, Typography,
+  DialogTitle, FormControlLabel, Link as MuiLink, Paper, Stack, Switch, TextField, Typography,
 } from '@mui/material';
+import FolderOutlined from '@mui/icons-material/FolderOutlined';
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
+import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
+import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
+import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined';
 import {
   deleteEvidenceFile, evidenceErrorMessage, fetchFolderFiles, notifyUntaggedChanged, removeEvidenceLink,
   uploadEvidenceFile,
@@ -14,6 +18,10 @@ import EvidenceTagDialog from '../components/EvidenceTagDialog';
 import HappenedDateField from '../components/HappenedDateField';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { formatDate } from '../utils/dates';
+import {
+  EmptyState, FolderCard, FolderGrid, IconTile,
+} from '../components/EvidenceUi';
+import { fileIcon, plural } from '../utils/evidenceUi';
 
 const fileDate = (f) => formatDate(f.documentDate || f.uploadedAt);
 const fileSize = (bytes) => {
@@ -124,6 +132,63 @@ const ConfirmDialog = ({
   );
 };
 
+// One file as a card: name and details, tags, then the actions. Phones get a
+// stacked card with full-width buttons; wider screens a single row.
+const FileItem = ({
+  file, isAdmin, onOpen, onTag, onDelete, onUnlink,
+}) => {
+  const { icon, color } = fileIcon(file.mimeType);
+  const links = file.links || [];
+  return (
+    <Paper
+      component="li"
+      variant="outlined"
+      sx={{
+        listStyle: 'none',
+        borderRadius: 3,
+        p: { xs: 1.5, sm: 2 },
+        display: 'grid',
+        gap: { xs: 1.25, md: 2 },
+        alignItems: 'center',
+        gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.4fr) minmax(0, 1fr) auto' },
+      }}
+    >
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
+        <IconTile icon={icon} color={color} size={36} />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 600, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{file.fileName}</Typography>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', color: 'text.secondary' }}>
+            <Typography variant="body2" component="span">{fileDate(file)}</Typography>
+            {Number.isFinite(file.size) && <Typography variant="body2" component="span" aria-hidden>·</Typography>}
+            {Number.isFinite(file.size) && <Typography variant="body2" component="span">{fileSize(file.size)}</Typography>}
+          </Stack>
+          {file.what && <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{file.what}</Typography>}
+        </Box>
+      </Stack>
+      <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', minWidth: 0 }}>
+        {links.length === 0 && <Chip size="small" color="warning" label="Untagged" />}
+        {links.map((l) => (
+          <Chip
+            key={l._id}
+            size="small"
+            variant="outlined"
+            label={linkLabel(l)}
+            sx={{ maxWidth: '100%' }}
+            {...(isAdmin && { onDelete: () => onUnlink(l) })}
+          />
+        ))}
+      </Stack>
+      <Stack direction="row" spacing={1} sx={{ justifyContent: { md: 'flex-end' }, '& > *': { flex: { xs: 1, md: 'none' } } }}>
+        <Button size="small" variant="contained" startIcon={<OpenInNewOutlined />} onClick={onOpen} aria-label={`Open ${file.fileName}`}>Open</Button>
+        <Button size="small" variant="outlined" startIcon={<LocalOfferOutlined />} onClick={onTag} aria-label={`Tag ${file.fileName}`}>Tag</Button>
+        {isAdmin && (
+          <Button size="small" color="error" onClick={onDelete} aria-label={`Delete ${file.fileName}`}>Delete</Button>
+        )}
+      </Stack>
+    </Paper>
+  );
+};
+
 // One folder's files: Open (signed link), Tag (all roles), and for DG/Admin
 // Add files, Delete (reason required) and unlink a tag.
 const EvidenceFolderPage = () => {
@@ -167,96 +232,78 @@ const EvidenceFolderPage = () => {
   };
 
   const changed = () => { notifyUntaggedChanged(); load(); };
+  const untaggedHere = files.filter((f) => !(f.links || []).length).length;
 
   return (
-    <Box>
-      <Breadcrumbs sx={{ mb: 1 }}>
-        <MuiLink component={RouterLink} to="/evidence">Evidence Library</MuiLink>
+    <Box sx={{ maxWidth: 1200 }}>
+      <Breadcrumbs sx={{ mb: 2, '& ol': { flexWrap: 'wrap' } }}>
+        <MuiLink component={RouterLink} to="/evidence" underline="hover" color="inherit">Evidence Library</MuiLink>
         {folder?.parent && (
-          <MuiLink component={RouterLink} to={`/evidence/${folder.parent._id}`}>{folder.parent.name}</MuiLink>
+          <MuiLink component={RouterLink} to={`/evidence/${folder.parent._id}`} underline="hover" color="inherit">{folder.parent.name}</MuiLink>
         )}
-        {folder && <Typography color="text.primary">{folder.name}</Typography>}
+        {folder && <Typography color="text.primary" sx={{ overflowWrap: 'anywhere' }}>{folder.name}</Typography>}
       </Breadcrumbs>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 1, justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
-        <Typography variant="h4" component="h1" sx={{ overflowWrap: 'anywhere' }}>{folder?.name || 'Folder'}</Typography>
-        {isAdmin && folder && <Button variant="contained" onClick={() => setAdding(true)}>Add files</Button>}
-      </Stack>
-      {folder?.folderDate && <Typography variant="body2" color="text.secondary">{formatDate(folder.folderDate)}</Typography>}
-      {folder?.description && <Typography variant="body2" sx={{ mb: 1 }}>{folder.description}</Typography>}
+
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 3 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
+            <IconTile icon={FolderOutlined} size={44} />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h4" component="h1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{folder?.name || 'Folder'}</Typography>
+              {folder?.folderDate && <Typography variant="body2" color="text.secondary">{formatDate(folder.folderDate)}</Typography>}
+              {folder?.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>{folder.description}</Typography>}
+            </Box>
+          </Stack>
+          {isAdmin && folder && (
+            <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => setAdding(true)} sx={{ flexShrink: 0 }}>Add files</Button>
+          )}
+        </Stack>
+      </Paper>
+
       {subfolders.length > 0 && (
-        <Box component="nav" aria-label="Subfolders" sx={{ mb: 2 }}>
-          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>Subfolders</Typography>
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+        <Box component="nav" aria-label="Subfolders" sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600, mb: 1 }}>Subfolders</Typography>
+          <FolderGrid>
             {subfolders.map((sub) => (
-              <Chip
+              <FolderCard
                 key={sub._id}
-                component={RouterLink}
-                to={`/evidence/${sub._id}`}
-                clickable
-                label={`${sub.name} · ${sub.fileCount} file${sub.fileCount === 1 ? '' : 's'}${sub.untaggedCount ? ` · ${sub.untaggedCount} untagged` : ''}`}
-                sx={{ maxWidth: '100%' }}
+                folder={sub}
+                ariaLabel={`${sub.name} · ${plural(sub.fileCount, 'file')}${sub.untaggedCount ? ` · ${sub.untaggedCount} untagged` : ''}`}
               />
             ))}
-          </Stack>
+          </FolderGrid>
         </Box>
       )}
-      <FormControlLabel
-        control={<Switch checked={untaggedOnly} onChange={(e) => setUntaggedOnly(e.target.checked)} />}
-        label="Untagged only"
-      />
+
+      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', mb: 1.5 }}>
+        <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
+          {loading ? 'Files' : `${plural(files.length, 'file')}${!untaggedOnly && untaggedHere ? ` · ${untaggedHere} untagged` : ''}`}
+        </Typography>
+        <FormControlLabel
+          sx={{ mr: 0 }}
+          control={<Switch checked={untaggedOnly} onChange={(e) => setUntaggedOnly(e.target.checked)} />}
+          label="Untagged only"
+        />
+      </Stack>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {loading ? <CircularProgress /> : (
-        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-          <Table size="small" aria-label="Files">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>Size</TableCell>
-                <TableCell>Tags</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {files.length === 0 && (
-                <TableRow><TableCell colSpan={5}>{untaggedOnly ? 'No untagged files.' : 'No files in this folder.'}</TableCell></TableRow>
-              )}
-              {files.map((f) => (
-                <TableRow key={f._id}>
-                  <TableCell sx={{ overflowWrap: 'anywhere', minWidth: 120 }}>
-                    {f.fileName}
-                    {f.what && <Typography variant="caption" component="div" color="text.secondary">{f.what}</Typography>}
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{fileDate(f)}</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, whiteSpace: 'nowrap' }}>{fileSize(f.size)}</TableCell>
-                  <TableCell sx={{ minWidth: 140 }}>
-                    <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                      {(f.links || []).length === 0 && <Chip size="small" color="warning" label="Untagged" />}
-                      {(f.links || []).map((l) => (
-                        <Chip
-                          key={l._id}
-                          size="small"
-                          label={linkLabel(l)}
-                          sx={{ maxWidth: '100%' }}
-                          {...(isAdmin && { onDelete: () => setUnlinking({ file: f, link: l }) })}
-                        />
-                      ))}
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={0.5}>
-                      <Button size="small" onClick={() => handleOpen(f)} aria-label={`Open ${f.fileName}`}>Open</Button>
-                      <Button size="small" onClick={() => setTagging(f)} aria-label={`Tag ${f.fileName}`}>Tag</Button>
-                      {isAdmin && (
-                        <Button size="small" color="error" onClick={() => setDeleting(f)} aria-label={`Delete ${f.fileName}`}>Delete</Button>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>}
+      {!loading && files.length === 0 && (
+        <EmptyState icon={InsertDriveFileOutlined}>{untaggedOnly ? 'No untagged files.' : 'No files in this folder.'}</EmptyState>
+      )}
+      {!loading && files.length > 0 && (
+        <Stack component="ul" aria-label="Files" spacing={1.5} sx={{ p: 0, m: 0 }}>
+          {files.map((f) => (
+            <FileItem
+              key={f._id}
+              file={f}
+              isAdmin={isAdmin}
+              onOpen={() => handleOpen(f)}
+              onTag={() => setTagging(f)}
+              onDelete={() => setDeleting(f)}
+              onUnlink={(l) => setUnlinking({ file: f, link: l })}
+            />
+          ))}
+        </Stack>
       )}
       {tagging && (
         <EvidenceTagDialog

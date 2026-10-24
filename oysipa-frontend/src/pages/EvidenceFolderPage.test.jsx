@@ -63,10 +63,10 @@ describe('EvidenceFolderPage', () => {
   it('lists files with their date (upload date when empty) and tag chips', async () => {
     localStorage.setItem('token', tokenFor('Staff'));
     renderPage();
-    const row = (await screen.findByText('forum-photo.jpg')).closest('tr');
+    const row = (await screen.findByText('forum-photo.jpg')).closest('li');
     expect(within(row).getByText('15 May 2025')).toBeInTheDocument();
     expect(within(row).getByText('Untagged')).toBeInTheDocument();
-    const tagged = screen.getByText('programme.pdf').closest('tr');
+    const tagged = screen.getByText('programme.pdf').closest('li');
     expect(within(tagged).getByText('23 Oct 2026')).toBeInTheDocument();
     expect(within(tagged).getByText('Acme Agro · M4')).toBeInTheDocument();
   });
