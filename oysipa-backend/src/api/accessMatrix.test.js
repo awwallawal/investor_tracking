@@ -197,6 +197,10 @@ const ROUTES = [
   { name: 'POST /api/issues/:id/files', method: 'post', path: (c) => `/api/issues/${c.issueId}/files`, attach: { field: 'file', buffer: Buffer.from('%PDF-matrix-issue'), filename: 'issue.pdf', contentType: 'application/pdf' }, allow: ALL, issueWrite: true },
   { name: 'DELETE /api/issues/:id', method: 'delete', path: (c) => `/api/issues/${c.issueId}`, body: () => ({ reason: 'Matrix cleanup' }), allow: ADMINS, adminDelete: true },
 
+  // Oyo MDA list (story 11.7c). Read: all roles. MoU setting: DG/Admin.
+  { name: 'GET /api/mdas', method: 'get', path: () => '/api/mdas', allow: ALL },
+  { name: 'PUT /api/mdas/mou', method: 'put', path: () => '/api/mdas/mou', body: () => ({ codes: ['LANDS AND HOUSING', 'ENVIRONMENT', 'BIR', 'TRADE'] }), allow: ADMINS },
+
   // Lifecycle statuses — Portal-Admin only
   { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: [PA] },
   { name: 'PUT /api/lifecycle-statuses/reorder', method: 'put', path: () => '/api/lifecycle-statuses/reorder', body: () => ({ orderedIds: [f.spare._id.toString(), f.lead._id.toString(), f.idea._id.toString()] }), allow: [PA] },
@@ -369,8 +373,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 55 unique entries', () => {
-    expect(ROUTES.length).toBe(55);
+  it('ROUTES list has 57 unique entries', () => {
+    expect(ROUTES.length).toBe(57);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

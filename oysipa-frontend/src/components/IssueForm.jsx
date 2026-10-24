@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel,
-  ListItemText, MenuItem, Select, TextField,
+  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel,
+  MenuItem, Select, TextField,
 } from '@mui/material';
 import HappenedDateField from './HappenedDateField';
+import MdaPicker from './MdaPicker';
+import { useMdas } from '../api/mdas';
 import apiClient from '../api/api';
 import { createIssue, issueErrorMessage } from '../api/issues';
-import { ISSUE_CATEGORIES, MDAS, REPORTED_VIA } from '../constants/issueFields';
+import { ISSUE_CATEGORIES, REPORTED_VIA } from '../constants/issueFields';
 import { getCurrentUser } from '../utils/currentUser';
 
 const EMPTY = {
@@ -23,8 +25,6 @@ const choosable = (list, user) => (user?.role === 'Staff'
   ? list.filter((i) => assignedId(i) && String(assignedId(i)) === String(user.id))
   : list);
 
-const mdaLabel = (m) => (m.mou ? `${m.name} (MoU)` : m.name);
-
 // Register an investor issue. A new issue is always Open; the server sets the
 // registered date. `investorId` preselects (and fixes) the investor.
 const IssueForm = ({ open, onClose, onSaved, investorId }) => {
@@ -33,6 +33,7 @@ const IssueForm = ({ open, onClose, onSaved, investorId }) => {
   const [projects, setProjects] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { mdas, error: mdaError } = useMdas();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -129,24 +130,15 @@ const IssueForm = ({ open, onClose, onSaved, investorId }) => {
             {REPORTED_VIA.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
           </Select>
         </FormControl>
-        <FormControl fullWidth margin="dense" variant="standard">
-          <InputLabel id="issue-mda-label">MDA responsible</InputLabel>
-          <Select
-            labelId="issue-mda-label"
-            multiple
-            value={form.mdaResponsible}
-            onChange={(e) => set('mdaResponsible')(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-            renderValue={(selected) => selected.join(', ')}
-            disabled={saving}
-          >
-            {MDAS.map((m) => (
-              <MenuItem key={m.name} value={m.name}>
-                <Checkbox checked={form.mdaResponsible.includes(m.name)} size="small" />
-                <ListItemText primary={mdaLabel(m)} />
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        {mdaError && <Alert severity="warning" sx={{ mt: 1 }}>Could not load the MDA list.</Alert>}
+        <MdaPicker
+          id="issue-mda"
+          mdas={mdas}
+          value={form.mdaResponsible}
+          onChange={set('mdaResponsible')}
+          disabled={saving}
+          placeholder="Search by name or abbreviation"
+        />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={saving}>Cancel</Button>

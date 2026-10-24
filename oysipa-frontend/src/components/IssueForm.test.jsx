@@ -14,10 +14,17 @@ const investors = [
   { _id: 'inv3', investorName: 'Gamma Synthetic', assignedTo: 'other' },
   { _id: 'inv4', investorName: 'Delta Synthetic' },
 ];
+const mdaList = [
+  { code: 'LANDS AND HOUSING', name: 'Ministry of Lands and Housing', abbreviation: 'Lands & Housing', mou: true },
+  { code: 'HOUSING', name: 'Oyo State Housing Corporation', abbreviation: 'Housing Corp', mou: false },
+  { code: 'BIR', name: 'Board of Internal Revenue', abbreviation: 'BIR', mou: true },
+  { code: 'OTHER', name: 'Other', abbreviation: 'Other', mou: false },
+];
 const projects = { inv1: [{ _id: 'p1', projectTitle: 'Alpha Plant' }], inv2: [{ _id: 'p2', projectTitle: 'Beta Farm' }] };
 
 const mockGets = () => vi.spyOn(apiClient, 'get').mockImplementation((url) => {
   if (url === '/api/investors') return Promise.resolve({ data: investors });
+  if (url === '/api/mdas') return Promise.resolve({ data: mdaList });
   const m = url.match(/\/api\/projects\/investors\/(\w+)\/projects/);
   return Promise.resolve({ data: (m && projects[m[1]]) || [] });
 });
@@ -43,14 +50,19 @@ describe('IssueForm', () => {
     await choose(/project/i, 'Alpha Plant');
     await choose(/category/i, 'land/title');
     await userEvent.type(screen.getByLabelText(/description/i), '  C of O delayed  ');
-    await choose(/mda responsible/i, /Ministry of Lands/);
+    // 11.7c: searchable picker; typing "lands" offers the MoU-flagged name.
+    await userEvent.type(screen.getByRole('combobox', { name: /mda responsible/i }), 'lands');
+    await userEvent.click(await screen.findByRole('option', { name: 'Ministry of Lands and Housing (MoU)' }));
+    await userEvent.clear(screen.getByRole('combobox', { name: /mda responsible/i }));
+    await userEvent.type(screen.getByRole('combobox', { name: /mda responsible/i }), 'BIR');
+    await userEvent.click(await screen.findByRole('option', { name: 'Board of Internal Revenue (MoU)' }));
     await userEvent.keyboard('{Escape}');
     await userEvent.click(screen.getByRole('button', { name: 'Register' }));
     await waitFor(() => expect(post).toHaveBeenCalledWith('/api/issues', {
       investor: 'inv1',
       category: 'land/title',
       description: 'C of O delayed',
-      mdaResponsible: ['Ministry of Lands, Housing and Urban Development'],
+      mdaResponsible: ['LANDS AND HOUSING', 'BIR'],
       project: 'p1',
     }));
     expect(onSaved).toHaveBeenCalledWith({ _id: 'i1' });
@@ -83,4 +95,25 @@ describe('IssueForm', () => {
     const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
     expect(options).toEqual(['Alpha Synthetic', 'Beta Synthetic']);
   });
+
+  it('a failed MDA list load shows "Could not load the MDA list."', async () => {
+    localStorage.setItem('token', tokenFor('Director-General', 'dg'));
+    vi.spyOn(apiClient, 'get').mockImplementation((url) => (url === '/api/mdas'
+      ? Promise.reject(new Error('down'))
+      : Promise.resolve({ data: url === '/api/investors' ? investors : [] })));
+    render(<IssueForm open onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(await screen.findByText('Could not load the MDA list.')).toBeInTheDocument();
+  });
+
+  it('MDA search matches the name or the abbreviation, with "(MoU)" in the options', async () => {
+    localStorage.setItem('token', tokenFor('Director-General', 'dg'));
+    mockGets();
+    render(<IssueForm open onClose={vi.fn()} onSaved={vi.fn()} />);
+    const box = screen.getByRole('combobox', { name: /mda responsible/i });
+    await userEvent.type(box, 'lands');
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['Ministry of Lands and Housing (MoU)']);
+    await userEvent.clear(box);
+    await userEvent.type(box, 'housing corp');
+    expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['Oyo State Housing Corporation']);
+  }, 30000);
 });

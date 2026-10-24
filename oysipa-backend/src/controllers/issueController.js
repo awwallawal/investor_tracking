@@ -23,8 +23,9 @@ const {
 } = require('../services/evidenceLibrary');
 const { ensureIssueFolder, parseYear, yearRange } = require('../services/issueRegister');
 const {
-  ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
+  ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
+const { MDA_CODES } = require('../constants/mdas');
 
 const DENIED_MSG = 'Forbidden: You can only change investors assigned to you';
 const MAX_TEXT = 5000;
@@ -64,10 +65,11 @@ const readEnum = (raw, values, label) => {
   return { value: raw };
 };
 
+// MDA codes only (GET /api/mdas); a name is refused and named in the message.
 const readMdas = (raw) => {
   if (raw === undefined || raw === null) return { value: undefined };
-  if (!Array.isArray(raw)) return { error: 'mdaResponsible must be a list of MDAs.' };
-  const bad = raw.filter((m) => typeof m !== 'string' || !MDA_NAMES.includes(m));
+  if (!Array.isArray(raw)) return { error: 'mdaResponsible must be a list of MDA codes.' };
+  const bad = raw.filter((m) => typeof m !== 'string' || !MDA_CODES.includes(m));
   if (bad.length) return { error: `Invalid MDA: ${bad.map((m) => JSON.stringify(m)).join(', ')}` };
   return { value: [...new Set(raw)] };
 };

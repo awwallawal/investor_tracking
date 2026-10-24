@@ -85,7 +85,7 @@ describe('Register', () => {
   it('201: status Open, dateRegistered is the server time; client server fields are ignored', async () => {
     const before = Date.now();
     const res = await create(staffToken, valid({
-      status: 'Resolved', dateRegistered: '2020-01-01', resolvedDate: '2020-01-01', createdAt: '2020-01-01', importRef: 'X', importBatchId: 'b', project: project._id.toString(), mdaResponsible: ['Ministry of Lands, Housing and Urban Development'], reportedVia: 'visit',
+      status: 'Resolved', dateRegistered: '2020-01-01', resolvedDate: '2020-01-01', createdAt: '2020-01-01', importRef: 'X', importBatchId: 'b', project: project._id.toString(), mdaResponsible: ['LANDS AND HOUSING', 'BIR', 'LANDS AND HOUSING'], reportedVia: 'visit',
     })).expect(201);
     expect(res.body.status).toBe('Open');
     expect(new Date(res.body.dateRegistered).getTime()).toBeGreaterThanOrEqual(before - 1000);
@@ -96,6 +96,7 @@ describe('Register', () => {
     expect(res.body.dateReported.slice(0, 10)).toBe(todayLagos());
     expect(res.body.project.projectTitle).toBe('Issue Plant');
     expect(res.body.investor.investorName).toBe('Issue Assigned');
+    expect(res.body.mdaResponsible).toEqual(['LANDS AND HOUSING', 'BIR']); // codes, de-duplicated
   });
 
   it.each([
@@ -111,6 +112,9 @@ describe('Register', () => {
     const otherProject = await InvestmentProject.create({ projectTitle: 'Not theirs', investor: other._id, lifecycleStatus: idea._id });
     await create(global.dgToken, valid({ category: 'weather' })).expect(400);
     await create(global.dgToken, valid({ mdaResponsible: ['Ministry of Magic'] })).expect(400);
+    // 11.7c: codes only; a name is refused and named in the message
+    const named = await create(global.dgToken, valid({ mdaResponsible: ['TRADE', 'Ministry of Lands and Housing'] })).expect(400);
+    expect(named.body.message).toContain('"Ministry of Lands and Housing"');
     await create(global.dgToken, valid({ reportedVia: 'pigeon' })).expect(400);
     await create(global.dgToken, valid({ project: otherProject._id.toString() })).expect(400);
     expect(await InvestorIssue.countDocuments()).toBe(0);

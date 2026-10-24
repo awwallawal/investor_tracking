@@ -15,13 +15,20 @@ const issue = (id, status) => ({
   _id: id, status, category: 'other', description: `Issue ${id}`, investor: { investorName: `Investor ${id}` }, dateReported: '2026-03-01T00:00:00.000Z', createdAt: '2026-03-01T10:00:00.000Z',
 });
 
+const mdaList = [
+  { code: 'LANDS AND HOUSING', name: 'Ministry of Lands and Housing', abbreviation: 'Lands & Housing', mou: true },
+  { code: 'TRADE', name: 'Ministry of Trade, Investment and Cooperatives', abbreviation: 'Trade', mou: false },
+];
+// GET /api/mdas gets the MDA list; issue GETs go to `issues`.
+const routeGet = (issues) => (url, config) => (url === '/api/mdas' ? Promise.resolve({ data: mdaList }) : issues(url, config));
+
 const renderPage = () => render(<MemoryRouter><IssuesPage /></MemoryRouter>);
 
 describe('IssuesPage', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('status and year filters call GET /api/issues with { params: { status, year } }', async () => {
-    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: [issue('1', 'Open')] });
+    const get = vi.spyOn(apiClient, 'get').mockImplementation(routeGet(() => Promise.resolve({ data: [issue('1', 'Open')] })));
     renderPage();
     expect(await screen.findByText('Investor 1')).toBeInTheDocument();
     expect(get).toHaveBeenCalledWith('/api/issues');
@@ -35,10 +42,10 @@ describe('IssuesPage', () => {
 
   it('a slow response for superseded filters does not overwrite the newer list', async () => {
     let releaseOld;
-    vi.spyOn(apiClient, 'get').mockImplementation((url, config) => {
+    vi.spyOn(apiClient, 'get').mockImplementation(routeGet((url, config) => {
       if (!config) return new Promise((r) => { releaseOld = r; });
       return Promise.resolve({ data: [issue('new', 'Resolved')] });
-    });
+    }));
     renderPage();
     await userEvent.click(screen.getByRole('combobox', { name: /status/i }));
     await userEvent.click(await screen.findByRole('option', { name: 'Resolved' }));
@@ -47,5 +54,15 @@ describe('IssuesPage', () => {
     await new Promise((r) => { setTimeout(r, 50); });
     expect(screen.queryByText('Investor old')).not.toBeInTheDocument();
     expect(screen.getByText('Investor new')).toBeInTheDocument();
+  });
+
+  it('shows MDA names from GET /api/mdas with "(MoU)"; an unknown code shows as itself (11.7c)', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation(routeGet(() => Promise.resolve({
+      data: [{ ...issue('1', 'Open'), mdaResponsible: ['LANDS AND HOUSING', 'TRADE', 'GONE'] }],
+    })));
+    renderPage();
+    const line = await screen.findByText('MDA: Ministry of Lands and Housing (MoU), Ministry of Trade, Investment and Cooperatives, GONE');
+    // In the always-visible investor cell, not the category column hidden on phones.
+    expect(line.closest('td')).toBe(screen.getByText('Investor 1').closest('td'));
   });
 });

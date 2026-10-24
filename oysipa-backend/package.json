@@ -13,7 +13,8 @@
     "migrate:lead-source": "node scripts/migrate-lead-source.js",
     "import:investors": "node scripts/import-investors.js",
     "attach:documents": "node scripts/attach-documents.js",
-    "import:issues": "node scripts/import-issues.js"
+    "import:issues": "node scripts/import-issues.js",
+    "migrate:issue-mdas": "node scripts/migrate-issue-mdas.js"
   },
   "keywords": [],
   "author": "",

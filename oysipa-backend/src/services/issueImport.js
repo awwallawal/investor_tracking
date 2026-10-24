@@ -28,8 +28,9 @@ const { parseHappenedDate } = require('../utils/happenedDate');
 const { sha256, mimeFromName } = require('./evidenceLibrary');
 const { ensureIssueFolder } = require('./issueRegister');
 const {
-  ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
+  ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
+const { resolveMda } = require('../constants/mdas');
 
 const text = (v) => (typeof v === 'string' ? v.trim() : '');
 
@@ -42,16 +43,6 @@ const parseIssuesFile = (input) => {
   }
   if (!data || !Array.isArray(data.issues)) throw new Error('The issues file has no "issues" list');
   return data;
-};
-
-// An MDA name from the list, or one with a trailing "(…)" qualifier whose base
-// is on the list (e.g. "OYSIPA (BOI and finance linkage)" → "OYSIPA", warned).
-const matchMda = (raw) => {
-  const name = text(raw);
-  if (MDA_NAMES.includes(name)) return { value: name };
-  const m = name.match(/^(.*?)\s*\([^()]*\)$/);
-  if (m && MDA_NAMES.includes(m[1].trim())) return { value: m[1].trim(), qualified: true };
-  return { error: true };
 };
 
 // Validates one issue row. Returns { doc, files, errors[], warnings[] }.
@@ -73,11 +64,12 @@ const checkRow = (r) => {
 
   const mdas = [];
   (Array.isArray(r.mdaResponsible) ? r.mdaResponsible : []).forEach((m, i) => {
-    const got = matchMda(m);
+    // Code, vlprs name/abbreviation/old code or a studio alias (constants/mdas.js).
+    const got = resolveMda(m);
     if (got.error) errors.push(`mdaResponsible #${i + 1} is not on the MDA list`);
     else {
-      if (got.qualified) warnings.push(`mdaResponsible #${i + 1} recorded as "${got.value}" (qualifier dropped)`);
-      if (!mdas.includes(got.value)) mdas.push(got.value);
+      if (got.qualified) warnings.push(`mdaResponsible #${i + 1} recorded as ${got.codes.join(' + ')} (qualifier dropped)`);
+      got.codes.forEach((c) => { if (!mdas.includes(c)) mdas.push(c); });
     }
   });
   if (r.mdaResponsible !== undefined && !Array.isArray(r.mdaResponsible)) errors.push('mdaResponsible is not a list');
@@ -423,5 +415,5 @@ const applyIssueImport = async (plan, actor, { batchId = newBatchId() } = {}) =>
 };
 
 module.exports = {
-  parseIssuesFile, planIssueImport, applyIssueImport, matchMda,
+  parseIssuesFile, planIssueImport, applyIssueImport,
 };

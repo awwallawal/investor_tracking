@@ -108,8 +108,8 @@ function App() {
             <Route path="/issues/:id" element={<AppLayout><IssueDetailPage /></AppLayout>} />
           </Route>
 
-          {/* Admin Protected Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['Portal-Admin']} />}>
+          {/* Admin Protected Routes (MoU MDAs: DG + Portal-Admin; lifecycle statuses: Portal-Admin only, inside the page) */}
+          <Route element={<ProtectedRoute allowedRoles={['Director-General', 'Portal-Admin']} />}>
             <Route path="/admin" element={<AppLayout><AdminPage /></AppLayout>} />
           </Route>
 

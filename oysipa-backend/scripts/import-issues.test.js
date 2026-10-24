@@ -11,7 +11,7 @@ const EvidenceFolder = require('../src/models/EvidenceFolder');
 const EvidenceFile = require('../src/models/EvidenceFile');
 const ChangeLog = require('../src/models/ChangeLog');
 const documentStorage = require('../src/services/documentStorage');
-const { parseIssuesFile, matchMda } = require('../src/services/issueImport');
+const { parseIssuesFile } = require('../src/services/issueImport');
 const { parseArgs, run } = require('./import-issues');
 
 let dir;
@@ -106,11 +106,9 @@ describe('import-issues CLI', () => {
     expect(() => parseArgs([])).toThrow(/--file/);
   });
 
-  it('parses the file and maps a qualified MDA to its base name', () => {
+  it('parses the file', () => {
     expect(() => parseIssuesFile('{"x":1}')).toThrow(/issues/);
     expect(() => parseIssuesFile('not json')).toThrow(/JSON/);
-    expect(matchMda('OYSIPA (BOI and finance linkage)')).toEqual({ value: 'OYSIPA', qualified: true });
-    expect(matchMda('Ministry of Magic')).toEqual({ error: true });
   });
 
   it('dry run: counts only, nothing written or uploaded; an unknown investor is a row error and the run continues', async () => {
@@ -150,6 +148,7 @@ describe('import-issues CLI', () => {
     expect(s1.actions).toHaveLength(1);
     expect(String(s1.actions[0].recordedBy)).toBe(String(dg._id));
     expect(s1.actions[0].by).toBe('Synthetic desk');
+    expect(s1.mdaResponsible).toEqual(['CULTURE AND TOURISM']);
     const s2 = await InvestorIssue.findOne({ importRef: 'ISS-S2' }).lean();
     expect(s2.mdaResponsible).toEqual(['OYSIPA']);
 
@@ -175,6 +174,25 @@ describe('import-issues CLI', () => {
     });
     expect(fake.upload).not.toHaveBeenCalled();
     expect(await InvestorIssue.countDocuments()).toBe(3);
+  });
+
+  it('MDA entries are stored as codes: studio names, old codes and qualifiers (11.7c); an unknown base is a row error', async () => {
+    const data = {
+      issues: [
+        issue({ id: 'ISS-D1', mdaResponsible: ['Ministry of Agriculture / OYSADA', 'MLH', 'oysada'] }),
+        issue({ id: 'ISS-D2', mdaResponsible: ['OYSIPA (BOI and finance linkage)'] }),
+        issue({ id: 'ISS-D3', mdaResponsible: ['Ministry of Magic (wands)'] }),
+      ],
+    };
+    const { plan, result } = await run({
+      data, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    expect(plan.counts).toMatchObject({ toCreate: 2, errors: 1, warnings: 1 });
+    expect(plan.errors.map((e) => `${e.ref}: ${e.reason}`)).toEqual(['ISS-D3: mdaResponsible #1 is not on the MDA list']);
+    expect(plan.warnings[0]).toMatchObject({ ref: 'ISS-D2', message: expect.stringMatching(/OYSIPA \(qualifier dropped\)/) });
+    expect(result.counts).toMatchObject({ issuesCreated: 2 });
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-D1' }).lean()).mdaResponsible).toEqual(['AGRICULTURE', 'OYSADA', 'LANDS AND HOUSING']);
+    expect((await InvestorIssue.findOne({ importRef: 'ISS-D2' }).lean()).mdaResponsible).toEqual(['OYSIPA']);
   });
 
   it('bad rows and files are reported, the rest loads', async () => {

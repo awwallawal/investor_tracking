@@ -13,6 +13,7 @@ const staffRoutes = require('./api/staff');
 const adminRoutes = require('./api/admin');
 const evidenceRoutes = require('./api/evidence');
 const issueRoutes = require('./api/issues');
+const mdaRoutes = require('./api/mdas');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/evidence', evidenceRoutes);
 app.use('/api/issues', issueRoutes);
+app.use('/api/mdas', mdaRoutes);
 
 const PORT = process.env.PORT || 3001;
 

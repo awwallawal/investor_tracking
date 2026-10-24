@@ -8,6 +8,7 @@ import IssueForm from '../components/IssueForm';
 import { fetchIssues, issueErrorMessage } from '../api/issues';
 import { ISSUE_STATUSES, STATUS_COLORS, issueYears } from '../constants/issueFields';
 import { dateLine } from '../utils/dates';
+import { useMdas } from '../api/mdas';
 
 const hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } };
 
@@ -20,6 +21,7 @@ const IssuesPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
+  const { nameOf: mdaName } = useMdas();
 
   // Only the newest request may set the list (superseded filters are dropped).
   const requestId = useRef(0);
@@ -91,6 +93,11 @@ const IssuesPage = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
                       {issue.description?.length > 120 ? `${issue.description.slice(0, 120)}…` : issue.description}
                     </Typography>
+                    {issue.mdaResponsible?.length > 0 && (
+                      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                        {`MDA: ${issue.mdaResponsible.map(mdaName).join(', ')}`}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell sx={hideOnPhone}>{issue.category}</TableCell>
                   <TableCell><Chip size="small" label={issue.status} color={STATUS_COLORS[issue.status] || 'default'} /></TableCell>

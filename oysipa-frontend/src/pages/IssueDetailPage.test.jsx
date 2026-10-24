@@ -18,12 +18,21 @@ const issue = {
   dateReported: '2026-03-01T00:00:00.000Z',
   dateRegistered: '2026-03-02T10:00:00.000Z',
   createdAt: '2026-03-02T10:00:00.000Z',
-  mdaResponsible: ['Ministry of Lands, Housing and Urban Development'],
+  mdaResponsible: ['LANDS AND HOUSING', 'HOUSING', 'GONE'],
   actions: [
     { _id: 'a1', date: '2026-03-03T00:00:00.000Z', by: 'Lands desk', note: 'Letter to Lands', recordedBy: { name: 'Officer One' }, recordedAt: '2026-03-03T09:00:00.000Z' },
   ],
   files: [{ _id: 'f1', fileName: 'scan.pdf', uploadedAt: '2026-03-03T09:00:00.000Z' }],
 };
+
+const mdaList = [
+  { code: 'LANDS AND HOUSING', name: 'Ministry of Lands and Housing', abbreviation: 'Lands & Housing', mou: true },
+  { code: 'HOUSING', name: 'Oyo State Housing Corporation', abbreviation: 'Housing Corp', mou: false },
+  { code: 'BIR', name: 'Board of Internal Revenue', abbreviation: 'BIR', mou: true },
+  { code: 'OTHER', name: 'Other', abbreviation: 'Other', mou: false },
+];
+// GET /api/mdas gets the MDA list; every other GET gets `data`.
+const mockGet = (data) => vi.spyOn(apiClient, 'get').mockImplementation((url) => Promise.resolve({ data: url === '/api/mdas' ? mdaList : data }));
 
 const renderPage = () => render(
   <MemoryRouter initialEntries={['/issues/i1']}>
@@ -36,10 +45,11 @@ describe('IssueDetailPage', () => {
 
   it('shows the issue, MoU flag, the actions with who/when and the files', async () => {
     localStorage.setItem('token', tokenFor('Staff'));
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: issue });
+    mockGet(issue);
     renderPage();
     expect(await screen.findByText('Synthetic Investor')).toBeInTheDocument();
-    expect(screen.getByText(/Ministry of Lands, Housing and Urban Development \(MoU\)/)).toBeInTheDocument();
+    // 11.7c: names from GET /api/mdas, "(MoU)" when set, an unknown code as itself.
+    expect(await screen.findByText('MDA responsible: Ministry of Lands and Housing (MoU), Oyo State Housing Corporation, GONE')).toBeInTheDocument();
     expect(screen.getByText('Letter to Lands')).toBeInTheDocument();
     expect(screen.getByText(/3 Mar 2026 · Lands desk · recorded by Officer One on 3 Mar 2026/)).toBeInTheDocument();
     expect(screen.getByText('scan.pdf')).toBeInTheDocument();
@@ -50,7 +60,7 @@ describe('IssueDetailPage', () => {
 
   it('Staff not assigned: read only', async () => {
     localStorage.setItem('token', tokenFor('Staff', 'someone-else'));
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: issue });
+    mockGet(issue);
     renderPage();
     await screen.findByText('Letter to Lands');
     expect(screen.queryByRole('button', { name: 'Add action' })).not.toBeInTheDocument();
@@ -59,7 +69,7 @@ describe('IssueDetailPage', () => {
 
   it('adds an action and shows it', async () => {
     localStorage.setItem('token', tokenFor('Director-General', 'dg'));
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: issue });
+    mockGet(issue);
     const added = { ...issue, files: undefined, actions: [...issue.actions, { _id: 'a2', date: '2026-03-04T00:00:00.000Z', by: 'DG', note: 'Site visit', recordedBy: { name: 'DG' }, recordedAt: '2026-03-04T09:00:00.000Z' }] };
     const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ data: added });
     renderPage();
@@ -77,14 +87,14 @@ describe('IssueDetailPage', () => {
     ['Closed unresolved', 'Investor relocated out of state'],
   ])('shows the note for %s', async (status, resolution) => {
     localStorage.setItem('token', tokenFor('Staff'));
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { ...issue, status, resolution } });
+    mockGet({ ...issue, status, resolution });
     renderPage();
     expect(await screen.findByText(`${status}: ${resolution}`)).toBeInTheDocument();
   });
 
   it('shows the Resolved note with its date (unchanged)', async () => {
     localStorage.setItem('token', tokenFor('Staff'));
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { ...issue, status: 'Resolved', resolution: 'Title issued', resolvedDate: '2026-04-01T10:00:00.000Z' } });
+    mockGet({ ...issue, status: 'Resolved', resolution: 'Title issued', resolvedDate: '2026-04-01T10:00:00.000Z' });
     renderPage();
     expect(await screen.findByText(/^Resolved .*2026: Title issued$/)).toBeInTheDocument();
   });

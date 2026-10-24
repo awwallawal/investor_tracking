@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const {
-  ISSUE_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
+  ISSUE_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
+const { MDA_CODES } = require('../constants/mdas');
 
 // Investor issues register (story 11.7, SABER DLR 4.5). Field names are kept
 // compatible with the parked v2 Grievance Redress epic so the data can migrate.
@@ -31,8 +32,9 @@ const InvestorIssueSchema = new mongoose.Schema({
     type: String,
     enum: { values: REPORTED_VIA, message: 'Invalid "reported via": {VALUE}' },
   },
+  // MDA codes (constants/mdas.js); screens show the names.
   mdaResponsible: {
-    type: [{ type: String, enum: { values: MDA_NAMES, message: 'Invalid MDA: {VALUE}' } }],
+    type: [{ type: String, enum: { values: MDA_CODES, message: 'Invalid MDA: {VALUE}' } }],
     default: [],
   },
   category: {

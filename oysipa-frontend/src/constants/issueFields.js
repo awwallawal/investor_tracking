@@ -24,26 +24,7 @@ export const ISSUE_CATEGORIES = [
 
 export const REPORTED_VIA = ['web form', 'email', 'phone', 'visit', 'event', 'MDA'];
 
-// `mou: true` marks the MDAs in OYSIPA's MoU (Lands, Commerce/Trade,
-// Environment, Tax). The fifth MoU MDA is flagged once it is named.
-export const MDAS = [
-  { name: 'Ministry of Lands, Housing and Urban Development', mou: true },
-  { name: 'Ministry of Trade, Investment and Cooperatives', mou: true },
-  { name: 'Ministry of Environment and Natural Resources', mou: true },
-  { name: 'Oyo State Internal Revenue Service (OYSIRS)', mou: true },
-  { name: 'Office of the Surveyor-General', mou: false },
-  { name: 'Ministry of Agriculture / OYSADA', mou: false },
-  { name: 'Ministry of Culture and Tourism', mou: false },
-  { name: 'Ministry of Public Works and Transport', mou: false },
-  { name: 'Ministry of Energy and Mineral Resources', mou: false },
-  { name: 'Ministry of Finance', mou: false },
-  { name: 'Ministry of Justice', mou: false },
-  { name: 'Local Government', mou: false },
-  { name: 'OYSIPA', mou: false },
-  { name: 'Other', mou: false },
-];
-
-export const isMouMda = (name) => MDAS.some((m) => m.name === name && m.mou);
+// MDAs: the list comes from GET /api/mdas (src/api/mdas.js, story 11.7c).
 
 // Resolved-share bands (DLR 4.5): basic 50–75%, stretch above 75%.
 export const BAND_LABELS = {

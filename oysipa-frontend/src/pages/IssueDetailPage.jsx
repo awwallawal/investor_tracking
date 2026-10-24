@@ -12,8 +12,9 @@ import {
 import { DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile } from '../api/documents';
 import { notifyUntaggedChanged } from '../api/evidence';
 import {
-  NOTE_REQUIRED_STATUSES, RESOLVED, STATUS_COLORS, isMouMda,
+  NOTE_REQUIRED_STATUSES, RESOLVED, STATUS_COLORS,
 } from '../constants/issueFields';
+import { useMdas } from '../api/mdas';
 import { dateLine, formatDate } from '../utils/dates';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
@@ -145,6 +146,7 @@ const IssueDetailPage = () => {
   const [fileError, setFileError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { nameOf: mdaName } = useMdas();
   const user = getCurrentUser();
   const isAdmin = isAdminRole(user?.role);
   const assignedTo = issue?.investor?.assignedTo;
@@ -211,7 +213,7 @@ const IssueDetailPage = () => {
         )}
         {issue.mdaResponsible?.length > 0 && (
           <Typography variant="body2">
-            {`MDA responsible: ${issue.mdaResponsible.map((m) => (isMouMda(m) ? `${m} (MoU)` : m)).join(', ')}`}
+            {`MDA responsible: ${issue.mdaResponsible.map(mdaName).join(', ')}`}
           </Typography>
         )}
         {issue.status === RESOLVED && (
