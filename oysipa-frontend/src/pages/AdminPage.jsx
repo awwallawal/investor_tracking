@@ -72,7 +72,8 @@ const MouMdasSection = () => {
 };
 
 const AdminPage = () => {
-  const isPortalAdmin = getCurrentUser()?.role === 'Portal-Admin';
+  const role = getCurrentUser()?.role;
+  const canManageStatuses = role === 'Director-General' || role === 'Portal-Admin';
   return (
     <Container maxWidth="lg">
       <Box sx={{ my: 4 }}>
@@ -80,8 +81,8 @@ const AdminPage = () => {
           Admin Settings
         </Typography>
         <MouMdasSection />
-        {/* Lifecycle statuses stay Portal-Admin only (server rule unchanged). */}
-        {isPortalAdmin && <LifecycleStatusManager />}
+        {/* Lifecycle statuses: DG and Portal-Admin (owner decision 24 Oct 2026). */}
+        {canManageStatuses && <LifecycleStatusManager />}
       </Box>
     </Container>
   );

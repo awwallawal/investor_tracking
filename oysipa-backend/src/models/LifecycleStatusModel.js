@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const auditPlugin = require('../utils/auditPlugin');
 
 const lifecycleStatusSchema = new mongoose.Schema({
   name: {
@@ -16,6 +17,9 @@ const lifecycleStatusSchema = new mongoose.Schema({
     trim: true
   }
 });
+
+// Story 11.10: create/update rows in the ChangeLog (the delete writes its own).
+lifecycleStatusSchema.plugin(auditPlugin, { entity: 'LifecycleStatus' });
 
 const LifecycleStatus = mongoose.model('LifecycleStatus', lifecycleStatusSchema);
 

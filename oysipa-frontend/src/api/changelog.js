@@ -13,6 +13,7 @@ export const CHANGELOG_ENTITIES = [
   { value: 'Setting', label: 'Setting' },
   { value: 'EvidenceFile', label: 'Evidence file' },
   { value: 'EvidenceFolder', label: 'Evidence folder' },
+  { value: 'LifecycleStatus', label: 'Lifecycle status' },
 ];
 
 export const CHANGELOG_ACTIONS = ['create', 'update', 'delete', 'import', 'upload', 'link', 'unlink'];

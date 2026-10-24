@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
+  Alert,
   Box,
   Typography,
   Button,
@@ -19,64 +20,71 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import apiClient from '../api/api';
 
+// The server's message (`message`, or `msg` on older routes), else the fallback.
+const errorMessage = (err, fallback) => {
+  const data = err && err.response && err.response.data;
+  return (data && (data.message || data.msg)) || fallback;
+};
+
+// DG and Portal-Admin (the server re-checks the role). Errors are shown in an
+// Alert above the list (or inside the edit dialog for a failed save); the list
+// and the dialogs stay usable after a failure.
 const LifecycleStatusManager = () => {
   const [statuses, setStatuses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dialogError, setDialogError] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(null);
 
-  useEffect(() => {
-    fetchStatuses();
-  }, []);
-
-  const fetchStatuses = async () => {
+  // Keeps the current list on screen while it reloads.
+  const fetchStatuses = useCallback(async () => {
     try {
-      setLoading(true);
-            const response = await apiClient.get('/api/lifecycle-statuses');
-      setStatuses(response.data || []);
-      setError(null);
+      const response = await apiClient.get('/api/lifecycle-statuses');
+      setStatuses(Array.isArray(response.data) ? response.data : []);
+      return true;
     } catch (err) {
-      setError('Failed to fetch lifecycle statuses.');
       console.error(err);
-      setStatuses([]);
+      setError('Failed to load lifecycle statuses.');
+      return false;
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchStatuses();
+  }, [fetchStatuses]);
 
   const handleMove = async (index, direction) => {
-    const newStatuses = [...statuses];
-    const item = newStatuses[index];
     const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= statuses.length) return;
 
-    if (newIndex < 0 || newIndex >= newStatuses.length) return;
-
-    newStatuses.splice(index, 1);
+    const newStatuses = [...statuses];
+    const [item] = newStatuses.splice(index, 1);
     newStatuses.splice(newIndex, 0, item);
-
     setStatuses(newStatuses);
+    setError(null);
 
     try {
-      const reorderedIds = newStatuses.map((status) => status._id);
-      await apiClient.put('/api/lifecycle-statuses/reorder', { orderedIds: reorderedIds });
+      await apiClient.put('/api/lifecycle-statuses/reorder', { orderedIds: newStatuses.map((s) => s._id) });
     } catch (err) {
-      setError('Failed to reorder statuses.');
       console.error(err);
-      fetchStatuses(); // revert on error
+      await fetchStatuses(); // back to the stored order
+      setError(errorMessage(err, 'Failed to reorder statuses.'));
     }
   };
 
-  const handleCreateClick = () => {
-    setCurrentStatus({ name: '', description: '' });
+  const openEdit = (status) => {
+    setCurrentStatus(status);
+    setDialogError(null);
     setEditOpen(true);
   };
 
-  const handleEditClick = (status) => {
-    setCurrentStatus(status);
-    setEditOpen(true);
-  };
+  const handleCreateClick = () => openEdit({ name: '', description: '' });
+  const handleEditClick = (status) => openEdit({ _id: status._id, name: status.name || '', description: status.description || '' });
 
   const handleDeleteClick = (status) => {
     setCurrentStatus(status);
@@ -84,45 +92,65 @@ const LifecycleStatusManager = () => {
   };
 
   const handleClose = () => {
+    if (saving) return;
     setEditOpen(false);
     setDeleteOpen(false);
+    setDialogError(null);
     setCurrentStatus(null);
   };
 
+  const trimmedName = (currentStatus?.name || '').trim();
+
   const handleSave = async () => {
+    if (!trimmedName || saving) return;
+    const body = { name: trimmedName, description: currentStatus.description || '' };
+    setSaving(true);
+    setDialogError(null);
     try {
       if (currentStatus._id) {
-        await apiClient.put(`/api/lifecycle-statuses/${currentStatus._id}`, currentStatus);
+        await apiClient.put(`/api/lifecycle-statuses/${currentStatus._id}`, body);
       } else {
-        await apiClient.post('/api/lifecycle-statuses', currentStatus);
+        await apiClient.post('/api/lifecycle-statuses', body);
       }
-      fetchStatuses();
-      handleClose();
+      setSaving(false);
+      setError(null);
+      setEditOpen(false);
+      setCurrentStatus(null);
+      await fetchStatuses();
     } catch (err) {
-      setError(`Failed to save status.`);
       console.error(err);
+      setSaving(false);
+      setDialogError(errorMessage(err, 'Failed to save the status.'));
     }
   };
 
   const handleDelete = async () => {
+    const target = currentStatus;
+    setDeleteOpen(false);
+    setCurrentStatus(null);
     try {
-      await apiClient.delete(`/api/lifecycle-statuses/${currentStatus._id}`);
-      fetchStatuses();
-      handleClose();
+      await apiClient.delete(`/api/lifecycle-statuses/${target._id}`);
+      setError(null);
+      await fetchStatuses();
     } catch (err) {
-      setError('Failed to delete status.');
       console.error(err);
+      setError(errorMessage(err, 'Failed to delete the status.'));
     }
   };
 
   if (loading) return <Typography>Loading...</Typography>;
-  if (error) return <Typography color="error">{error}</Typography>;
 
   return (
     <Box>
       <Typography variant="h5" gutterBottom>
         Manage Lifecycle Statuses
       </Typography>
+
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       <Button variant="contained" onClick={handleCreateClick} sx={{ mb: 2 }}>
         Create New Status
@@ -132,6 +160,11 @@ const LifecycleStatusManager = () => {
       <Dialog open={editOpen} onClose={handleClose}>
         <DialogTitle>{currentStatus?._id ? 'Edit' : 'Create'} Lifecycle Status</DialogTitle>
         <DialogContent>
+          {dialogError && (
+            <Alert severity="error" sx={{ mb: 1 }}>
+              {dialogError}
+            </Alert>
+          )}
           <TextField
             autoFocus
             margin="dense"
@@ -153,8 +186,10 @@ const LifecycleStatusManager = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSave}>Save</Button>
+          <Button onClick={handleClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={!trimmedName || saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -174,7 +209,7 @@ const LifecycleStatusManager = () => {
 
       {/* Status List */}
       <List>
-        {(statuses || []).map((status, index) => (
+        {statuses.map((status, index) => (
           <ListItem key={status._id}>
             <ListItemText primary={status.name} secondary={status.description} />
             <IconButton aria-label="move up" onClick={() => handleMove(index, -1)} disabled={index === 0}>

@@ -32,22 +32,25 @@ const renderPage = () => render(<MemoryRouter><AdminPage /></MemoryRouter>);
 describe('AdminPage — MoU MDAs (11.7c)', () => {
   afterEach(() => { vi.restoreAllMocks(); localStorage.removeItem('token'); });
 
-  it('DG sees the MoU MDAs section but not the lifecycle status manager', async () => {
-    localStorage.setItem('token', tokenFor('Director-General'));
+  // Owner decision 24 Oct 2026: DG and Portal-Admin both manage lifecycle statuses.
+  it.each(['Director-General', 'Portal-Admin'])('%s sees the MoU MDAs section and the lifecycle status manager', async (role) => {
+    localStorage.setItem('token', tokenFor(role));
     mockGets();
     renderPage();
     expect(await screen.findByRole('heading', { name: 'MoU MDAs' })).toBeInTheDocument();
     expect(await screen.findByText('Ministry of Lands and Housing')).toBeInTheDocument();
     expect(screen.getByText('Ministry of Trade, Investment and Cooperatives')).toBeInTheDocument();
-    expect(apiClient.get).not.toHaveBeenCalledWith('/api/lifecycle-statuses');
+    expect(await screen.findByText('Manage Lifecycle Statuses')).toBeInTheDocument();
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/lifecycle-statuses'));
   });
 
-  it('Portal-Admin sees both sections', async () => {
-    localStorage.setItem('token', tokenFor('Portal-Admin'));
+  it('another role does not get the lifecycle status manager', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
     mockGets();
     renderPage();
     expect(await screen.findByRole('heading', { name: 'MoU MDAs' })).toBeInTheDocument();
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/lifecycle-statuses'));
+    expect(screen.queryByText('Manage Lifecycle Statuses')).not.toBeInTheDocument();
+    expect(apiClient.get).not.toHaveBeenCalledWith('/api/lifecycle-statuses');
   });
 
   it('DG adds a fifth MoU MDA by search and saves the codes', async () => {

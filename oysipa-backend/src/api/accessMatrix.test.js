@@ -229,11 +229,11 @@ const ROUTES = [
   { name: 'GET /api/mdas', method: 'get', path: () => '/api/mdas', allow: ALL },
   { name: 'PUT /api/mdas/mou', method: 'put', path: () => '/api/mdas/mou', body: () => ({ codes: ['LANDS AND HOUSING', 'ENVIRONMENT', 'BIR', 'TRADE'] }), allow: ADMINS },
 
-  // Lifecycle statuses — Portal-Admin only
-  { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: [PA] },
-  { name: 'PUT /api/lifecycle-statuses/reorder', method: 'put', path: () => '/api/lifecycle-statuses/reorder', body: () => ({ orderedIds: [f.spare._id.toString(), f.lead._id.toString(), f.idea._id.toString()] }), allow: [PA] },
-  { name: 'PUT /api/lifecycle-statuses/:id', method: 'put', path: () => `/api/lifecycle-statuses/${f.spare._id}`, body: () => ({ description: 'changed' }), allow: [PA] },
-  { name: 'DELETE /api/lifecycle-statuses/:id', method: 'delete', path: () => `/api/lifecycle-statuses/${f.spare._id}`, allow: [PA] },
+  // Lifecycle statuses — writes DG / Portal-Admin (24 Oct 2026 owner decision)
+  { name: 'POST /api/lifecycle-statuses', method: 'post', path: () => '/api/lifecycle-statuses', body: () => ({ name: 'Matrix Status', order: 9 }), allow: ADMINS },
+  { name: 'PUT /api/lifecycle-statuses/reorder', method: 'put', path: () => '/api/lifecycle-statuses/reorder', body: () => ({ orderedIds: [f.spare._id.toString(), f.lead._id.toString(), f.idea._id.toString()] }), allow: ADMINS },
+  { name: 'PUT /api/lifecycle-statuses/:id', method: 'put', path: () => `/api/lifecycle-statuses/${f.spare._id}`, body: () => ({ description: 'changed' }), allow: ADMINS },
+  { name: 'DELETE /api/lifecycle-statuses/:id', method: 'delete', path: () => `/api/lifecycle-statuses/${f.spare._id}`, allow: ADMINS },
 
   // Staff dashboard — Staff only (checked in the controller)
   { name: 'GET /api/staff/dashboard', method: 'get', path: () => '/api/staff/dashboard', allow: [STAFF] },
@@ -610,7 +610,7 @@ describe('Orphan projects', () => {
 });
 
 describe('Lifecycle status reorder', () => {
-  it('Portal-Admin reorder → 200 and order follows orderedIds', async () => {
+  it('Portal-Admin and DG reorder → 200 and order follows orderedIds', async () => {
     const orderedIds = [f.spare._id.toString(), f.idea._id.toString(), f.lead._id.toString()];
     await request(app)
       .put('/api/lifecycle-statuses/reorder')
@@ -620,6 +620,15 @@ describe('Lifecycle status reorder', () => {
 
     const res = await request(app).get('/api/lifecycle-statuses').expect(200);
     expect(res.body.map((s) => s._id)).toEqual(orderedIds);
+
+    const dgOrder = [...orderedIds].reverse();
+    await request(app)
+      .put('/api/lifecycle-statuses/reorder')
+      .set('Authorization', `Bearer ${global.dgToken}`)
+      .send({ orderedIds: dgOrder })
+      .expect(200);
+    const after = await request(app).get('/api/lifecycle-statuses').expect(200);
+    expect(after.body.map((s) => s._id)).toEqual(dgOrder);
   });
 });
 
