@@ -116,8 +116,11 @@ exports.createProject = async (req, res) => {
     const project = new InvestmentProject(projectData);
     await project.save();
 
-    // Populate investor so test assertions work
-    const populatedProject = await project.populate('investor', 'name email');
+    // Populate investor and lifecycleStatus so the shape matches list/get/update.
+    const populatedProject = await project.populate([
+      { path: 'investor', select: 'name email' },
+      { path: 'lifecycleStatus' },
+    ]);
 
     return res.status(201).json(populatedProject);
   } catch (error) {

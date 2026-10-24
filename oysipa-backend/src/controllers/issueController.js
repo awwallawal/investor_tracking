@@ -5,7 +5,8 @@
 // on investors assigned to them. Delete is DG/Admin only, with a reason.
 //
 // Server-owned: dateRegistered, resolvedDate, action recordedBy/recordedAt,
-// import stamps and timestamps. Resolving needs a non-empty resolution note.
+// import stamps and timestamps. Resolved, Closed unresolved and Withdrawn need a
+// non-empty note in `resolution` (owner rule 24 Oct 2026).
 // Files live in the Evidence library (investor-issues/<ref>), linked to the
 // investor and the issue.
 const mongoose = require('mongoose');
@@ -22,7 +23,7 @@ const {
 } = require('../services/evidenceLibrary');
 const { ensureIssueFolder, parseYear, yearRange } = require('../services/issueRegister');
 const {
-  ISSUE_STATUSES, RESOLVED, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
+  ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
 } = require('../constants/issueFields');
 
 const DENIED_MSG = 'Forbidden: You can only change investors assigned to you';
@@ -231,8 +232,8 @@ exports.updateIssue = async (req, res) => {
 
     const nextStatus = status.value || issue.status;
     const nextResolution = resolution.value !== undefined ? resolution.value : (issue.resolution || '');
-    if (nextStatus === RESOLVED && !nextResolution) {
-      return res.status(400).json({ message: 'A resolution note is required to resolve an issue.' });
+    if (NOTE_REQUIRED_STATUSES.includes(nextStatus) && !nextResolution) {
+      return res.status(400).json({ message: 'A resolution / reason note is required to set this status.' });
     }
 
     if (category.value) issue.category = category.value;

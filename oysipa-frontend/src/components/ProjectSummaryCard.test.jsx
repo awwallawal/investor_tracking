@@ -44,4 +44,19 @@ describe('ProjectSummaryCard', () => {
     );
     expect(screen.getByText(/Investor: N\/A/i)).toBeInTheDocument();
   });
+  // lifecycleStatus may arrive missing or unpopulated (a raw ObjectId string).
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['a raw id string', '64b7f0c2a1b2c3d4e5f60718'],
+  ])('renders without crashing when lifecycleStatus is %s and shows Status: N/A', (_label, lifecycleStatus) => {
+    render(
+      <Router>
+        <ProjectSummaryCard project={{ ...mockProject, lifecycleStatus }} />
+      </Router>
+    );
+    expect(screen.getByText('Test Project Title')).toBeInTheDocument();
+    expect(screen.getByText('Status: N/A')).toBeInTheDocument();
+    expect(screen.queryByText(/64b7f0c2/)).not.toBeInTheDocument();
+  });
 });

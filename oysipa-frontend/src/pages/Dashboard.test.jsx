@@ -149,4 +149,17 @@ describe('DashboardPage', () => {
       expect(MockNavigate).toHaveBeenCalledWith({ to: '/login', replace: true });
     });
   });
+  it('shows a clear no-access message for an unknown role instead of a spinner', () => {
+    jwtDecode.mockReturnValue({ user: { id: 'u1', name: 'Test Unknown', role: 'Visitor' } });
+
+    render(
+      <Router>
+        <DashboardPage />
+      </Router>
+    );
+
+    expect(screen.getByText('No access for this role. Please contact the Portal Admin.')).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(apiClient.get).not.toHaveBeenCalled();
+  });
 });

@@ -35,7 +35,20 @@ describe('Project API', () => {
     expect(res.body).toHaveProperty('_id');
     expect(res.body.investor._id).toBe(global.investorId);
     expect(res.body.projectTitle).toBe('Project A');
-    expect(res.body.lifecycleStatus).toBe(initialInterestStatus._id.toString());
+    // Same shape as list/get/update: lifecycleStatus is populated, not a raw id.
+    expect(res.body.lifecycleStatus._id).toBe(initialInterestStatus._id.toString());
+    expect(res.body.lifecycleStatus.name).toBe('Initial Interest');
+  });
+
+  it('create without a lifecycleStatus defaults to Initial Interest and returns it populated', async () => {
+    const res = await request(app)
+      .post(`/api/projects/investors/${global.investorId}/projects`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
+      .send({ projectTitle: 'Project Default Status' })
+      .expect(201);
+
+    expect(res.body.lifecycleStatus.name).toBe('Initial Interest');
+    expect(res.body.lifecycleStatus._id).toBe(initialInterestStatus._id.toString());
   });
 
   it('should fetch projects for an investor', async () => {

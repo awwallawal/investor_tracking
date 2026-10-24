@@ -147,6 +147,37 @@ describe('Status, resolve and actions', () => {
     expect((await InvestorIssue.findById(issue._id).lean()).resolvedDate).toBeUndefined();
   });
 
+  it.each(['Resolved', 'Closed unresolved', 'Withdrawn'])('%s without a note → 400 and unchanged; with a note → saved', async (status) => {
+    const issue = await mkIssue();
+    for (const body of [{ status }, { status, resolution: '' }, { status, resolution: '   ' }]) {
+      const bad = await update(staffToken, issue._id, body);
+      expect(bad.statusCode).toBe(400);
+      expect(bad.body.message).toBe('A resolution / reason note is required to set this status.');
+    }
+    const unchanged = await InvestorIssue.findById(issue._id).lean();
+    expect(unchanged.status).toBe('Open');
+    expect(unchanged.resolution).toBeUndefined();
+
+    const ok = await update(staffToken, issue._id, { status, resolution: '  Synthetic closing note  ' }).expect(200);
+    expect(ok.body.status).toBe(status);
+    expect(ok.body.resolution).toBe('Synthetic closing note');
+    const saved = await InvestorIssue.findById(issue._id).lean();
+    expect(saved.status).toBe(status);
+    expect(saved.resolution).toBe('Synthetic closing note');
+    // resolvedDate behaviour unchanged: only Resolved sets it.
+    if (status === 'Resolved') expect(saved.resolvedDate).toBeInstanceOf(Date);
+    else expect(saved.resolvedDate).toBeUndefined();
+  });
+
+  it('a closed issue cannot have its note cleared; moving back to Open needs no note', async () => {
+    const issue = await mkIssue();
+    await update(staffToken, issue._id, { status: 'Withdrawn', resolution: 'Synthetic withdrawal' }).expect(200);
+    const cleared = await update(staffToken, issue._id, { resolution: '' });
+    expect(cleared.statusCode).toBe(400);
+    expect((await InvestorIssue.findById(issue._id).lean()).resolution).toBe('Synthetic withdrawal');
+    await update(staffToken, issue._id, { status: 'Open' }).expect(200);
+  });
+
   it('dateRegistered never changes on update', async () => {
     const issue = await mkIssue();
     await update(global.dgToken, issue._id, { dateRegistered: '2020-01-01', description: 'Changed' }).expect(200);

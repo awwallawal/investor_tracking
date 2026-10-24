@@ -5,6 +5,12 @@ import { todayLagos } from '../utils/dates';
 
 export const ISSUE_STATUSES = ['Open', 'In progress', 'Resolved', 'Closed unresolved', 'Withdrawn'];
 export const RESOLVED = 'Resolved';
+export const CLOSED_UNRESOLVED = 'Closed unresolved';
+export const WITHDRAWN = 'Withdrawn';
+// Owner rule (24 Oct 2026): closing an issue needs a note in `resolution`,
+// whether it is resolved, closed unresolved or withdrawn. Only Resolved sets resolvedDate.
+export const NOTE_REQUIRED_STATUSES = [RESOLVED, CLOSED_UNRESOLVED, WITHDRAWN];
+export const NOTE_REQUIRED_MSG = 'A resolution / reason note is required to set this status.';
 
 export const ISSUE_CATEGORIES = [
   'land/title',

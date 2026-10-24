@@ -237,6 +237,35 @@ describe('import-issues CLI', () => {
     }
   });
 
+  it('Resolved, Closed unresolved and Withdrawn rows need a resolution / reason note (owner rule 24 Oct 2026)', async () => {
+    const data = {
+      issues: [
+        issue({ id: 'ISS-N1', status: 'Resolved', resolution: '' }),
+        issue({ id: 'ISS-N2', status: 'Closed unresolved', resolution: null }),
+        issue({ id: 'ISS-N3', status: 'Withdrawn', resolution: '   ' }),
+        issue({ id: 'ISS-N4', status: 'Closed unresolved', resolution: 'Investor relocated out of state' }),
+        issue({ id: 'ISS-N5', status: 'Withdrawn', resolution: 'Investor withdrew the complaint' }),
+      ],
+    };
+    const { plan, result } = await run({
+      data, filesRoot: dir, apply: true, actor: dg, log,
+    });
+    const reasons = plan.errors.map((e) => `${e.ref}: ${e.reason}`);
+    expect(reasons).toEqual(expect.arrayContaining([
+      expect.stringMatching(/ISS-N1: .*status Resolved needs a resolution \/ reason note/),
+      expect.stringMatching(/ISS-N2: .*status Closed unresolved needs a resolution \/ reason note/),
+      expect.stringMatching(/ISS-N3: .*status Withdrawn needs a resolution \/ reason note/),
+    ]));
+    expect(reasons.some((r) => /ISS-N4|ISS-N5/.test(r))).toBe(false);
+    expect(plan.counts).toMatchObject({ toCreate: 2, errors: 3 });
+    expect(result.counts).toMatchObject({ issuesCreated: 2 });
+    const saved = await InvestorIssue.find({}).lean();
+    expect(saved.map((i) => i.status).sort()).toEqual(['Closed unresolved', 'Withdrawn']);
+    expect(saved.map((i) => i.resolution).sort()).toEqual(['Investor relocated out of state', 'Investor withdrew the complaint']);
+    // Only Resolved sets resolvedDate.
+    saved.forEach((i) => expect(i.resolvedDate).toBeUndefined());
+  });
+
   it('--apply refuses a user who is not DG/Admin', async () => {
     const staff = await User.create({ name: 'S', email: 'iss.cli.staff@example.com', password: 'password123', role: 'Staff', status: 'active' });
     await expect(run({

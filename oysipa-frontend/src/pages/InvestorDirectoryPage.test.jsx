@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { vi } from 'vitest';
@@ -72,9 +72,12 @@ describe('InvestorDirectoryPage', () => {
     const confirm = within(dialog).getByRole('button', { name: 'Confirm delete' });
     expect(confirm).toBeDisabled();
     const reason = within(dialog).getByLabelText(/reason/i);
-    await userEvent.type(reason, '   ');
+    // fireEvent.change, not userEvent.type: per-keystroke typing made these tests
+    // take 15-20 s. Whitespace-only must keep Confirm disabled; the sent reason is trimmed.
+    fireEvent.change(reason, { target: { value: '   ' } });
     expect(confirm).toBeDisabled();
-    await userEvent.type(reason, 'Duplicate record');
+    fireEvent.change(reason, { target: { value: '   Duplicate record  ' } });
+    expect(reason).toHaveValue('   Duplicate record  ');
     expect(confirm).toBeEnabled();
     await userEvent.click(confirm);
 
@@ -92,7 +95,7 @@ describe('InvestorDirectoryPage', () => {
 
     await userEvent.click((await screen.findAllByRole('button', { name: 'Delete' }))[0]);
     const dialog = await screen.findByRole('dialog');
-    await userEvent.type(within(dialog).getByLabelText(/reason/i), 'Test');
+    fireEvent.change(within(dialog).getByLabelText(/reason/i), { target: { value: 'Test' } });
     await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm delete' }));
     expect(await within(dialog).findByText('Could not write the audit record. Nothing was deleted.')).toBeInTheDocument();
     expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);

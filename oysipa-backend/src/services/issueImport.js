@@ -28,7 +28,7 @@ const { parseHappenedDate } = require('../utils/happenedDate');
 const { sha256, mimeFromName } = require('./evidenceLibrary');
 const { ensureIssueFolder } = require('./issueRegister');
 const {
-  ISSUE_STATUSES, RESOLVED, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
+  ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, ISSUE_CATEGORIES, REPORTED_VIA, MDA_NAMES,
 } = require('../constants/issueFields');
 
 const text = (v) => (typeof v === 'string' ? v.trim() : '');
@@ -94,7 +94,7 @@ const checkRow = (r) => {
   });
 
   const resolution = text(r.resolution);
-  if (status === RESOLVED && !resolution) errors.push('status Resolved needs a resolution');
+  if (NOTE_REQUIRED_STATUSES.includes(status) && !resolution) errors.push(`status ${status} needs a resolution / reason note`);
   if (r.resolvedDate) warnings.push('resolvedDate in the file is not used (the server sets it)');
 
   return {

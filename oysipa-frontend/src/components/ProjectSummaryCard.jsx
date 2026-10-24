@@ -24,7 +24,7 @@ const ProjectSummaryCard = ({ project }) => {
           {project.projectTitle}
         </Typography>
         <Typography sx={{ mb: 1.5 }} color="text.secondary">
-          Status: {project.lifecycleStatus ? project.lifecycleStatus.name : 'N/A'}
+          Status: {project.lifecycleStatus?.name || 'N/A'}
         </Typography>
       </CardContent>
       <Box sx={{ p: 2, pt: 0 }}>

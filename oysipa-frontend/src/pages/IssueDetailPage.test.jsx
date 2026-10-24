@@ -72,4 +72,20 @@ describe('IssueDetailPage', () => {
     expect(within(document.body).getByText('scan.pdf')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
   });
+  it.each([
+    ['Withdrawn', 'Investor withdrew the complaint'],
+    ['Closed unresolved', 'Investor relocated out of state'],
+  ])('shows the note for %s', async (status, resolution) => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { ...issue, status, resolution } });
+    renderPage();
+    expect(await screen.findByText(`${status}: ${resolution}`)).toBeInTheDocument();
+  });
+
+  it('shows the Resolved note with its date (unchanged)', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { ...issue, status: 'Resolved', resolution: 'Title issued', resolvedDate: '2026-04-01T10:00:00.000Z' } });
+    renderPage();
+    expect(await screen.findByText(/^Resolved .*2026: Title issued$/)).toBeInTheDocument();
+  });
 });

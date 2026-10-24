@@ -4,7 +4,7 @@ import { jwtDecode } from 'jwt-decode';
 import DGDashboard from './DGDashboard';
 import StaffDashboard from './StaffDashboard';
 import AdminDashboard from './AdminDashboard';
-import { CircularProgress, Box } from '@mui/material';
+import { Alert, Box } from '@mui/material';
 
 const getRoleFromToken = () => {
   const token = localStorage.getItem('token');
@@ -36,10 +36,10 @@ const DashboardPage = () => {
     case 'Staff':
       return <StaffDashboard />;
     default:
-      // Optional: handle unknown roles
+      // Unknown role: say so instead of spinning forever.
       return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', p: 2 }}>
+          <Alert severity="warning">No access for this role. Please contact the Portal Admin.</Alert>
         </Box>
       );
   }

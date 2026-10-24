@@ -11,7 +11,9 @@ import {
 } from '../api/issues';
 import { DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile } from '../api/documents';
 import { notifyUntaggedChanged } from '../api/evidence';
-import { RESOLVED, STATUS_COLORS, isMouMda } from '../constants/issueFields';
+import {
+  NOTE_REQUIRED_STATUSES, RESOLVED, STATUS_COLORS, isMouMda,
+} from '../constants/issueFields';
 import { dateLine, formatDate } from '../utils/dates';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
@@ -214,6 +216,9 @@ const IssueDetailPage = () => {
         )}
         {issue.status === RESOLVED && (
           <Typography variant="body2" sx={{ mt: 1 }}>{`Resolved ${formatDate(issue.resolvedDate)}: ${issue.resolution}`}</Typography>
+        )}
+        {issue.status !== RESOLVED && NOTE_REQUIRED_STATUSES.includes(issue.status) && issue.resolution && (
+          <Typography variant="body2" sx={{ mt: 1 }}>{`${issue.status}: ${issue.resolution}`}</Typography>
         )}
         {issue.importNote && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`Import note: ${issue.importNote}`}</Typography>}
       </Section>

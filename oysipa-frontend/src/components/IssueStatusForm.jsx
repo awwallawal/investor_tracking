@@ -3,15 +3,17 @@ import {
   Alert, Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField,
 } from '@mui/material';
 import { issueErrorMessage, updateIssue } from '../api/issues';
-import { ISSUE_STATUSES, RESOLVED } from '../constants/issueFields';
+import { ISSUE_STATUSES, NOTE_REQUIRED_MSG, NOTE_REQUIRED_STATUSES } from '../constants/issueFields';
 
-// Change status / resolve. Resolving needs a resolution note (the server checks too).
+// Change status / resolve. Resolved, Closed unresolved and Withdrawn need a
+// resolution / reason note (the server checks too).
 const IssueStatusForm = ({ issue, onSaved }) => {
   const [status, setStatus] = useState(issue.status);
   const [resolution, setResolution] = useState(issue.resolution || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const needsNote = status === RESOLVED && !resolution.trim();
+  const noteRequired = NOTE_REQUIRED_STATUSES.includes(status);
+  const needsNote = noteRequired && !resolution.trim();
   const changed = status !== issue.status || resolution.trim() !== (issue.resolution || '');
 
   const save = async () => {
@@ -37,16 +39,16 @@ const IssueStatusForm = ({ issue, onSaved }) => {
           </Select>
         </FormControl>
         <TextField
-          label="Resolution note"
+          label="Resolution / reason note"
           size="small"
           fullWidth
           multiline
           value={resolution}
           onChange={(e) => setResolution(e.target.value)}
           disabled={saving}
-          required={status === RESOLVED}
+          required={noteRequired}
           error={needsNote}
-          helperText={needsNote ? 'A resolution note is required to resolve an issue.' : ' '}
+          helperText={needsNote ? NOTE_REQUIRED_MSG : ' '}
         />
         <Button variant="contained" onClick={save} disabled={saving || needsNote || !changed}>
           {saving ? 'Saving...' : 'Save status'}

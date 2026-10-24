@@ -5,6 +5,10 @@
 const ISSUE_STATUSES = ['Open', 'In progress', 'Resolved', 'Closed unresolved', 'Withdrawn'];
 const RESOLVED = 'Resolved';
 const WITHDRAWN = 'Withdrawn';
+const CLOSED_UNRESOLVED = 'Closed unresolved';
+// Owner rule (24 Oct 2026): closing an issue needs a note in `resolution`,
+// whether it is resolved, closed unresolved or withdrawn. Only Resolved sets resolvedDate.
+const NOTE_REQUIRED_STATUSES = [RESOLVED, CLOSED_UNRESOLVED, WITHDRAWN];
 const DEFAULT_ISSUE_STATUS = 'Open';
 
 const ISSUE_CATEGORIES = [
@@ -54,6 +58,8 @@ module.exports = {
   ISSUE_STATUSES,
   RESOLVED,
   WITHDRAWN,
+  CLOSED_UNRESOLVED,
+  NOTE_REQUIRED_STATUSES,
   DEFAULT_ISSUE_STATUS,
   ISSUE_CATEGORIES,
   REPORTED_VIA,
