@@ -171,6 +171,33 @@ describe('Project API', () => {
     expect(newTimeline.body.map((l) => l._id)).toContain(log._id.toString());
   });
 
+  it('moving a project moves the library links of its logs to the new investor, and only those', async () => {
+    const EvidenceFile = require('../models/EvidenceFile');
+    await EvidenceFile.deleteMany({});
+    const newInvestor = await Investor.create({ investorName: 'New Owner Lib', sector: 'Tech', countryOfOrigin: 'NG' });
+    const moved = await InteractionLog.create({ project: global.mockProjectId, loggedBy: global.mockUserId, description: 'Project log', category: 'Call' });
+    const direct = await InteractionLog.create({ investor: global.investorId, loggedBy: global.mockUserId, description: 'Direct log', category: 'Call' });
+    const link = (interaction) => ({ investor: global.investorId, interaction, linkedBy: global.mockUserId, linkedAt: new Date() });
+    const file = await EvidenceFile.create({
+      folder: new mongoose.Types.ObjectId(), fileName: 'syn.pdf', mimeType: 'application/pdf', size: 1,
+      sha256: 'syn-move-test', provider: 'fake', key: 'k', uploadedBy: global.mockUserId, uploadedAt: new Date(),
+      links: [link(moved._id), link(direct._id), { investor: global.investorId, linkedBy: global.mockUserId, linkedAt: new Date() }],
+    });
+
+    await request(app)
+      .put(`/api/projects/${global.mockProjectId}`)
+      .set('Authorization', `Bearer ${global.portalAdminToken}`)
+      .send({ investor: newInvestor._id.toString() })
+      .expect(200);
+
+    const links = (await EvidenceFile.findById(file._id).lean()).links;
+    const byInteraction = (id) => links.find((l) => String(l.interaction) === String(id));
+    expect(String(byInteraction(moved._id).investor)).toBe(newInvestor._id.toString());
+    expect(String(byInteraction(direct._id).investor)).toBe(global.investorId);
+    expect(String(links.find((l) => !l.interaction).investor)).toBe(global.investorId);
+    await EvidenceFile.deleteMany({});
+  });
+
   it('PUT /:id/status System Update log has investor set', async () => {
     await request(app)
       .put(`/api/projects/${global.mockProjectId}/status`)

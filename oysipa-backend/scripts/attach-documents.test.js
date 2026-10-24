@@ -64,6 +64,12 @@ const makeFake = () => {
   };
 };
 
+// Let the index builds finish first, so none is still running when the
+// database is dropped at the end (that left a request hanging until the socket timed out).
+beforeAll(async () => {
+  await Promise.all([EvidenceFile, EvidenceFolder, ChangeLog, InteractionLog, Investor].map((M) => M.init()));
+});
+
 beforeEach(async () => {
   lines = [];
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'evidence-cli-'));

@@ -3,6 +3,7 @@ const Investor = require('../models/InvestorModel');
 const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const LifecycleStatus = require('../models/LifecycleStatusModel');
+const EvidenceFile = require('../models/EvidenceFile');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 // Import stamps are server-owned (set only by the investor import).
 const stripImportStamps = (body) => {
@@ -208,6 +209,16 @@ exports.updateProject = async (req, res) => {
         { $set: { investor: newInvestorId } },
         { timestamps: false },
       );
+      // Library links to those logs follow too, so the library shows the right
+      // investor and deleting the old investor does not drop these tags.
+      const logIds = await InteractionLog.find({ project: req.params.id }).distinct('_id');
+      if (logIds.length > 0) {
+        await EvidenceFile.updateMany(
+          { 'links.interaction': { $in: logIds } },
+          { $set: { 'links.$[l].investor': newInvestorId } },
+          { arrayFilters: [{ 'l.interaction': { $in: logIds } }], timestamps: false },
+        );
+      }
     }
 
     // If the stage changed, create a system log entry
