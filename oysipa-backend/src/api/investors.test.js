@@ -16,7 +16,7 @@ describe('Investor API', () => {
     Investor.create.mockResolvedValue({
       _id: 'mockId123',
       investorName: 'Test Investor',
-      sector: 'Corporate',
+      sector: 'Financial services',
       countryOfOrigin: 'USA'
     });
 
@@ -25,7 +25,7 @@ describe('Investor API', () => {
       .set('Authorization', `Bearer ${global.portalAdminToken}`) // DG/Admin: any investor; Staff: create (auto-assigned) and edit only their assigned investors
       .send({
         investorName: 'Test Investor',
-        sector: 'Corporate',
+        sector: 'Financial services',
         countryOfOrigin: 'USA',
         leadSource: 'Other'
       });
@@ -36,11 +36,11 @@ describe('Investor API', () => {
 
   it('should update an existing investor', async () => {
     const investorId = 'mockId123';
-    const updatedData = { sector: 'Technology' };
+    const updatedData = { sector: 'Technology and ICT' };
     const existingInvestor = {
       _id: investorId,
       investorName: 'Test Investor',
-      sector: 'Corporate',
+      sector: 'Financial services',
       countryOfOrigin: 'USA'
     };
     const updatedInvestor = { ...existingInvestor, ...updatedData };
@@ -53,6 +53,6 @@ describe('Investor API', () => {
       .send(updatedData);
 
     expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty('sector', 'Technology');
+    expect(res.body).toHaveProperty('sector', 'Technology and ICT');
   });
 });

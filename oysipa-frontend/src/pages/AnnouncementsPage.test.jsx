@@ -38,6 +38,21 @@ describe('AnnouncementsPage', () => {
     await waitFor(() => expect(get).toHaveBeenCalledWith('/api/announcements', { params: { year: '2025', oysipaNamed: 'true' } }));
   });
 
+  it('?year= and ?oysipaNamed= set the starting filters (dashboard click-through)', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockImplementation((url) => Promise.resolve({ data: url === '/api/projects' ? [] : list }));
+    render(<MemoryRouter initialEntries={['/announcements?year=2025&oysipaNamed=true']}><AnnouncementsPage /></MemoryRouter>);
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/api/announcements', { params: { year: '2025', oysipaNamed: 'true' } }));
+    expect(get).not.toHaveBeenCalledWith('/api/announcements');
+  });
+
+  it('a ?year= or ?oysipaNamed= the selects do not offer is ignored', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockImplementation((url) => Promise.resolve({ data: url === '/api/projects' ? [] : list }));
+    render(<MemoryRouter initialEntries={['/announcements?year=1999&oysipaNamed=maybe']}><AnnouncementsPage /></MemoryRouter>);
+    expect(await screen.findByText('Synthetic Gazette')).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith('/api/announcements');
+    expect(get.mock.calls.some(([u, o]) => u === '/api/announcements' && o)).toBe(false);
+  });
+
   it('empty → "No announcements registered."', async () => {
     vi.spyOn(apiClient, 'get').mockResolvedValue({ data: [] });
     render(<MemoryRouter><AnnouncementsPage /></MemoryRouter>);

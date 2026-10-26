@@ -16,7 +16,8 @@
     "import:issues": "node scripts/import-issues.js",
     "migrate:issue-mdas": "node scripts/migrate-issue-mdas.js",
     "migrate:issue-refs": "node scripts/migrate-issue-refs.js",
-    "import:announcements": "node scripts/import-announcements.js"
+    "import:announcements": "node scripts/import-announcements.js",
+    "migrate:data-cleanup": "node scripts/migrate-data-cleanup.js"
   },
   "keywords": [],
   "author": "",

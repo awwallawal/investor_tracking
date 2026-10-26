@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`DGDashboard > matches snapshot after successful render 1`] = `
+exports[`DGDashboard (11.14 analytics) > matches snapshot after successful render 1`] = `
 <body>
   <div>
     <div
@@ -28,9 +28,60 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
             Welcome Director-General, Test User
           </p>
         </div>
+        <div
+          class="MuiBox-root css-ktnsab"
+        >
+          <div
+            aria-label="Year"
+            class="MuiBox-root css-wq87pz"
+            role="group"
+          >
+            <button
+              aria-pressed="false"
+              class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-wyro15-MuiButtonBase-root-MuiButton-root"
+              tabindex="0"
+              type="button"
+            >
+              2023
+            </button>
+            <button
+              aria-pressed="false"
+              class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-wyro15-MuiButtonBase-root-MuiButton-root"
+              tabindex="0"
+              type="button"
+            >
+              2024
+            </button>
+            <button
+              aria-pressed="false"
+              class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-wyro15-MuiButtonBase-root-MuiButton-root"
+              tabindex="0"
+              type="button"
+            >
+              2025
+            </button>
+            <button
+              aria-pressed="true"
+              class="MuiButtonBase-root MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-contained MuiButton-containedPrimary MuiButton-sizeSmall MuiButton-containedSizeSmall MuiButton-colorPrimary css-tw6tsg-MuiButtonBase-root-MuiButton-root"
+              tabindex="0"
+              type="button"
+            >
+              2026
+            </button>
+            <button
+              aria-pressed="false"
+              class="MuiButtonBase-root MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary MuiButton-root MuiButton-outlined MuiButton-outlinedPrimary MuiButton-sizeSmall MuiButton-outlinedSizeSmall MuiButton-colorPrimary css-wyro15-MuiButtonBase-root-MuiButton-root"
+              tabindex="0"
+              type="button"
+            >
+              All years
+            </button>
+          </div>
+        </div>
       </header>
       <div
-        class="MuiBox-root css-1i43dhb"
+        aria-busy="false"
+        class="MuiBox-root css-1xffe7u"
       >
         <section
           aria-label="Headline numbers"
@@ -44,7 +95,7 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
             <a
               class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
               data-discover="true"
-              href="/investors"
+              href="/investors?organisationType=Investor"
               tabindex="0"
             >
               <div
@@ -53,17 +104,17 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
                 <div
                   class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
                 >
-                  Total Investors
+                  Investors
                 </div>
                 <p
                   class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
                 >
-                  150
+                  166
                 </p>
                 <div
                   class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
                 >
-                  intermediaries and promotion agents not counted
+                  166 investors · 6 intermediaries · 5 contacts · 14 new in 2026 (−77% vs 2025)
                 </div>
               </div>
               <span
@@ -88,17 +139,17 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
                 <div
                   class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
                 >
-                  Total Projects
+                  Projects
                 </div>
                 <p
                   class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
                 >
-                  60
+                  183
                 </p>
                 <div
                   class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
                 >
-                  all registered projects
+                  30 early pipeline · 55 commitment or execution · 98 operating
                 </div>
               </div>
               <span
@@ -107,39 +158,83 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
             </a>
           </div>
           <div
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-1f3esww-MuiPaper-root-MuiCard-root"
+            data-tone="primary"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-12lsjfn"
+            >
+              <div
+                class="MuiTypography-root MuiTypography-overline css-1cunp7f-MuiTypography-root"
+              >
+                Pipeline value
+              </div>
+              <p
+                class="MuiTypography-root MuiTypography-body1 tabular-nums css-x95s2d-MuiTypography-root"
+              >
+                ₦1.79tn
+              </p>
+              <div
+                class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+              >
+                ₦ equivalent: ₦1.26tn + US$391m
+                <br />
+                at USD ₦1,361.84 (23 Oct 2026)
+                <br />
+                47 of 183 projects of investors carry a value (intermediaries, agents and contacts not counted)
+              </div>
+            </div>
+          </div>
+          <div
             class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-586v9f-MuiPaper-root-MuiCard-root"
             data-tone="default"
             style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
           >
-            <a
-              class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
-              data-discover="true"
-              href="/interactions"
-              tabindex="0"
+            <div
+              class="MuiBox-root css-12lsjfn"
             >
               <div
-                class="MuiBox-root css-12lsjfn"
+                class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
               >
-                <div
-                  class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
-                >
-                  All-Time Interactions
-                </div>
-                <p
-                  class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
-                >
-                  500
-                </p>
-                <div
-                  class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
-                >
-                  all interactions logged
-                </div>
+                Typical project size
               </div>
-              <span
-                class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
-              />
-            </a>
+              <p
+                class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
+              >
+                ₦2bn
+              </p>
+              <div
+                class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+              >
+                median of 39 ₦ projects of investors · average ₦32.4bn
+              </div>
+            </div>
+          </div>
+          <div
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-586v9f-MuiPaper-root-MuiCard-root"
+            data-tone="default"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-12lsjfn"
+            >
+              <div
+                class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
+              >
+                Jobs pledged
+              </div>
+              <p
+                class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
+              >
+                14,957
+              </p>
+              <div
+                class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+              >
+                39 of 183 projects of investors have a jobs figure
+              </div>
+            </div>
           </div>
         </section>
         <section
@@ -147,156 +242,984 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
           class="MuiBox-root css-ty29z5"
         >
           <div
-            class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-1d4mlkk-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
           >
             <div
-              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
+              class="MuiBox-root css-w32nvq"
             >
-              <div
-                class="MuiBox-root css-1wrcl4x"
-              >
-                <h2
-                  class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-                >
-                  <button
-                    class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
-                  >
-                    Investor issues resolved
-                  </button>
-                </h2>
-                <div
-                  class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
-                >
-                  <label
-                    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
-                    data-shrink="true"
-                    id="issues-share-year-label"
-                  >
-                    Year
-                  </label>
-                  <div
-                    class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
-                  >
-                    <div
-                      aria-expanded="false"
-                      aria-haspopup="listbox"
-                      aria-labelledby="issues-share-year-label"
-                      class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
-                      role="combobox"
-                      tabindex="0"
-                    >
-                      2026
-                    </div>
-                    <input
-                      aria-hidden="true"
-                      aria-invalid="false"
-                      class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
-                      tabindex="-1"
-                      value="2026"
-                    />
-                    <svg
-                      aria-hidden="true"
-                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
-                      data-testid="ArrowDropDownIcon"
-                      focusable="false"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M7 10l5 5 5-5z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-              <p
-                class="MuiTypography-root MuiTypography-h6 css-1miy0lu-MuiTypography-root"
-              >
-                No issues registered
-              </p>
+              0/5
             </div>
-          </div>
-          <div
-            class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
-          >
             <div
-              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
+              class="MuiBox-root css-31l7gp"
             >
-              <div
-                class="MuiBox-root css-1wrcl4x"
+              <h2
+                class="MuiTypography-root MuiTypography-overline css-89efw6-MuiTypography-root"
               >
-                <h2
-                  class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-                >
-                  <button
-                    class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
-                  >
-                    Investment announcements
-                  </button>
-                </h2>
-                <div
-                  class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
-                >
-                  <label
-                    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
-                    data-shrink="true"
-                    id="announcements-year-label"
-                  >
-                    Year
-                  </label>
-                  <div
-                    class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
-                  >
-                    <div
-                      aria-expanded="false"
-                      aria-haspopup="listbox"
-                      aria-labelledby="announcements-year-label"
-                      class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
-                      role="combobox"
-                      tabindex="0"
-                    >
-                      2026
-                    </div>
-                    <input
-                      aria-hidden="true"
-                      aria-invalid="false"
-                      class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
-                      tabindex="-1"
-                      value="2026"
-                    />
-                    <svg
-                      aria-hidden="true"
-                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
-                      data-testid="ArrowDropDownIcon"
-                      focusable="false"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        d="M7 10l5 5 5-5z"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+                DLR 4.4 · announcements naming OYSIPA
+              </h2>
               <p
-                class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
+                class="MuiTypography-root MuiTypography-body1 css-izap9d-MuiTypography-root"
               >
-                1 of 5
-              </p>
-              <p
-                class="MuiTypography-root MuiTypography-body2 css-7ctihp-MuiTypography-root"
-              >
-                OYSIPA named
+                <a
+                  class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-nv1n36-MuiTypography-root-MuiLink-root"
+                  data-discover="true"
+                  href="/announcements?year=2026&oysipaNamed=true"
+                >
+                  0 of 5 in 2026
+                </a>
               </p>
               <p
                 class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
               >
-                Basic band (1–4)
+                None yet · 2025: 2 · 2024: 2 · 2023: 1
+              </p>
+            </div>
+          </div>
+          <div
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-1d4mlkk-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-w32nvq"
+            >
+              0%
+            </div>
+            <div
+              class="MuiBox-root css-31l7gp"
+            >
+              <h2
+                class="MuiTypography-root MuiTypography-overline css-89efw6-MuiTypography-root"
+              >
+                DLR 4.5 · issues resolved
+              </h2>
+              <p
+                class="MuiTypography-root MuiTypography-body1 css-izap9d-MuiTypography-root"
+              >
+                <a
+                  class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineHover css-nv1n36-MuiTypography-root-MuiLink-root"
+                  data-discover="true"
+                  href="/issues"
+                >
+                  0 of 4 reported in 2026 resolved
+                </a>
+              </p>
+              <p
+                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
+              >
+                Below basic (under 50%)
+              </p>
+            </div>
+          </div>
+          <div
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-1d4mlkk-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-w32nvq"
+            >
+              302
+            </div>
+            <div
+              class="MuiBox-root css-31l7gp"
+            >
+              <h2
+                class="MuiTypography-root MuiTypography-overline css-89efw6-MuiTypography-root"
+              >
+                Evidence library
+              </h2>
+              <p
+                class="MuiTypography-root MuiTypography-body1 css-izap9d-MuiTypography-root"
+              >
+                302 private files
+              </p>
+              <p
+                class="MuiTypography-root MuiTypography-body2 css-7ctihp-MuiTypography-root"
+              >
+                <a
+                  class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-1orsvah-MuiTypography-root-MuiLink-root"
+                  data-discover="true"
+                  href="/evidence"
+                >
+                  87 still need tagging
+                </a>
               </p>
             </div>
           </div>
         </section>
+        <div
+          class="MuiBox-root css-1azps49"
+        >
+          <section
+            aria-label="Public investment announcements by year"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-wrkc4u"
+            >
+              <div
+                class="MuiBox-root css-31l7gp"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
+                >
+                  Public investment announcements by year
+                </h2>
+              </div>
+              <ul
+                aria-label="Legend"
+                class="MuiBox-root css-170wrro"
+              >
+                <li
+                  class="MuiBox-root css-44hrno"
+                >
+                  <div
+                    aria-hidden="true"
+                    class="MuiBox-root css-k3c6nj"
+                  />
+                  All
+                </li>
+                <li
+                  class="MuiBox-root css-44hrno"
+                >
+                  <div
+                    aria-hidden="true"
+                    class="MuiBox-root css-13arxjw"
+                  />
+                  Naming OYSIPA
+                </li>
+              </ul>
+            </div>
+            <div
+              class="MuiBox-root css-1cwznr"
+            >
+              <div
+                aria-label="Announcements by year: 2023 9 (1 naming OYSIPA), 2024 18 (2 naming OYSIPA), 2025 17 (2 naming OYSIPA), 2026 11 (0 naming OYSIPA)"
+                class="MuiBox-root css-0"
+                role="img"
+              >
+                <div
+                  class="MuiBox-root css-1nk7dty"
+                >
+                  <a
+                    aria-label="2023: 9, 1 naming OYSIPA"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/announcements?year=2023"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      9
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-1yrf7h7"
+                    >
+                      <span
+                        class="MuiBox-root css-77zpk3"
+                      />
+                    </span>
+                  </a>
+                  <a
+                    aria-label="2024: 18, 2 naming OYSIPA"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/announcements?year=2024"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      18
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-1f2tiop"
+                    >
+                      <span
+                        class="MuiBox-root css-1q6u9l2"
+                      />
+                    </span>
+                  </a>
+                  <a
+                    aria-label="2025: 17, 2 naming OYSIPA"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/announcements?year=2025"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      17
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-l1dfk5"
+                    >
+                      <span
+                        class="MuiBox-root css-1q6u9l2"
+                      />
+                    </span>
+                  </a>
+                  <a
+                    aria-label="2026: 11, 0 naming OYSIPA"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/announcements?year=2026"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      11
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-m4e6ui"
+                    />
+                  </a>
+                </div>
+                <div
+                  aria-hidden="true"
+                  class="MuiBox-root css-1m88n30"
+                >
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2023
+                  </div>
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2024
+                  </div>
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2025
+                  </div>
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2026
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+            >
+              By announcement date. 2026: 11 (−35% vs 2025). Click a bar to open those announcements.
+            </p>
+          </section>
+          <section
+            aria-label="New investors by first-contact year"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-wrkc4u"
+            >
+              <div
+                class="MuiBox-root css-31l7gp"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
+                >
+                  New investors by first-contact year
+                </h2>
+              </div>
+            </div>
+            <div
+              class="MuiBox-root css-1cwznr"
+            >
+              <div
+                aria-label="New investors by first-contact year: 2023 21, 2024 11, 2025 60, 2026 14"
+                class="MuiBox-root css-0"
+                role="img"
+              >
+                <div
+                  class="MuiBox-root css-1nk7dty"
+                >
+                  <div
+                    class="MuiBox-root css-dkxnah"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      21
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-csiqib"
+                    />
+                  </div>
+                  <div
+                    class="MuiBox-root css-dkxnah"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      11
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-y32b9l"
+                    />
+                  </div>
+                  <div
+                    class="MuiBox-root css-dkxnah"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      60
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-1f2tiop"
+                    />
+                  </div>
+                  <div
+                    class="MuiBox-root css-dkxnah"
+                  >
+                    <span
+                      class="tabular-nums MuiBox-root css-hy5x3p"
+                    >
+                      14
+                    </span>
+                    <span
+                      class="bar-fill MuiBox-root css-pqpdm8"
+                    />
+                  </div>
+                </div>
+                <div
+                  aria-hidden="true"
+                  class="MuiBox-root css-1m88n30"
+                >
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2023
+                  </div>
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2024
+                  </div>
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2025
+                  </div>
+                  <div
+                    class="MuiBox-root css-1lfzvhb"
+                  >
+                    2026
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+            >
+              106 of 173 investors have a first-contact date.
+               2026: 14 (−77% vs 2025).
+               67 have no first-contact date yet: 
+              <a
+                class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-1orsvah-MuiTypography-root-MuiLink-root"
+                data-discover="true"
+                href="/investors?organisationType=Investor"
+              >
+                fill them in
+              </a>
+              .
+            </p>
+          </section>
+        </div>
+        <div
+          class="MuiBox-root css-1dljvgw"
+        >
+          <section
+            aria-label="Pipeline by stage"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-wrkc4u"
+            >
+              <div
+                class="MuiBox-root css-31l7gp"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
+                >
+                  Pipeline by stage
+                </h2>
+              </div>
+            </div>
+            <div
+              class="MuiBox-root css-1cwznr"
+            >
+              <div
+                aria-label="Pipeline by stage: Initial Lead 18, Commitment 46"
+                class="MuiBox-root css-1821gv5"
+                role="img"
+              >
+                <a
+                  aria-label="Initial Lead: 18"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/projects?lifecycleStatus=Initial+Lead"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    Initial Lead
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-owiuex"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    18
+                  </span>
+                </a>
+                <a
+                  aria-label="Commitment: 46"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/projects?lifecycleStatus=Commitment"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    Commitment
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1bja0dh"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    46
+                  </span>
+                </a>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+            >
+              183 of 183 projects have a stage
+            </p>
+          </section>
+          <section
+            aria-label="Investors by sector"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-wrkc4u"
+            >
+              <div
+                class="MuiBox-root css-31l7gp"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
+                >
+                  Investors by sector
+                </h2>
+              </div>
+              <ul
+                aria-label="Legend"
+                class="MuiBox-root css-170wrro"
+              >
+                <li
+                  class="MuiBox-root css-44hrno"
+                >
+                  <div
+                    aria-hidden="true"
+                    class="MuiBox-root css-13arxjw"
+                  />
+                  SABER priority (★)
+                </li>
+                <li
+                  class="MuiBox-root css-44hrno"
+                >
+                  <div
+                    aria-hidden="true"
+                    class="MuiBox-root css-4la29s"
+                  />
+                  Other sectors
+                </li>
+              </ul>
+            </div>
+            <div
+              class="MuiBox-root css-1cwznr"
+            >
+              <div
+                aria-label="Investors by sector: Infrastructure 3, Waste and circular economy 31, Real estate and construction 22, Agribusiness 27, Renewable energy 5, Culture and tourism 16, Manufacturing 5, Not recorded 13"
+                class="MuiBox-root css-1821gv5"
+                role="img"
+              >
+                <a
+                  aria-label="Infrastructure: 3"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Infrastructure&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-j5g2eh"
+                  >
+                    Infrastructure
+                    <span
+                      aria-hidden="true"
+                      class="MuiBox-root css-p8ic9c"
+                    >
+                      ★
+                    </span>
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-dpt2z2"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    3
+                  </span>
+                </a>
+                <a
+                  aria-label="Waste and circular economy: 31"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Waste+and+circular+economy&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-j5g2eh"
+                  >
+                    Waste and circular economy
+                    <span
+                      aria-hidden="true"
+                      class="MuiBox-root css-p8ic9c"
+                    >
+                      ★
+                    </span>
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1bja0dh"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    31
+                  </span>
+                </a>
+                <a
+                  aria-label="Real estate and construction: 22"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Real+estate+and+construction&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-j5g2eh"
+                  >
+                    Real estate and construction
+                    <span
+                      aria-hidden="true"
+                      class="MuiBox-root css-p8ic9c"
+                    >
+                      ★
+                    </span>
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-86r1b5"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    22
+                  </span>
+                </a>
+                <a
+                  aria-label="Agribusiness: 27"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Agribusiness&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-j5g2eh"
+                  >
+                    Agribusiness
+                    <span
+                      aria-hidden="true"
+                      class="MuiBox-root css-p8ic9c"
+                    >
+                      ★
+                    </span>
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-vo93q9"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    27
+                  </span>
+                </a>
+                <a
+                  aria-label="Renewable energy: 5"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Renewable+energy&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-j5g2eh"
+                  >
+                    Renewable energy
+                    <span
+                      aria-hidden="true"
+                      class="MuiBox-root css-p8ic9c"
+                    >
+                      ★
+                    </span>
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1td6w97"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    5
+                  </span>
+                </a>
+                <a
+                  aria-label="Culture and tourism: 16"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Culture+and+tourism&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-j5g2eh"
+                  >
+                    Culture and tourism
+                    <span
+                      aria-hidden="true"
+                      class="MuiBox-root css-p8ic9c"
+                    >
+                      ★
+                    </span>
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-10d0i0l"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    16
+                  </span>
+                </a>
+                <a
+                  aria-label="Manufacturing: 5"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Manufacturing&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    Manufacturing
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1to317x"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    5
+                  </span>
+                </a>
+                <a
+                  aria-label="Not recorded: 13"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?sector=Not+recorded&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-2l3yj2"
+                  >
+                    Not recorded
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-du2r0x"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    13
+                  </span>
+                </a>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+            >
+              153 of 166 investors have a sector.
+               
+              <a
+                class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-1orsvah-MuiTypography-root-MuiLink-root"
+                data-discover="true"
+                href="/investors?sector=Not+recorded&organisationType=Investor"
+              >
+                Fix the 13 not recorded
+              </a>
+            </p>
+          </section>
+          <section
+            aria-label="Where investors come from"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-wrkc4u"
+            >
+              <div
+                class="MuiBox-root css-31l7gp"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
+                >
+                  Where investors come from
+                </h2>
+              </div>
+            </div>
+            <div
+              class="MuiBox-root css-1cwznr"
+            >
+              <div
+                aria-label="Investors by country: Nigeria 110, China 5, Others 7, Not recorded 44"
+                class="MuiBox-root css-1821gv5"
+                role="img"
+              >
+                <a
+                  aria-label="Nigeria: 110"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?country=Nigeria&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    Nigeria
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1ovh0yy"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    110
+                  </span>
+                </a>
+                <a
+                  aria-label="China: 5"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?country=China&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    China
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-11xwnu2"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    5
+                  </span>
+                </a>
+                <div
+                  class="MuiBox-root css-xg2648"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    Others
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-fmfokw"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    7
+                  </span>
+                </div>
+                <a
+                  aria-label="Not recorded: 44"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?country=Not+recorded&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-2l3yj2"
+                  >
+                    Not recorded
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1pyjdot"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    44
+                  </span>
+                </a>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+            >
+              122 of 166 investors have a country.
+            </p>
+          </section>
+          <section
+            aria-label="How they found us (T11)"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <div
+              class="MuiBox-root css-wrkc4u"
+            >
+              <div
+                class="MuiBox-root css-31l7gp"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
+                >
+                  How they found us (T11)
+                </h2>
+              </div>
+            </div>
+            <div
+              class="MuiBox-root css-1cwznr"
+            >
+              <div
+                aria-label="Investors by lead source: Government or MDA referral 51, Unknown (pre-T11) 85"
+                class="MuiBox-root css-1821gv5"
+                role="img"
+              >
+                <a
+                  aria-label="Government or MDA referral: 51"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?leadSource=Government+or+MDA+referral&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-16rqvfq"
+                  >
+                    Government or MDA referral
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-y5jwn2"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    51
+                  </span>
+                </a>
+                <a
+                  aria-label="Unknown (pre-T11): 85"
+                  class="MuiBox-root css-130uzqk"
+                  data-discover="true"
+                  href="/investors?leadSource=Unknown+%28pre-T11%29&organisationType=Investor"
+                >
+                  <span
+                    class="bar-label MuiBox-root css-2l3yj2"
+                  >
+                    Unknown (pre-T11)
+                  </span>
+                  <span
+                    class="MuiBox-root css-2bhcm3"
+                  >
+                    <span
+                      class="bar-fill MuiBox-root css-1a75fva"
+                    />
+                  </span>
+                  <span
+                    class="tabular-nums MuiBox-root css-1trdqxx"
+                  >
+                    85
+                  </span>
+                </a>
+              </div>
+            </div>
+            <p
+              class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+            >
+              81 of 166 investors have a known lead source.
+            </p>
+          </section>
+        </div>
         <section
-          aria-label="Projects by Status"
+          aria-label="Services delivered (SABER codes) · 2026"
           class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
           style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
         >
@@ -309,12 +1232,12 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
               <h2
                 class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
               >
-                Projects by Status
+                Services delivered (SABER codes) · 2026
               </h2>
               <p
                 class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
               >
-                Click a status to see its projects
+                34 interactions with a happened date in 2026 · 20 tagged with a code · 2 credit linkage · new vs 2025
               </p>
             </div>
           </div>
@@ -322,50 +1245,88 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
             class="MuiBox-root css-1cwznr"
           >
             <div
-              class="MuiTableContainer-root css-19xghkq-MuiTableContainer-root"
+              aria-label="Services by SABER code: M1 0, M4 5, A7 8, V1 4"
+              class="MuiBox-root css-fmo6j7"
+              role="img"
             >
-              <table
-                aria-label="projects by lifecycle status"
-                class="MuiTable-root css-1xwxv7r-MuiTable-root"
+              <div
+                class="MuiBox-root css-g2sxat"
               >
-                <thead
-                  class="MuiTableHead-root css-1a7iywq-MuiTableHead-root"
+                <div
+                  class="MuiBox-root css-1rbyfv8"
                 >
-                  <tr
-                    class="MuiTableRow-root MuiTableRow-head css-1xtozoh-MuiTableRow-root"
-                  >
-                    <th
-                      class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeMedium css-1orzuox-MuiTableCell-root"
-                      scope="col"
-                    >
-                      Status
-                    </th>
-                    <th
-                      class="MuiTableCell-root MuiTableCell-head MuiTableCell-alignRight MuiTableCell-sizeMedium css-to33az-MuiTableCell-root"
-                      scope="col"
-                    >
-                      Count
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  class="MuiTableBody-root css-gmh7jj-MuiTableBody-root"
+                  M1
+                </div>
+                <div
+                  class="MuiBox-root css-vglet3"
                 >
-                  <tr
-                    class="MuiTableRow-root css-1xtozoh-MuiTableRow-root"
-                  >
-                    <td
-                      class="MuiTableCell-root MuiTableCell-body MuiTableCell-alignCenter MuiTableCell-sizeMedium css-14y13q2-MuiTableCell-root"
-                      colspan="2"
-                    >
-                      No project data available.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                  0
+                </div>
+              </div>
+              <div
+                class="MuiBox-root css-s6hbar"
+              >
+                <div
+                  class="MuiBox-root css-1rbyfv8"
+                >
+                  M4
+                </div>
+                <div
+                  class="MuiBox-root css-13ujwj1"
+                >
+                  5
+                </div>
+              </div>
+              <div
+                class="MuiBox-root css-s6hbar"
+              >
+                <div
+                  class="MuiBox-root css-1rbyfv8"
+                >
+                  A7
+                </div>
+                <div
+                  class="MuiBox-root css-13ujwj1"
+                >
+                  8
+                </div>
+              </div>
+              <div
+                class="MuiBox-root css-s6hbar"
+              >
+                <div
+                  class="MuiBox-root css-1rbyfv8"
+                >
+                  V1
+                </div>
+                <div
+                  class="MuiBox-root css-13ujwj1"
+                >
+                  4
+                </div>
+              </div>
             </div>
           </div>
+          <p
+            class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"
+          >
+            Interactions without a happened date are not counted by year (28 undated).
+          </p>
         </section>
+        <p
+          class="MuiTypography-root MuiTypography-caption css-1374baf-MuiTypography-root"
+        >
+          Every chart links to the list behind it. Figures are live from the tracker. Values are shown per currency; the ₦ equivalent uses the
+           
+          <a
+            class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-1orsvah-MuiTypography-root-MuiLink-root"
+            data-discover="true"
+            href="/admin"
+          >
+            Admin exchange rates
+          </a>
+          . Years use happened dates (announcement, first contact, interaction), never the import or registration day.
+        </p>
       </div>
     </div>
   </div>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Alert, Autocomplete, Box, Button, Chip, FormControl, InputLabel, Link as MuiLink, MenuItem, Paper, Select, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
@@ -16,9 +16,15 @@ const hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } };
 // and project filters.
 const AnnouncementsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [announcements, setAnnouncements] = useState([]);
-  const [year, setYear] = useState('');
-  const [named, setNamed] = useState('');
+  // ?year= (dashboard click-through, story 11.14) sets the starting filter.
+  // A value the selects do not offer is ignored; ?oysipaNamed=true|false too.
+  const [year, setYear] = useState(() => {
+    const y = searchParams.get('year') || '';
+    return issueYears().map(String).includes(y) ? y : '';
+  });
+  const [named, setNamed] = useState(() => (['true', 'false'].includes(searchParams.get('oysipaNamed')) ? searchParams.get('oysipaNamed') : ''));
   const [project, setProject] = useState(null);
   const [projects, setProjects] = useState([]);
   const [error, setError] = useState('');

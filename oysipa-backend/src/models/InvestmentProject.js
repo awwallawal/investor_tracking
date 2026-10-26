@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const auditPlugin = require('../utils/auditPlugin');
 const { CURRENCIES, DEFAULT_CURRENCY } = require('../constants/investorFields');
+const { SECTOR_VALUES } = require('../constants/sectors');
 
 const investmentProjectSchema = new mongoose.Schema({
     projectTitle: {
@@ -21,6 +22,17 @@ const investmentProjectSchema = new mongoose.Schema({
         type: String,
         enum: { values: CURRENCIES, message: 'Invalid currency: {VALUE}' },
         default: DEFAULT_CURRENCY
+    },
+    // Story 11.14 (11.6): sector from the list; defaults from the investor's
+    // sector on create (controller). No schema default: old records get it
+    // from the clean-up migration.
+    sector: {
+        type: String,
+        enum: { values: SECTOR_VALUES, message: 'Invalid sector: {VALUE}' }
+    },
+    sectorDetail: {
+        type: String,
+        trim: true
     },
     estimatedNumberOfJobs: {
         type: Number,

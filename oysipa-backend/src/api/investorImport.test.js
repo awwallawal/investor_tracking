@@ -248,6 +248,9 @@ describe('POST /api/investors/import/run', () => {
     const mill = await InvestmentProject.findOne({ investor: alpha._id }).lean();
     expect(mill).toMatchObject({ projectTitle: 'Alpha Mill', currency: 'USD', estimatedValue: 10000000, importBatchId: batchId });
     expect(mill.description).toContain('valueNote: synthetic value note');
+    // Story 11.14: sectors resolved to the list; projects take the investor's sector.
+    expect(alpha.sector).toBe('Agribusiness');
+    expect(mill.sector).toBe('Agribusiness');
 
     // Email taken: imported without it.
     const beta = await Investor.findOne({ investorName: 'Beta Partners' }).lean();
@@ -258,6 +261,7 @@ describe('POST /api/investors/import/run', () => {
     expect(await Investor.countDocuments({ email: 'taken@example.test' })).toBe(1);
     // Empty projects: investor only.
     const delta = await Investor.findOne({ investorName: 'Delta Foods' }).lean();
+    expect(delta).toMatchObject({ sector: 'Other', sectorDetail: 'Mystery Sector' });
     expect(await InvestmentProject.countDocuments({ investor: delta._id })).toBe(0);
     // Unknown status: whole record skipped.
     expect(await Investor.exists({ investorName: 'Gamma Works' })).toBeNull();
@@ -359,6 +363,32 @@ describe('Import edge cases (review fixes)', () => {
     action: 'create', investor: { investorName: name, sector: 'Agribusiness', countryOfOrigin: 'Nigeria', leadSource: 'Other', ...extra },
   });
   const plan = (json) => planImport(json);
+
+  // Story 11.14: sectors on update-existing records.
+  const upd = (investor, extra = {}) => ({
+    action: 'update-existing', existingAppNames: ['Existing Co'], investor: { investorName: 'Existing Co', ...investor }, ...extra,
+  });
+
+  it('new projects on an existing investor get its resolved sector; the same sector spelled differently is not a conflict', async () => {
+    const p = await plan({
+      records: [upd({ sector: 'Technology and ICT' }, { project: { projectTitle: 'New Lab', lifecycleStatusName: 'Commitment' } })],
+    });
+    expect(p.report.update[0].conflicts.map((c) => c.field)).not.toContain('sector'); // "Tech" = "Technology and ICT"
+    await applyImport(p, dgUser);
+    const lab = await InvestmentProject.findOne({ projectTitle: 'New Lab' }).lean();
+    expect(lab.sector).toBe('Technology and ICT');
+  });
+
+  it('filling an empty sector keeps the file spelling as sectorDetail and the warning', async () => {
+    await Investor.collection.updateOne({ _id: existing._id }, { $unset: { sector: 1 } });
+    const p = await plan({ records: [upd({ sector: 'Hospitality' })] });
+    expect(p.report.update[0].filled).toContain('sector');
+    await applyImport(p, dgUser);
+    expect(await Investor.findById(existing._id).lean()).toMatchObject({ sector: 'Culture and tourism', sectorDetail: 'Hospitality' });
+    await Investor.collection.updateOne({ _id: existing._id }, { $unset: { sector: 1, sectorDetail: 1 } });
+    const odd = await plan({ records: [upd({ sector: 'Space mining' })] });
+    expect(odd.report.warnings.map((w) => w.message).join(' ')).toMatch(/Space mining/);
+  });
 
   it('two creates with one normalised key: 1 created, duplicate noted, interaction on the second spelling created', async () => {
     const json = {

@@ -29,6 +29,7 @@ import EmptyState from '../components/ui/EmptyState';
 import InvestorForm from '../components/InvestorForm';
 import ImportInvestorsDialog from '../components/ImportInvestorsDialog';
 import { LEAD_SOURCES, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE } from '../constants/investorFields';
+import { SECTOR_VALUES } from '../constants/sectors';
 import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
@@ -89,11 +90,19 @@ const InvestorDirectoryPage = () => {
     const [deleting, setDeleting] = useState(null);
     const [success, setSuccess] = useState('');
     const [isImportOpen, setIsImportOpen] = useState(false);
-    const [leadSource, setLeadSource] = useState('');
-    const [organisationType, setOrganisationType] = useState('');
     // Search: the box updates at once; the request (and ?q= in the URL) follows
     // after a 300 ms pause in typing.
     const [searchParams, setSearchParams] = useSearchParams();
+    // Filters live in the URL (story 11.14 click-through from the dashboard):
+    // ?leadSource= &organisationType= &sector= &country=
+    // A value the server would refuse (not on its list, or a country over 100
+    // characters) is ignored: not sent and no chip.
+    const fromList = (name, list) => (list.includes(searchParams.get(name)) ? searchParams.get(name) : '');
+    const leadSource = fromList('leadSource', LEAD_SOURCES);
+    const organisationType = fromList('organisationType', ORGANISATION_TYPES);
+    const sector = fromList('sector', SECTOR_VALUES);
+    const rawCountry = (searchParams.get('country') || '').trim();
+    const country = rawCountry.length <= 100 ? rawCountry : '';
     const [searchInput, setSearchInput] = useState(() => searchParams.get('q') || '');
     const [q, setQ] = useState(() => (searchParams.get('q') || '').trim());
     const [total, setTotal] = useState(null);
@@ -110,6 +119,21 @@ const InvestorDirectoryPage = () => {
     const canDelete = isAdminRole(getCurrentUser()?.role);
     const canImport = canDelete; // DG/Portal-Admin only (server-enforced too)
 
+    // Sets (or with '' removes) URL filter params, keeping the others.
+    const setFilters = useCallback((changes) => {
+        setParamsRef.current((prev) => {
+            const nextParams = new URLSearchParams(prev);
+            Object.entries(changes).forEach(([k, v]) => {
+                if (v) nextParams.set(k, v); else nextParams.delete(k);
+            });
+            return nextParams;
+        }, { replace: true });
+    }, []);
+    const setLeadSource = (v) => setFilters({ leadSource: v });
+    const setOrganisationType = (v) => setFilters({ organisationType: v });
+    const setSector = (v) => setFilters({ sector: v });
+    const setCountry = (v) => setFilters({ country: v });
+
     const fetchInvestors = useCallback(async () => {
         requestId.current += 1;
         const id = requestId.current;
@@ -117,6 +141,8 @@ const InvestorDirectoryPage = () => {
             const params = {
                 ...(leadSource && { leadSource }),
                 ...(organisationType && { organisationType }),
+                ...(sector && { sector }),
+                ...(country && { country }),
                 ...(q && { q }),
             };
             const response = Object.keys(params).length
@@ -133,9 +159,11 @@ const InvestorDirectoryPage = () => {
             setFetchError('');
         } catch (error) {
             console.error("Fetch error:", error);
-            if (id === requestId.current) setFetchError('Could not load investors. Check your connection and try again.');
+            if (id !== requestId.current) return;
+            const serverMessage = error?.response?.status === 400 && error.response.data?.message;
+            setFetchError(serverMessage || 'Could not load investors. Check your connection and try again.');
         }
-    }, [leadSource, organisationType, q]);
+    }, [leadSource, organisationType, sector, country, q]);
 
     useEffect(() => {
         const next = searchInput.trim();
@@ -184,8 +212,9 @@ const InvestorDirectoryPage = () => {
     };
 
     const clearAllFilters = () => {
-        setLeadSource('');
-        setOrganisationType('');
+        setFilters({
+            leadSource: '', organisationType: '', sector: '', country: '',
+        });
         clearSearch();
     };
 
@@ -194,6 +223,8 @@ const InvestorDirectoryPage = () => {
         q && { key: 'q', label: `Search: "${q}"`, onRemove: clearSearch },
         leadSource && { key: 'leadSource', label: `Lead source: ${leadSource}`, onRemove: () => setLeadSource('') },
         organisationType && { key: 'organisationType', label: `Type: ${organisationType}`, onRemove: () => setOrganisationType('') },
+        sector && { key: 'sector', label: `Sector: ${sector}`, onRemove: () => setSector('') },
+        country && { key: 'country', label: `Country: ${country}`, onRemove: () => setCountry('') },
     ].filter(Boolean);
 
     const columns = [
@@ -240,7 +271,7 @@ const InvestorDirectoryPage = () => {
     let emptyState;
     if (fetchError) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="Could not load investors" text={fetchError} action={retry} />;
     else if (q) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title={`No investors match "${q}"`} text="Try another name, sector, place or contact." />;
-    else if (leadSource || organisationType) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors match these filters" />;
+    else if (leadSource || organisationType || sector || country) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors match these filters" />;
     else emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors yet" text="Register the first investor to start the directory." />;
 
     return (
@@ -298,6 +329,13 @@ const InvestorDirectoryPage = () => {
                                 {ORGANISATION_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
                             </Select>
                         </FormControl>
+                        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 0 220px' } }}>
+                            <InputLabel id="filter-sector-label">Sector</InputLabel>
+                            <Select labelId="filter-sector-label" label="Sector" value={SECTOR_VALUES.includes(sector) ? sector : ''} onChange={(e) => setSector(e.target.value)}>
+                                <MenuItem value="">All sectors</MenuItem>
+                                {SECTOR_VALUES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                            </Select>
+                        </FormControl>
                     </>
                 )}
                 resultCount={loaded ? `${investors.length} of ${total ?? investors.length} investors` : null}
@@ -330,7 +368,7 @@ const InvestorDirectoryPage = () => {
                 loading={!loaded && !fetchError}
                 emptyState={emptyState}
                 pageSize={50}
-                resetKey={`${q}|${leadSource}|${organisationType}`}
+                resetKey={`${q}|${leadSource}|${organisationType}|${sector}|${country}`}
             />
             {deleting && (
                 <DeleteInvestorDialog investor={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />

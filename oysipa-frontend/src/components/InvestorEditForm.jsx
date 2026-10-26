@@ -13,6 +13,7 @@ import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
 import { lagosDay } from '../utils/dates';
 import InvestorT11Fields from './InvestorT11Fields';
+import SectorFields from './SectorFields';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 
 const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
@@ -91,15 +92,7 @@ const InvestorEditForm = ({ open, onClose, onSave, investorData }) => {
             fullWidth={true}
             margin="normal"
           />
-          <TextField
-            name="sector"
-            label="Sector"
-            value={formData.sector || ''}
-            onChange={handleChange}
-            fullWidth={true}
-            required
-            margin="normal"
-          />
+          <SectorFields values={formData || {}} onChange={setField} required />
           <TextField
             name="countryOfOrigin"
             label="Country of Origin"

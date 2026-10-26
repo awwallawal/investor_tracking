@@ -7,6 +7,15 @@ const EvidenceFile = require('../models/EvidenceFile');
 const InvestorIssue = require('../models/InvestorIssue');
 const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
+const { isSectorValue, resolveSector } = require('../constants/sectors');
+const { sectorCondition, canonicalSector } = require('../services/recordFilters');
+
+// Story 11.14: a sent sector must be a list value. Returns an error message or null.
+const sectorError = (body) => {
+  if (!('sector' in body) || body.sector === undefined) return null;
+  if (isSectorValue(body.sector)) return null;
+  return `Invalid sector: ${JSON.stringify(body.sector)}. Choose one from the sector list.`;
+};
 // Import stamps are server-owned (set only by the investor import).
 const stripImportStamps = (body) => {
   delete body.importBatchId;
@@ -52,13 +61,21 @@ const systemUpdateLog = async ({ projectId, userId, oldStatusId, newStatusId, ha
   await interactionLog.save();
 };
 
-// @desc    Get all projects, optionally filtered by lifecycleStatus
+// @desc    Get all projects, optionally filtered by lifecycleStatus and sector
+//          (sector=Not recorded matches projects with none; 11.14 click-through)
 // @route   GET /api/projects
 // @access  Private
 exports.getProjects = async (req, res) => {
   try {
-    const { lifecycleStatus } = req.query;
+    const { lifecycleStatus, sector } = req.query;
     const filter = {};
+
+    if (sector !== undefined && sector !== '') {
+      if (!canonicalSector(sector)) {
+        return res.status(400).json({ message: 'Invalid sector filter.' });
+      }
+      Object.assign(filter, await sectorCondition(InvestmentProject, canonicalSector(sector)));
+    }
 
     if (lifecycleStatus) {
       const statusDoc = await LifecycleStatus.findOne({ name: lifecycleStatus });
@@ -89,7 +106,10 @@ exports.createProject = async (req, res) => {
 
     // No orphan projects: the investor must exist. A malformed id falls through
     // to the existing 400 path (the cast error on save).
-    if (mongoose.isValidObjectId(investorId) && !(await Investor.exists({ _id: investorId }))) {
+    const investor = mongoose.isValidObjectId(investorId)
+      ? await Investor.findById(investorId).select('sector').lean()
+      : null;
+    if (mongoose.isValidObjectId(investorId) && !investor) {
       return res.status(404).json({ msg: 'Investor not found' });
     }
 
@@ -98,6 +118,11 @@ exports.createProject = async (req, res) => {
     delete body.statusChangeDate;
     const dateError = applyDateRegistered(body, { isCreate: true });
     if (dateError) return res.status(400).json({ message: dateError });
+    // Sector: a list value, else the investor's sector (11.14).
+    if (body.sector === '' || body.sector === null) delete body.sector;
+    const badSector = sectorError(body);
+    if (badSector) return res.status(400).json({ message: badSector });
+    if (body.sector === undefined && investor) body.sector = resolveSector(investor.sector).sector;
 
     let { lifecycleStatus } = body;
     if (!lifecycleStatus) {
@@ -194,6 +219,9 @@ exports.updateProject = async (req, res) => {
     if (statusChange.error) return res.status(400).json({ message: statusChange.error });
     const dateError = applyDateRegistered(body, { isCreate: false });
     if (dateError) return res.status(400).json({ message: dateError });
+    if (body.sector === '' || body.sector === null) delete body.sector;
+    const badSector = sectorError(body);
+    if (badSector) return res.status(400).json({ message: badSector });
 
     const oldStatusId = projectToUpdate.lifecycleStatus.toString();
     const newStatusId = body.lifecycleStatus;

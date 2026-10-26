@@ -223,7 +223,7 @@ describe('Interaction happened date', () => {
 });
 
 describe('Investor firstContactDate', () => {
-  const base = { investorName: 'New Paper Inv', sector: 'Tech', countryOfOrigin: 'NG', leadSource: 'Other' };
+  const base = { investorName: 'New Paper Inv', sector: 'Technology and ICT', countryOfOrigin: 'NG', leadSource: 'Other' };
 
   it('create with a paper date; client createdAt ignored', async () => {
     const res = await request(app).post('/api/investors').set('Authorization', bearer(global.dgToken))
@@ -256,14 +256,14 @@ describe('Investor firstContactDate', () => {
     expect(new Date(res.body.createdAt).getTime()).toBe(before.createdAt.getTime());
 
     const again = await request(app).put(`/api/investors/${assignedInvestor._id}`).set('Authorization', bearer(staffToken))
-      .send({ firstContactDate: '', sector: 'Tech' })
+      .send({ firstContactDate: '', sector: 'Technology and ICT' })
       .expect(200);
     expect(day(again.body.firstContactDate)).toBe('2023-09-09');
   });
 
   it('update future date → 400, unchanged', async () => {
     const res = await request(app).put(`/api/investors/${assignedInvestor._id}`).set('Authorization', bearer(global.dgToken))
-      .send({ firstContactDate: '2099-01-01', sector: 'Changed' });
+      .send({ firstContactDate: '2099-01-01', sector: 'Healthcare' });
     expect(res.statusCode).toBe(400);
     expect(res.body).toHaveProperty('message');
     expect((await Investor.findById(assignedInvestor._id)).sector).toBe('Agro');

@@ -12,6 +12,7 @@ import {
 import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
 import InvestorT11Fields from './InvestorT11Fields';
+import SectorFields from './SectorFields';
 import { DEFAULT_ORGANISATION_TYPE, INTERMEDIARY_REFERRAL } from '../constants/investorFields';
 
 const EMPTY_FORM = {
@@ -19,6 +20,7 @@ const EMPTY_FORM = {
   email: '',
   phoneNumber: '',
   sector: '',
+  sectorDetail: '',
   countryOfOrigin: '',
   companyRegistrationInfo: '',
   keyContactPerson: '',
@@ -60,6 +62,10 @@ const InvestorForm = ({ open, onClose, onSave }) => {
     // T11: lead source is required for new records (the server checks too).
     if (!formData.leadSource) {
       setError('Choose a lead source.');
+      return;
+    }
+    if (!formData.sector) {
+      setError('Choose a sector (or "Not recorded").');
       return;
     }
 
@@ -108,15 +114,7 @@ const InvestorForm = ({ open, onClose, onSave }) => {
             fullWidth
             margin="normal"
           />
-          <TextField
-            name="sector"
-            label="Sector"
-            value={formData.sector}
-            onChange={handleChange}
-            fullWidth
-            required
-            margin="normal"
-          />
+          <SectorFields values={formData} onChange={setField} required />
           <TextField
             name="countryOfOrigin"
             label="Country of Origin"

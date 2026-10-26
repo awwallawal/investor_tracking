@@ -29,7 +29,9 @@ describe('InvestorForm', () => {
     it('renders investor form', () => {
         render(<InvestorForm open={true} onClose={() => {}} onSave={() => {}} />); // Pass required props
         expect(screen.getByPlaceholderText('Investor Name')).toBeInTheDocument();
-        expect(screen.getByPlaceholderText('Sector')).toBeInTheDocument();
+        // Sector is a picker from the sector list (11.14), not free text.
+        expect(screen.getByRole('combobox', { name: /sector/i })).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Sector detail (optional)')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
     });
 });

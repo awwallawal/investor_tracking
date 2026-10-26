@@ -4,6 +4,15 @@ import DashboardPage from './DashboardPage';
 import { expect, it, describe, vi, beforeEach, afterEach } from 'vitest';
 import { jwtDecode } from 'jwt-decode';
 import apiClient from '../api/api';
+import { makeMine, makeOverview } from '../test/analyticsFixtures';
+
+// The Staff page loads /api/staff/dashboard (assigned projects) and
+// /api/analytics/mine (story 11.14): answer by URL.
+const staffApi = (projects, { projectsError } = {}) => apiClient.get.mockImplementation((url) => {
+  if (url === '/api/analytics/mine') return Promise.resolve({ data: makeMine() });
+  if (url === '/api/staff/dashboard') return projectsError ? Promise.reject(projectsError) : Promise.resolve({ data: projects });
+  return Promise.reject(new Error(url));
+});
 
 // Mock jwt-decode
 vi.mock('jwt-decode', () => ({
@@ -57,7 +66,7 @@ describe('DashboardPage', () => {
   });
 
   it('displays loading state initially', () => {
-    apiClient.get.mockImplementationOnce(() => new Promise(() => {})); // Never resolve fetch
+    apiClient.get.mockImplementation(() => new Promise(() => {})); // Never resolve fetch
     render(
       <Router>
         <DashboardPage />
@@ -72,7 +81,7 @@ describe('DashboardPage', () => {
       { _id: 'proj2', projectTitle: 'Project Beta', investor: { name: 'Inv B' }, lifecycleStatus: 'Commitment' },
     ];
 
-    apiClient.get.mockResolvedValueOnce({ data: mockProjects });
+    staffApi(mockProjects);
 
     render(
       <Router>
@@ -90,7 +99,7 @@ describe('DashboardPage', () => {
 
   it('Staff with a token without a name: the heading is "Welcome"', async () => {
     jwtDecode.mockReturnValue({ user: { id: 'staff123', role: 'Staff' } });
-    apiClient.get.mockResolvedValueOnce({ data: [] });
+    staffApi([]);
     render(
       <Router>
         <DashboardPage />
@@ -101,7 +110,7 @@ describe('DashboardPage', () => {
   });
 
   it('displays "No projects assigned" if no projects are returned', async () => {
-    apiClient.get.mockResolvedValueOnce({ data: [] });
+    staffApi([]);
 
     render(
       <Router>
@@ -115,7 +124,7 @@ describe('DashboardPage', () => {
   });
 
   it('displays an error message if fetching projects fails', async () => {
-    apiClient.get.mockRejectedValueOnce({ response: { data: { msg: 'Network error' } } });
+    staffApi([], { projectsError: { response: { data: { msg: 'Network error' } } } });
 
     render(
       <Router>
@@ -131,10 +140,8 @@ describe('DashboardPage', () => {
   it('renders the DG dashboard for a Portal-Admin user', async () => {
     jwtDecode.mockReturnValue({ user: { id: 'admin123', name: 'Test Admin', role: 'Portal-Admin' } });
     localStorage.setItem('token', mockToken); // Ensure token is set for the effect to run
-    // Portal-Admin -> AdminDashboard -> DGDashboard, which fetches the KPI data
-    apiClient.get.mockResolvedValueOnce({
-      data: { totalInvestors: 3, totalProjects: 5, recentInteractions: 7, projectsByStage: [] },
-    });
+    // Portal-Admin -> AdminDashboard -> DGDashboard, which fetches the analytics overview
+    apiClient.get.mockResolvedValueOnce({ data: makeOverview() });
 
     render(
       <Router>
@@ -144,7 +151,7 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByText('Welcome Portal-Admin, Test Admin')).toBeInTheDocument();
-    expect(apiClient.get).toHaveBeenCalledWith('/api/admin/dashboard-kpis');
+    expect(apiClient.get).toHaveBeenCalledWith('/api/analytics/overview', { params: { year: expect.stringMatching(/^\d{4}$/) } });
   });
 
   it('displays "No authentication token found" if no token is present', async () => {

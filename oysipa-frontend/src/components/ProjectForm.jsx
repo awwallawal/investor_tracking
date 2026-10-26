@@ -4,6 +4,7 @@ import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
 import { lagosDay } from '../utils/dates';
 import { CURRENCIES, DEFAULT_CURRENCY } from '../constants/investorFields';
+import SectorFields from './SectorFields';
 
 const FORBIDDEN_MSG = 'You can only change projects of investors assigned to you';
 const GENERIC_MSG = 'Failed to save the project. Please try again.';
@@ -52,6 +53,8 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                 currency: DEFAULT_CURRENCY,
                 estimatedNumberOfJobs: 0,
                 location: '',
+                sector: '',
+                sectorDetail: '',
                 lifecycleStatus: lifecycleStatuses.length > 0 ? lifecycleStatuses[0]._id : '',
             });
         }
@@ -71,6 +74,8 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
         setSaveError(null);
         const payload = { ...formData };
         delete payload.dateRegistered;
+        // Empty sector: the server uses the investor's sector (create) or keeps it (edit).
+        if (!payload.sector) delete payload.sector;
         // Empty means today on create; on edit it is sent only when corrected.
         if (dateRegistered && (!projectData || dateRegistered !== originalDateRegistered)) {
             payload.dateRegistered = dateRegistered;
@@ -107,6 +112,12 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                     <TextField margin="dense" name="estimatedValue" label="Estimated Value" type="number" fullWidth variant="standard" value={formData.estimatedValue || 0} onChange={handleChange} />
                 </Box>
                 <TextField margin="dense" name="estimatedNumberOfJobs" label="Estimated Number of Jobs" type="number" fullWidth variant="standard" value={formData.estimatedNumberOfJobs || 0} onChange={handleChange} />
+                <SectorFields
+                    values={formData}
+                    onChange={(name, value) => setFormData(prev => ({ ...prev, [name]: value }))}
+                    emptyLabel={projectData ? undefined : "Use the investor's sector"}
+                    helperText={projectData ? undefined : "Leave as is to use the investor's sector."}
+                />
                 <TextField margin="dense" name="location" label="Location" type="text" fullWidth variant="standard" value={formData.location || ''} onChange={handleChange} />
                 <FormControl fullWidth margin="dense" variant="standard">
                     <InputLabel id="lifecycleStatus-label">Lifecycle Status</InputLabel>

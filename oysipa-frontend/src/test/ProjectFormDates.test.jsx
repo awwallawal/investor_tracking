@@ -80,6 +80,9 @@ describe('Investor forms: first contact date', () => {
   const chooseLeadSource = async () => {
     await userEvent.click(screen.getByRole('combobox', { name: /lead source/i }));
     await userEvent.click(await screen.findByRole('option', { name: 'Other' }));
+    // Sector is required too (11.14).
+    await userEvent.click(screen.getByRole('combobox', { name: /^sector/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Agribusiness' }));
   };
 
   it('new investor: empty is not sent; a date is', async () => {

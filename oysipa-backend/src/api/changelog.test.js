@@ -122,7 +122,7 @@ describe('Investors', () => {
 
   it('create (POST) → 1 create row with the new document', async () => {
     const res = await api('post', '/api/investors').send({
-      investorName: 'Audit New Co', sector: 'Agro', countryOfOrigin: 'NG', leadSource: 'Other',
+      investorName: 'Audit New Co', sector: 'Agribusiness', countryOfOrigin: 'NG', leadSource: 'Other',
     }).expect(201);
     const list = await rows();
     expect(list).toHaveLength(1);
@@ -551,7 +551,7 @@ describe('Review follow-ups (11.10)', () => {
     const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(ChangeLog, 'insertMany').mockRejectedValueOnce(new Error('audit store down'));
     const res = await api('post', '/api/investors').send({
-      investorName: 'Audit Fail Co', sector: 'Agro', countryOfOrigin: 'NG', leadSource: 'Other',
+      investorName: 'Audit Fail Co', sector: 'Agribusiness', countryOfOrigin: 'NG', leadSource: 'Other',
     }).expect(201);
     expect(errSpy).toHaveBeenCalledWith('[audit] ChangeLog write failed', expect.objectContaining({
       entity: 'Investor', action: 'create', entityId: new mongoose.Types.ObjectId(res.body._id),

@@ -39,14 +39,12 @@ const {
 const IMPORTED_CATEGORY = 'Imported record';
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
-// Sector names the content studio uses (the State's sectors plus four). A value
-// that is neither here nor already in the app is reported as a warning.
-const KNOWN_SECTORS = [
-  'Agribusiness', 'Solid Minerals and Mining', 'Energy (oil and gas)', 'Real Estate and Construction',
-  'Financial Services', 'Culture and Tourism', 'Renewable Energy', 'Manufacturing', 'Infrastructure',
-  'Hospitality', 'Retail and Trade', 'Technology and ICT', 'Waste and Circular Economy', 'Healthcare',
-  'Not known',
-];
+// Story 11.14: sectors go through resolveSector (src/constants/sectors.js): the
+// stored sector is a list value, the file's spelling is kept as sectorDetail
+// when it differs, and an unknown spelling becomes "Other" with a warning.
+const { resolveSector, SECTOR_NAMES } = require('../constants/sectors');
+
+const KNOWN_SECTORS = SECTOR_NAMES;
 
 // Investor fields an update-existing record may fill when empty in the app.
 const FILL_FIELDS = [
@@ -95,6 +93,7 @@ const todayDate = () => new Date(`${todayLagos()}T00:00:00.000Z`);
 const dayOf = (d) => (d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 
 const sameValue = (field, appValue, fileValue) => {
+  if (field === 'sector') return resolveSector(appValue).sector === resolveSector(fileValue).sector;
   if (field === 'firstContactDate') return dayOf(appValue) === dayOf(fileValue);
   return String(appValue).trim().toLowerCase() === String(fileValue).trim().toLowerCase();
 };
@@ -185,12 +184,12 @@ const loadState = async (json) => {
     statuses: new Map(statuses.map((s) => [s.name, s._id])),
     titles,
     importedRefs: new Set(imported.map((l) => l.importRef)),
-    sectors: new Set([...KNOWN_SECTORS, ...investors.map((i) => i.sector).filter(Boolean)]),
   };
 };
 
 // Builds the project docs of one record. Returns { docs, skipped, error }.
-const planProjects = (rec, existingTitles, state) => {
+// sector: the investor's resolved sector, used for every new project (11.14).
+const planProjects = (rec, existingTitles, state, sector) => {
   const list = [rec.project, ...(Array.isArray(rec.projects) ? rec.projects : [])].filter((p) => p && typeof p === 'object');
   const seen = new Set(existingTitles || []);
   const docs = [];
@@ -223,6 +222,7 @@ const planProjects = (rec, existingTitles, state) => {
       lifecycleStatus: state.statuses.get(statusName),
       dateRegistered: todayDate(),
       importTags: uniq([...(Array.isArray(rec.tags) ? rec.tags : []), ...(Array.isArray(p.tags) ? p.tags : [])]),
+      sector,
     };
     ['estimatedValue', 'estimatedNumberOfJobs'].forEach((field) => {
       const v = p[field];
@@ -295,7 +295,8 @@ const planImport = async (input) => {
     const country = str(inv.countryOfOrigin);
     const sector = str(inv.sector);
     if (country && isOddCountry(country)) warn(`Odd country value "${country}" (kept as given).`);
-    if (sector && !state.sectors.has(sector)) warn(`Sector "${sector}" is not one of the known sectors (kept as given).`);
+    const resolved = sector ? resolveSector(sector) : null;
+    if (resolved && resolved.warning) warn(resolved.warning);
 
     if (r.action === 'create') {
       if (!name) return fail('Record has no investor.investorName.');
@@ -332,7 +333,7 @@ const planImport = async (input) => {
         if (parsed.error) return fail(parsed.error);
         firstContactDate = parsed.value;
       }
-      const projects = planProjects(r, [], state);
+      const projects = planProjects(r, [], state, resolved.sector);
       if (projects.error) return fail(projects.error, projects.missingStatus ? { missingStatus: projects.missingStatus } : {});
       projects.warnings.forEach(warn);
 
@@ -342,7 +343,8 @@ const planImport = async (input) => {
         investorName: name,
         email,
         phoneNumber: str(inv.phoneNumber),
-        sector,
+        sector: resolved.sector,
+        sectorDetail: str(inv.sectorDetail) || resolved.detail || undefined,
         countryOfOrigin: country,
         companyRegistrationInfo: str(inv.companyRegistrationInfo),
         keyContactPerson: str(inv.keyContactPerson),
@@ -388,7 +390,7 @@ const planImport = async (input) => {
 
       const current = updateState.get(id) || { ...target };
       if (!plannedTitles.has(id)) plannedTitles.set(id, new Set(state.titles.get(id) || []));
-      const projects = planProjects(r, plannedTitles.get(id), state);
+      const projects = planProjects(r, plannedTitles.get(id), state, resolveSector(current.sector).sector);
       if (projects.error) return fail(projects.error, projects.missingStatus ? { missingStatus: projects.missingStatus } : {});
       projects.warnings.forEach(warn);
 
@@ -403,6 +405,7 @@ const planImport = async (input) => {
       for (const field of FILL_FIELDS) {
         let value = file[field];
         if (isEmpty(value)) continue;
+        let sectorResolved = null;
         if (field === 'firstContactDate') {
           const parsed = parseHappenedDate(value, { label: 'First contact date' });
           if (parsed.error) {
@@ -416,6 +419,9 @@ const planImport = async (input) => {
             warn(`Unknown organisation type "${value}"; not filled.`);
             continue;
           }
+        } else if (field === 'sector') {
+          sectorResolved = resolveSector(value);
+          value = sectorResolved.sector;
         } else {
           value = String(value).trim();
         }
@@ -433,6 +439,14 @@ const planImport = async (input) => {
           set[field] = value;
           current[field] = value;
           filled.push(field);
+          // A filled sector keeps the file's spelling (sectorDetail) and its warning.
+          if (sectorResolved) {
+            if (sectorResolved.warning) warn(sectorResolved.warning);
+            if (sectorResolved.detail && isEmpty(current.sectorDetail)) {
+              set.sectorDetail = sectorResolved.detail;
+              current.sectorDetail = sectorResolved.detail;
+            }
+          }
         } else if (!sameValue(field, appValue, value)) {
           conflicts.push(SHOW_VALUE_FIELDS.includes(field)
             ? { field, app: String(appValue), file: String(value) }

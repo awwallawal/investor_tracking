@@ -219,6 +219,16 @@ describe('InvestorProfilePage — T11 and import fields (11.5)', () => {
     expect(screen.getByText(/Notes: Synthetic note/)).toBeInTheDocument();
   });
 
+  it('shows sector and country details when present (11.14)', async () => {
+    const detailed = {
+      ...investor, sector: 'Agribusiness', sectorDetail: 'Intermediary (agritech)', countryOfOrigin: 'Nigeria', countryDetail: 'Nigeria Sovereign Investment Authority',
+    };
+    apiClient.get.mockImplementation((url) => Promise.resolve({ data: url === '/api/investors/inv1' ? detailed : [] }));
+    renderPage();
+    expect(await screen.findByText('Sector: Agribusiness (Intermediary (agritech))')).toBeInTheDocument();
+    expect(screen.getByText('Country of Origin: Nigeria (recorded as: Nigeria Sovereign Investment Authority)')).toBeInTheDocument();
+  });
+
   it('old records show "Unknown (pre-T11)" and Investor', async () => {
     apiClient.get.mockImplementation((url) => Promise.resolve({ data: url === '/api/investors/inv1' ? investor : [] }));
     renderPage();

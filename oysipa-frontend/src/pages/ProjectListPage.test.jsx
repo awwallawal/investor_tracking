@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import ProjectListPage from '../pages/ProjectListPage';
 import apiClient from '../api/api';
@@ -94,5 +94,54 @@ describe('ProjectListPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Error: Failed to fetch projects.')).toBeInTheDocument();
     });
+  });
+});
+describe('ProjectListPage — sector filter from the URL (11.14)', () => {
+  beforeEach(() => {
+    apiClient.get.mockReset();
+    apiClient.get.mockResolvedValue({ data: [{ _id: '1', projectTitle: 'Project Alpha', investor: { investorName: 'Investor A' } }] });
+  });
+
+  it('passes sector (and lifecycleStatus) to the API and shows removable chips', async () => {
+    render(
+      <MemoryRouter initialEntries={['/projects?sector=Real+estate+and+construction&lifecycleStatus=Lead']}>
+        <Routes>
+          <Route path="/projects" element={<ProjectListPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText('Project Alpha')).toBeInTheDocument());
+    expect(apiClient.get).toHaveBeenCalledWith('/api/projects?lifecycleStatus=Lead&sector=Real+estate+and+construction');
+    expect(screen.getByText('Sector: Real estate and construction')).toBeInTheDocument();
+    expect(screen.getByText('Status: Lead')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Sector: Real estate and construction' }));
+    await waitFor(() => expect(apiClient.get).toHaveBeenLastCalledWith('/api/projects?lifecycleStatus=Lead'));
+    expect(screen.queryByText('Sector: Real estate and construction')).not.toBeInTheDocument();
+  });
+
+  it('a sector not on the list is ignored; a 400 shows the server message', async () => {
+    render(
+      <MemoryRouter initialEntries={['/projects?sector=Farming']}>
+        <Routes>
+          <Route path="/projects" element={<ProjectListPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText('Project Alpha')).toBeInTheDocument());
+    expect(apiClient.get).toHaveBeenCalledWith('/api/projects');
+    expect(screen.queryByText(/^Sector:/)).not.toBeInTheDocument();
+  });
+
+  it('a 400 from the server shows its message', async () => {
+    apiClient.get.mockRejectedValue({ response: { status: 400, data: { message: 'Invalid sector filter.' } } });
+    render(
+      <MemoryRouter initialEntries={['/projects?sector=Agribusiness']}>
+        <Routes>
+          <Route path="/projects" element={<ProjectListPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    expect(await screen.findByText(/Invalid sector filter./)).toBeInTheDocument();
   });
 });

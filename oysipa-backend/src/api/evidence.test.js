@@ -427,7 +427,7 @@ describe('Failures and races', () => {
 });
 
 describe('Investor email: empty means no email', () => {
-  const base = { sector: 'Agro', countryOfOrigin: 'NG', leadSource: 'Other' };
+  const base = { sector: 'Agribusiness', countryOfOrigin: 'NG', leadSource: 'Other' };
   it("two investors created with email '' (or spaces) are both saved with no email", async () => {
     const a = await request(app).post('/api/investors').set('Authorization', bearer(global.dgToken)).send({ ...base, investorName: 'No Mail One', email: '' });
     const b = await request(app).post('/api/investors').set('Authorization', bearer(global.dgToken)).send({ ...base, investorName: 'No Mail Two', email: '   ' });
@@ -440,10 +440,10 @@ describe('Investor email: empty means no email', () => {
   it("an update to '' unsets the email", async () => {
     const inv = await Investor.create({ ...base, investorName: 'Has Mail', email: 'has.mail@example.test' });
     await Investor.create({ ...base, investorName: 'Also None' });
-    const res = await request(app).put(`/api/investors/${inv._id}`).set('Authorization', bearer(global.dgToken)).send({ email: '', sector: 'Tech' });
+    const res = await request(app).put(`/api/investors/${inv._id}`).set('Authorization', bearer(global.dgToken)).send({ email: '', sector: 'Technology and ICT' });
     expect(res.statusCode).toBe(200);
     const stored = await Investor.findById(inv._id).lean();
     expect(stored).not.toHaveProperty('email');
-    expect(stored.sector).toBe('Tech');
+    expect(stored.sector).toBe('Technology and ICT');
   });
 });

@@ -16,6 +16,9 @@ const issueRoutes = require('./api/issues');
 const mdaRoutes = require('./api/mdas');
 const announcementRoutes = require('./api/announcements');
 const changeLogRoutes = require('./api/changelog');
+const analyticsRoutes = require('./api/analytics');
+const fxRateRoutes = require('./api/fxRates');
+const sectorRoutes = require('./api/sectors');
 
 const app = express();
 
@@ -88,6 +91,9 @@ app.use('/api/issues', issueRoutes);
 app.use('/api/mdas', mdaRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/changelog', changeLogRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/fx-rates', fxRateRoutes);
+app.use('/api/sectors', sectorRoutes);
 
 const PORT = process.env.PORT || 3001;
 

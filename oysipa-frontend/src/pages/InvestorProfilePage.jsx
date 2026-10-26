@@ -117,8 +117,8 @@ const InvestorProfilePage = () => {
             <Typography variant="h4" component="h1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>{investor.investorName}</Typography>
             <Typography variant="body1" sx={{ mb: 2 }}>Email: {investor.email}</Typography>
             <Typography variant="body1" sx={{ mb: 2 }}>Phone: {investor.phoneNumber}</Typography>
-            <p>Sector: {investor.sector}</p>
-            <p>Country of Origin: {investor.countryOfOrigin}</p>
+            <p>Sector: {investor.sector}{investor.sectorDetail ? ` (${investor.sectorDetail})` : ''}</p>
+            <p>Country of Origin: {investor.countryOfOrigin}{investor.countryDetail ? ` (recorded as: ${investor.countryDetail})` : ''}</p>
             <p>Company Registration Info: {investor.companyRegistrationInfo}</p>
             <p>Key Contact Person: {investor.keyContactPerson}</p>
             <p>Assigned Staff: {investor.assignedTo ? investor.assignedTo.name : 'Unassigned'}</p>

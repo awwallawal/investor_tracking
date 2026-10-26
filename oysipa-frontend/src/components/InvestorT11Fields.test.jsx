@@ -16,6 +16,12 @@ const tokenFor = (role) => `${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url({ u
 
 const intermediaries = [{ _id: 'nipc', investorName: 'NIPC Synthetic', organisationType: 'Intermediary' }];
 
+// Sector is required on the new-investor form (11.14).
+const chooseSector = async () => {
+  await userEvent.click(screen.getByRole('combobox', { name: /^sector/i }));
+  await userEvent.click(await screen.findByRole('option', { name: 'Agribusiness' }));
+};
+
 describe('New-investor form (T11)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,6 +57,7 @@ describe('New-investor form (T11)', () => {
     await userEvent.click(screen.getByRole('combobox', { name: /organisation type/i }));
     await userEvent.click(await screen.findByRole('option', { name: 'Promotion agent' }));
     fireEvent.change(screen.getByLabelText(/^website/i), { target: { value: 'https://x.example.test' } });
+    await chooseSector();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
 
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
@@ -64,6 +71,7 @@ describe('New-investor form (T11)', () => {
     render(<InvestorForm open onClose={vi.fn()} onSave={vi.fn()} />);
     await userEvent.click(screen.getByRole('combobox', { name: /lead source/i }));
     await userEvent.click(await screen.findByRole('option', { name: 'Other' }));
+    await chooseSector();
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
     await waitFor(() => expect(apiClient.post).toHaveBeenCalled());
     expect(apiClient.post.mock.calls[0][1]).not.toHaveProperty('referredBy');

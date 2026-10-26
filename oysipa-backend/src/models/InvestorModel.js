@@ -23,13 +23,26 @@ const investorSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Story 11.14: one of the sector list (src/constants/sectors.js) or
+  // "Not recorded". Checked by the API, not the schema, so records saved before
+  // the clean-up migration still load and save.
   sector: {
     type: String,
     required: true
   },
+  // Optional free text kept next to the sector (e.g. the original spelling).
+  sectorDetail: {
+    type: String,
+    trim: true
+  },
   countryOfOrigin: {
     type: String,
     required: true
+  },
+  // Optional free text kept next to the country (data clean-up, 11.14).
+  countryDetail: {
+    type: String,
+    trim: true
   },
   companyRegistrationInfo: {
     type: String

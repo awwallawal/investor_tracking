@@ -50,9 +50,9 @@ beforeEach(async () => {
   const lead = await LifecycleStatus.create({ name: 'Lead', order: 2 });
   const spare = await LifecycleStatus.create({ name: 'Spare', order: 3 });
 
-  const assignedInvestor = await Investor.create({ investorName: 'Assigned Inv', sector: 'Tech', countryOfOrigin: 'NG', assignedTo: staff._id });
-  const unassignedInvestor = await Investor.create({ investorName: 'Unassigned Inv', sector: 'Tech', countryOfOrigin: 'NG' });
-  const otherInvestor = await Investor.create({ investorName: 'Other Staff Inv', sector: 'Tech', countryOfOrigin: 'NG', assignedTo: otherStaff._id });
+  const assignedInvestor = await Investor.create({ investorName: 'Assigned Inv', sector: 'Technology and ICT', countryOfOrigin: 'NG', assignedTo: staff._id });
+  const unassignedInvestor = await Investor.create({ investorName: 'Unassigned Inv', sector: 'Technology and ICT', countryOfOrigin: 'NG' });
+  const otherInvestor = await Investor.create({ investorName: 'Other Staff Inv', sector: 'Technology and ICT', countryOfOrigin: 'NG', assignedTo: otherStaff._id });
 
   const mk = (title, investor) => InvestmentProject.create({ projectTitle: title, investor: investor._id, lifecycleStatus: idea._id });
   const assignedProject = await mk('Assigned Project', assignedInvestor);
@@ -155,8 +155,8 @@ const ROUTES = [
   // Investors
   { name: 'GET /api/investors', method: 'get', path: () => '/api/investors', allow: ALL },
   { name: 'GET /api/investors/:id', method: 'get', path: (c) => `/api/investors/${c.investorId}`, allow: ALL },
-  { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Tech', countryOfOrigin: 'NG', leadSource: 'Other' }), allow: ALL },
-  { name: 'PUT /api/investors/:id', method: 'put', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ sector: 'Agro' }), allow: ALL, investorWrite: true },
+  { name: 'POST /api/investors', method: 'post', path: () => '/api/investors', body: () => ({ investorName: 'New Inv', sector: 'Technology and ICT', countryOfOrigin: 'NG', leadSource: 'Other' }), allow: ALL },
+  { name: 'PUT /api/investors/:id', method: 'put', path: (c) => `/api/investors/${c.investorId}`, body: () => ({ sector: 'Agribusiness' }), allow: ALL, investorWrite: true },
   // Import investors (story 11.11) — DG/Admin only. The dry run writes nothing;
   // the run with a wrong confirmation is refused (400) and writes nothing.
   { name: 'POST /api/investors/import/dry-run', method: 'post', path: () => '/api/investors/import/dry-run', attach: { field: 'file', buffer: Buffer.from(JSON.stringify({ records: [] })), filename: 'import.json', contentType: 'application/json' }, allow: ADMINS, adminDelete: true },
@@ -245,6 +245,13 @@ const ROUTES = [
   // ChangeLog viewer (story 11.10): read-only, DG / Portal-Admin.
   { name: 'GET /api/changelog', method: 'get', path: () => '/api/changelog?entity=Investor&page=1', allow: ADMINS },
   { name: 'GET /api/changelog/health', method: 'get', path: () => '/api/changelog/health', allow: ADMINS },
+  // Analytics (story 11.14): the DG dashboard is DG/Admin; "My work" any role
+  // (Staff see their assigned investors only). Rates: read all, add DG/Admin.
+  { name: 'GET /api/analytics/overview', method: 'get', path: () => '/api/analytics/overview?year=2026', allow: ADMINS },
+  { name: 'GET /api/analytics/mine', method: 'get', path: () => '/api/analytics/mine', allow: ALL },
+  { name: 'GET /api/fx-rates', method: 'get', path: () => '/api/fx-rates', allow: ALL },
+  { name: 'POST /api/fx-rates', method: 'post', path: () => '/api/fx-rates', body: () => ({ currency: 'USD', rate: 1361.84, asOf: '2026-10-23', source: 'Matrix' }), allow: ADMINS },
+  { name: 'GET /api/sectors', method: 'get', path: () => '/api/sectors', allow: ALL },
 ];
 
 const send = (route, ctx, token) => {
@@ -437,8 +444,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 69 unique entries', () => {
-    expect(ROUTES.length).toBe(69);
+  it('ROUTES list has 74 unique entries', () => {
+    expect(ROUTES.length).toBe(74);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });
@@ -643,7 +650,7 @@ describe('Investor writes', () => {
     if (token) r = r.set('Authorization', `Bearer ${token}`);
     return r.send(body);
   };
-  const base = { sector: 'Tech', countryOfOrigin: 'NG', leadSource: 'Other' };
+  const base = { sector: 'Technology and ICT', countryOfOrigin: 'NG', leadSource: 'Other' };
 
   it('Staff create without assignedTo → 201, assigned to that Staff user', async () => {
     const res = await post(f.tokens[STAFF], { investorName: 'Staff New A', ...base });
@@ -669,18 +676,18 @@ describe('Investor writes', () => {
   });
 
   it('Staff edit, assigned → 200, fields updated', async () => {
-    const res = await put(f.assignedInvestor._id, f.tokens[STAFF], { sector: 'Agro' });
+    const res = await put(f.assignedInvestor._id, f.tokens[STAFF], { sector: 'Agribusiness' });
     expect(res.statusCode).toBe(200);
-    expect((await Investor.findById(f.assignedInvestor._id)).sector).toBe('Agro');
+    expect((await Investor.findById(f.assignedInvestor._id)).sector).toBe('Agribusiness');
   });
 
   it('Staff cannot change assignment (other id / null / populated object): 200, assignedTo unchanged', async () => {
     const id = f.assignedInvestor._id;
     const otherStaffId = f.otherInvestor.assignedTo.toString();
     const bodies = [
-      { sector: 'Agro', assignedTo: otherStaffId },
-      { sector: 'Mining', assignedTo: null },
-      { sector: 'Energy', assignedTo: { _id: otherStaffId, name: 'Other Staff' } },
+      { sector: 'Agribusiness', assignedTo: otherStaffId },
+      { sector: 'Solid minerals and mining', assignedTo: null },
+      { sector: 'Renewable energy', assignedTo: { _id: otherStaffId, name: 'Other Staff' } },
     ];
     for (const body of bodies) {
       const res = await put(id, f.tokens[STAFF], body);
@@ -693,11 +700,11 @@ describe('Investor writes', () => {
 
   it('Staff $-operator keys → 400 Invalid update, nothing changed', async () => {
     const id = f.assignedInvestor._id;
-    const res = await put(id, f.tokens[STAFF], { $set: { assignedTo: null, sector: 'Agro' } });
+    const res = await put(id, f.tokens[STAFF], { $set: { assignedTo: null, sector: 'Agribusiness' } });
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ msg: 'Invalid update' });
     const after = await Investor.findById(id);
-    expect(after.sector).toBe('Tech');
+    expect(after.sector).toBe('Technology and ICT');
     expect(String(after.assignedTo)).toBe(f.staff._id.toString());
 
     const before = await Investor.countDocuments();
@@ -708,23 +715,23 @@ describe('Investor writes', () => {
   });
 
   it('Staff edit on a missing investor id → controller 404, not 403', async () => {
-    const res = await put('507f1f77bcf86cd799439011', f.tokens[STAFF], { sector: 'Agro' });
+    const res = await put('507f1f77bcf86cd799439011', f.tokens[STAFF], { sector: 'Agribusiness' });
     expect(res.statusCode).toBe(404);
   });
 
   it('Staff edit on a malformed investor id → controller 400 (cast error), not 403', async () => {
-    const res = await put('not-an-id', f.tokens[STAFF], { sector: 'Agro' });
+    const res = await put('not-an-id', f.tokens[STAFF], { sector: 'Agribusiness' });
     expect(res.statusCode).toBe(400);
     expect(res.body).toHaveProperty('error');
   });
 
   it('Staff PUT with an array (pipeline) body → 400 Invalid update, assignedTo unchanged', async () => {
     const id = f.assignedInvestor._id;
-    const res = await put(id, f.tokens[STAFF], [{ $set: { assignedTo: null, sector: 'Agro' } }]);
+    const res = await put(id, f.tokens[STAFF], [{ $set: { assignedTo: null, sector: 'Agribusiness' } }]);
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({ msg: 'Invalid update' });
     const after = await Investor.findById(id);
-    expect(after.sector).toBe('Tech');
+    expect(after.sector).toBe('Technology and ICT');
     expect(String(after.assignedTo)).toBe(f.staff._id.toString());
   });
 
@@ -742,14 +749,14 @@ describe('Investor writes', () => {
   it('lookup error on a Staff edit → 500 (fail closed), investor unchanged', async () => {
     const spy = jest.spyOn(Investor, 'exists').mockRejectedValueOnce(new Error('db down'));
     try {
-      const res = await put(f.assignedInvestor._id, f.tokens[STAFF], { sector: 'Agro', assignedTo: null });
+      const res = await put(f.assignedInvestor._id, f.tokens[STAFF], { sector: 'Agribusiness', assignedTo: null });
       expect(res.statusCode).toBe(500);
       expect(res.body).toEqual({ msg: 'Server Error' });
     } finally {
       spy.mockRestore();
     }
     const after = await Investor.findById(f.assignedInvestor._id);
-    expect(after.sector).toBe('Tech');
+    expect(after.sector).toBe('Technology and ICT');
     expect(String(after.assignedTo)).toBe(f.staff._id.toString());
   });
 
@@ -761,8 +768,8 @@ describe('Investor writes', () => {
 
   it('no token → 401 on POST and PUT', async () => {
     await post(null, { investorName: 'X', ...base }).expect(401);
-    await put(f.assignedInvestor._id, null, { sector: 'Agro' }).expect(401);
+    await put(f.assignedInvestor._id, null, { sector: 'Agribusiness' }).expect(401);
     expect(await Investor.countDocuments({ investorName: 'X' })).toBe(0);
-    expect((await Investor.findById(f.assignedInvestor._id)).sector).toBe('Tech');
+    expect((await Investor.findById(f.assignedInvestor._id)).sector).toBe('Technology and ICT');
   });
 });

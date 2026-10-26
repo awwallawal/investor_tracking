@@ -5,6 +5,8 @@ const InteractionLog = require('../models/InteractionLog');
 const InvestorIssue = require('../models/InvestorIssue');
 const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { investorSearchFilter } = require('../services/investorSearch');
+const { sectorCondition, countryCondition, canonicalSector } = require('../services/recordFilters');
+const { isSectorValue } = require('../constants/sectors');
 const { recordActionGroups } = require('../utils/recordDeletion');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 const { isAdminRole } = require('../middleware/accessHelpers');
@@ -47,6 +49,16 @@ const duplicateMessage = (error) => {
   if (field === 'email') return 'Another investor already uses this email address.';
   if (field === 'investorName') return 'An investor with this name already exists.';
   return 'This investor duplicates an existing record.';
+};
+
+// Story 11.14: the sector must be a list value. On update an unchanged stored
+// value (an old record not yet migrated, re-sent by the edit form) is accepted.
+// Returns an error message or null.
+const checkSector = (body, current) => {
+  if (!('sector' in body)) return null;
+  if (isSectorValue(body.sector)) return null;
+  if (current && current.sector !== undefined && body.sector === current.sector) return null;
+  return `Invalid sector: ${JSON.stringify(body.sector)}. Choose one from the sector list.`;
 };
 
 const sendWriteError = (res, error) => {
@@ -105,6 +117,8 @@ exports.createInvestor = async (req, res) => {
 
     const dateError = applyFirstContactDate(body, { isCreate: true });
     if (dateError) return res.status(400).json({ message: dateError });
+    const sectorError = checkSector(body, null);
+    if (sectorError) return res.status(400).json({ message: sectorError });
     if ('email' in body && isBlankEmail(body.email)) delete body.email;
     const investor = await Investor.create(body);
     return res.status(201).json(investor);
@@ -113,7 +127,9 @@ exports.createInvestor = async (req, res) => {
   }
 };
 
-// GET /api/investors?leadSource=&organisationType=&q=
+// GET /api/investors?leadSource=&organisationType=&sector=&country=&q=
+// sector / country (11.14 click-through): "Not recorded" matches empty or
+// unknown values; other values match on the analytics grouping.
 // organisationType=Investor also matches old records with no type set.
 // q: search (see services/investorSearch.js), ANDed with the filters.
 // The response stays an array; X-Total-Count holds the unfiltered total.
@@ -131,6 +147,17 @@ exports.getAllInvestors = async (req, res) => {
                 ? INVESTOR_COUNT_FILTER.organisationType
                 : organisationType;
         }
+        const conditions = [];
+        const { sector, country } = req.query || {};
+        if (sector !== undefined && sector !== '') {
+            if (!canonicalSector(sector)) return res.status(400).json({ message: 'Invalid sector filter.' });
+            conditions.push(await sectorCondition(Investor, canonicalSector(sector)));
+        }
+        if (country !== undefined && country !== '') {
+            if (typeof country !== 'string' || country.length > 100) return res.status(400).json({ message: 'Invalid country filter.' });
+            conditions.push(await countryCondition(Investor, country.trim()));
+        }
+        if (conditions.length) Object.assign(filter, { $and: conditions });
         const { q } = req.query || {};
         if (q !== undefined && typeof q !== 'string') return res.status(400).json({ message: 'Invalid search.' });
         const search = q ? await investorSearchFilter(q) : null;
@@ -176,7 +203,7 @@ exports.updateInvestor = async (req, res) => {
         // resulting lead source is anything else.
         let current = null;
         if (mongoose.isValidObjectId(req.params.id)) {
-          current = await Investor.findById(req.params.id).select('leadSource referredBy').lean();
+          current = await Investor.findById(req.params.id).select('leadSource referredBy sector').lean();
         }
         const resultingLead = body.leadSource !== undefined ? body.leadSource : current && current.leadSource;
         if (resultingLead !== 'Intermediary referral' && ('referredBy' in body || (current && current.referredBy))) {
@@ -186,6 +213,8 @@ exports.updateInvestor = async (req, res) => {
         if (referredError) return res.status(400).json({ message: referredError });
         const dateError = applyFirstContactDate(body, { isCreate: false });
         if (dateError) return res.status(400).json({ message: dateError });
+        const sectorError = checkSector(body, current);
+        if (sectorError) return res.status(400).json({ message: sectorError });
         let update = body;
         if ('email' in body && isBlankEmail(body.email)) {
           update = { ...body, $unset: { email: 1 } };

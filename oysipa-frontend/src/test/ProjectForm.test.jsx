@@ -46,6 +46,18 @@ describe('ProjectForm', () => {
         });
     });
 
+    it('sector: create offers "Use the investor\'s sector"; edit has no empty choice', async () => {
+        const { unmount } = render(<ProjectForm open={true} onClose={vi.fn()} onSave={vi.fn()} investorId="inv" />);
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: /sector/i }));
+        expect(await screen.findByRole('option', { name: "Use the investor's sector" })).toBeInTheDocument();
+        unmount();
+        render(<ProjectForm open={true} onClose={vi.fn()} onSave={vi.fn()} projectData={{ _id: 'p1', projectTitle: 'P', sector: 'Healthcare' }} />);
+        fireEvent.mouseDown(screen.getByRole('combobox', { name: /sector/i }));
+        expect(await screen.findByRole('option', { name: 'Healthcare' })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: 'Not set' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: "Use the investor's sector" })).not.toBeInTheDocument();
+    });
+
     it('shows the assignment message when a save returns 403', async () => {
         const onSave = vi.fn();
         apiClient.put.mockRejectedValue({ response: { status: 403, data: { msg: 'Forbidden' } } });

@@ -332,3 +332,76 @@ describe('InvestorDirectoryPage — redesigned list (11.13)', () => {
     expect(getSpy).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('InvestorDirectoryPage — click-through filters from the URL (11.14)', () => {
+  let lastLocation;
+  const LocationProbe = () => {
+    lastLocation = useLocation();
+    return null;
+  };
+  const renderAt = (url) => render(
+    <MemoryRouter initialEntries={[url]}>
+      <InvestorDirectoryPage />
+      <LocationProbe />
+    </MemoryRouter>
+  );
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem('token');
+  });
+
+  it('reads sector, country, lead source and type from the URL, sends them, and shows chips', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: mockInvestors });
+    renderAt('/investors?sector=Agribusiness&organisationType=Investor&country=Nigeria&leadSource=Other');
+    await waitFor(() => expect(getSpy).toHaveBeenCalledWith('/api/investors', {
+      params: {
+        leadSource: 'Other', organisationType: 'Investor', sector: 'Agribusiness', country: 'Nigeria',
+      },
+    }));
+    expect(await screen.findByText('Sector: Agribusiness')).toBeInTheDocument();
+    expect(screen.getByText('Country: Nigeria')).toBeInTheDocument();
+    expect(screen.getByText('Type: Investor')).toBeInTheDocument();
+    expect(screen.getByText('Lead source: Other')).toBeInTheDocument();
+  });
+
+  it('removing a chip removes it from the URL and refetches without it', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: mockInvestors });
+    renderAt('/investors?sector=Not+recorded&country=Nigeria');
+    expect(await screen.findByText('Sector: Not recorded')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Sector: Not recorded' }));
+    await waitFor(() => expect(getSpy).toHaveBeenLastCalledWith('/api/investors', { params: { country: 'Nigeria' } }));
+    expect(new URLSearchParams(lastLocation.search).get('sector')).toBeNull();
+    expect(new URLSearchParams(lastLocation.search).get('country')).toBe('Nigeria');
+    expect(screen.queryByText('Sector: Not recorded')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    await waitFor(() => expect(getSpy).toHaveBeenLastCalledWith('/api/investors'));
+    expect(lastLocation.search).toBe('');
+  });
+
+  it('values the server would refuse are ignored (not sent, no chip)', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: mockInvestors });
+    renderAt(`/investors?sector=Agro&leadSource=Gossip&organisationType=Alien&country=${'x'.repeat(101)}`);
+    await screen.findByText('John Doe');
+    expect(getSpy).toHaveBeenCalledWith('/api/investors');
+    expect(screen.queryByText(/^Sector:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Country:/)).not.toBeInTheDocument();
+  });
+
+  it('a 400 from the server shows its message, not a connection error', async () => {
+    vi.spyOn(apiClient, 'get').mockRejectedValue({ response: { status: 400, data: { message: 'Invalid country filter.' } } });
+    renderAt('/investors?country=Nigeria');
+    expect(await screen.findByText(/Invalid country filter./)).toBeInTheDocument();
+    expect(screen.queryByText(/Check your connection/)).not.toBeInTheDocument();
+  });
+
+  it('choosing a sector in the filter puts it in the URL', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: mockInvestors });
+    renderAt('/investors');
+    await screen.findByText('John Doe');
+    await userEvent.click(screen.getByRole('combobox', { name: /^sector/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Culture and tourism' }));
+    await waitFor(() => expect(getSpy).toHaveBeenLastCalledWith('/api/investors', { params: { sector: 'Culture and tourism' } }));
+    expect(new URLSearchParams(lastLocation.search).get('sector')).toBe('Culture and tourism');
+  }, 20000);
+});

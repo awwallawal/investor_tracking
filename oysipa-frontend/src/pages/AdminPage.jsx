@@ -4,6 +4,7 @@ import {
 } from '@mui/material';
 import LifecycleStatusManager from '../components/LifecycleStatusManager';
 import MdaPicker from '../components/MdaPicker';
+import ExchangeRatesSection from '../components/ExchangeRatesSection';
 import { saveMouMdas, useMdas } from '../api/mdas';
 import { getCurrentUser } from '../utils/currentUser';
 
@@ -81,6 +82,8 @@ const AdminPage = () => {
           Admin Settings
         </Typography>
         <MouMdasSection />
+        {/* Exchange rates (story 11.14): DG and Portal-Admin. */}
+        {canManageStatuses && <ExchangeRatesSection />}
         {/* Lifecycle statuses: DG and Portal-Admin (owner decision 24 Oct 2026). */}
         {canManageStatuses && <LifecycleStatusManager />}
       </Box>
