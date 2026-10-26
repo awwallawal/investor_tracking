@@ -7,31 +7,34 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Typography,
-  Box,
+  Link,
 } from '@mui/material';
+import ChartCard from './ui/ChartCard';
 
 const LifecycleChart = ({ data }) => {
   const navigate = useNavigate();
 
-  // The API provides `status`, let's use that.
+  // The projects list filtered to one status (lifecycleStatus is the API parameter).
+  const hrefFor = (status) => `/projects?lifecycleStatus=${encodeURIComponent(status)}`;
+
   const handleRowClick = (status) => {
-    if (status) {
-      // Fix: Use lifecycleStatus to match the backend API parameter
-      navigate(`/projects?lifecycleStatus=${status}`);
-    }
+    if (status) navigate(hrefFor(status));
+  };
+
+  // The status is a real link (keyboard reachable; Ctrl/Cmd-click opens a new tab).
+  const handleLinkClick = (event, status) => {
+    event.stopPropagation();
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    navigate(hrefFor(status));
   };
 
   // The API provides an array of objects with `status` and `count`.
   const filteredData = data ? data.filter(item => item.status) : [];
 
   return (
-    <Box sx={{ width: '100%', mt: 3 }}>
-      <Typography variant="h6" gutterBottom component="div">
-        Projects by Status
-      </Typography>
-      <TableContainer component={Paper}>
+    <ChartCard title="Projects by Status" subtitle="Click a status to see its projects">
+      <TableContainer sx={{ overflowX: 'auto' }}>
         <Table aria-label="projects by lifecycle status">
           <TableHead>
             <TableRow>
@@ -49,9 +52,11 @@ const LifecycleChart = ({ data }) => {
                   sx={{ cursor: 'pointer' }}
                 >
                   <TableCell component="th" scope="row">
-                    {item.status}
+                    <Link href={hrefFor(item.status)} underline="hover" onClick={(e) => handleLinkClick(e, item.status)}>
+                      {item.status}
+                    </Link>
                   </TableCell>
-                  <TableCell align="right">{item.count}</TableCell>
+                  <TableCell align="right" className="tabular-nums" sx={{ fontWeight: 600 }}>{item.count}</TableCell>
                 </TableRow>
               ))
             ) : (
@@ -64,7 +69,7 @@ const LifecycleChart = ({ data }) => {
           </TableBody>
         </Table>
       </TableContainer>
-    </Box>
+    </ChartCard>
   );
 };
 

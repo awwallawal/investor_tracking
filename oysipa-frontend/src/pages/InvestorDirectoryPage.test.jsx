@@ -36,7 +36,7 @@ describe('InvestorDirectoryPage', () => {
 
     renderPage();
 
-    expect(screen.getByText('Investor Directory')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Investors' })).toBeInTheDocument();
 
     await waitFor(() => {
       expect(getSpy).toHaveBeenCalledWith('/api/investors');
@@ -248,5 +248,87 @@ describe('InvestorDirectoryPage — search (11.7)', () => {
     expect(screen.getByLabelText('Search investors')).toHaveValue('lakeview');
     expect(await screen.findByText('1 of 177 investors')).toBeInTheDocument();
     expect(screen.getByTestId('location')).toHaveTextContent('?q=lakeview');
+  });
+});
+
+describe('InvestorDirectoryPage — redesigned list (11.13)', () => {
+  const all = [
+    { _id: '1', investorName: 'Bravo Foods', sector: 'Agro', countryOfOrigin: 'Nigeria' },
+    { _id: '2', investorName: 'Alpha Power', sector: 'Energy', countryOfOrigin: 'Ghana', organisationType: 'Intermediary' },
+  ];
+  const Location = () => {
+    const { pathname, search } = useLocation();
+    return <div data-testid="location">{`${pathname}${search}`}</div>;
+  };
+  const renderAt = (entry = '/investors') => render(
+    <MemoryRouter initialEntries={[entry]}>
+      <InvestorDirectoryPage />
+      <Location />
+    </MemoryRouter>
+  );
+  const names = () => within(screen.getByRole('table', { name: 'Investors' })).getAllByRole('link').map((a) => a.textContent);
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem('token');
+  });
+  afterEach(() => localStorage.removeItem('token'));
+
+  it('the type shows as a badge; sorting by name reorders and sets aria-sort', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: all });
+    renderAt();
+    await screen.findByText('Bravo Foods');
+    expect(screen.getByText('Intermediary')).toHaveAttribute('data-tone', 'info');
+    expect(names()).toEqual(['Bravo Foods', 'Alpha Power']);
+    const header = screen.getByRole('columnheader', { name: 'Name' });
+    await userEvent.click(within(header).getByRole('button'));
+    expect(header).toHaveAttribute('aria-sort', 'ascending');
+    expect(names()).toEqual(['Alpha Power', 'Bravo Foods']);
+  });
+
+  it('clicking a row opens the investor', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: all });
+    renderAt();
+    await userEvent.click(await screen.findByText('Ghana'));
+    expect(screen.getByTestId('location')).toHaveTextContent('/investors/2');
+  });
+
+  it('active filters show as chips; removing one and Clear all reset them (and ?q=)', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({ data: all });
+    renderAt('/investors?q=agro');
+    expect(await screen.findByText('Search: "agro"')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('combobox', { name: /organisation type/i }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Intermediary' }));
+    expect(await screen.findByText('Type: Intermediary')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Type: Intermediary' }));
+    await waitFor(() => expect(getSpy).toHaveBeenLastCalledWith('/api/investors', { params: { q: 'agro' } }));
+    expect(screen.queryByText('Type: Intermediary')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    await waitFor(() => expect(getSpy).toHaveBeenLastCalledWith('/api/investors'));
+    expect(screen.getByLabelText('Search investors')).toHaveValue('');
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/investors$/));
+    expect(screen.queryByRole('button', { name: 'Clear all' })).not.toBeInTheDocument();
+  }, 20000);
+
+  it('an empty directory shows the empty state', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: [] });
+    renderAt();
+    expect(await screen.findByText('No investors yet')).toBeInTheDocument();
+  });
+
+  it('a failed first load shows an error with Retry (not "Loading..." forever); Retry reloads', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const getSpy = vi.spyOn(apiClient, 'get')
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValue({ data: all });
+    renderAt();
+    expect(await screen.findByText('Could not load investors')).toBeInTheDocument();
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Bravo Foods')).toBeInTheDocument();
+    expect(screen.queryByText('Could not load investors')).not.toBeInTheDocument();
+    expect(getSpy).toHaveBeenCalledTimes(2);
   });
 });

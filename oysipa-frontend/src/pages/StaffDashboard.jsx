@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, CircularProgress, Alert, Paper } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, Card } from '@mui/material';
+import AssignmentTurnedInOutlinedIcon from '@mui/icons-material/AssignmentTurnedInOutlined';
 import { jwtDecode } from 'jwt-decode';
 import ProjectSummaryCard from '../components/ProjectSummaryCard';
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
+import EmptyState from '../components/ui/EmptyState';
 import apiClient from '../api/api';
 
 const StaffDashboard = () => {
@@ -70,35 +74,39 @@ const StaffDashboard = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 0, sm: 3 } }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Welcome, {user.name}
-      </Typography>
-      <Typography variant="subtitle1" gutterBottom>
-        Role: {user.role}
-      </Typography>
+    <Box>
+      <PageHeader
+        eyebrow="My work"
+        title={user.name ? `Welcome, ${user.name}` : 'Welcome'}
+        subtitle={`Role: ${user.role}`}
+      />
 
-      <>
-        <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>
-          Your Assigned Projects
-        </Typography>
-        {projects.length === 0 ? (
-          <Paper elevation={0} sx={{ textAlign: 'center', p: 4, backgroundColor: 'grey.100' }}>
-            <Typography variant="h6" gutterBottom>
-              All Clear!
-            </Typography>
-            <Typography variant="body1">
-              You have no projects assigned to you at the moment. When a new project is assigned, it will appear here.
-            </Typography>
-          </Paper>
-        ) : (
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' }}>
-            {projects.map((project) => (
-              <ProjectSummaryCard key={project._id} project={project} />
-            ))}
-          </Box>
-        )}
-      </>
+      <Box
+        component="section"
+        aria-label="My numbers"
+        sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', mb: 4 }}
+      >
+        <StatCard label="My assigned projects" value={projects.length} hint="assigned to you" tone="primary" />
+      </Box>
+
+      <Typography variant="h5" component="h2" gutterBottom>
+        Your Assigned Projects
+      </Typography>
+      {projects.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={<AssignmentTurnedInOutlinedIcon />}
+            title="All Clear!"
+            text="You have no projects assigned to you at the moment. When a new project is assigned, it will appear here."
+          />
+        </Card>
+      ) : (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' }}>
+          {projects.map((project) => (
+            <ProjectSummaryCard key={project._id} project={project} />
+          ))}
+        </Box>
+      )}
     </Box>
   );
 };

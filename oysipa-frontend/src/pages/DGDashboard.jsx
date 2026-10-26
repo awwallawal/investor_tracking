@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
-import KpiWidget from '../components/KpiWidget';
+import PageHeader from '../components/ui/PageHeader';
+import StatCard from '../components/ui/StatCard';
 import LifecycleChart from '../components/LifecycleChart';
 import IssuesShareWidget from '../components/IssuesShareWidget';
 import AnnouncementsWidget from '../components/AnnouncementsWidget';
@@ -30,32 +31,40 @@ const DGDashboard = () => {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <Typography color="text.secondary">Loading...</Typography>;
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <Typography color="error">{error}</Typography>;
   }
+
+  let welcome = null;
+  if (user) welcome = user.name ? `Welcome ${user.role}, ${user.name}` : `Welcome ${user.role}`;
 
   return (
     <Box>
-      <Typography variant="h4" component="h1">Dashboard</Typography>
-      {user && (
-        <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-          {`Welcome ${user.role}, ${user.name}`}
-        </Typography>
-      )}
+      <PageHeader eyebrow="Oyo State investment pipeline" title="Dashboard" subtitle={welcome} />
       {kpiData && (
-        <>
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' } }}>
-            <KpiWidget title="Total Investors" value={kpiData.totalInvestors} navigateTo="/investors" />
-            <KpiWidget title="Total Projects" value={kpiData.totalProjects} navigateTo="/projects" />
-            <KpiWidget title="All-Time Interactions" value={kpiData.recentInteractions} navigateTo="/interactions" />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box
+            component="section"
+            aria-label="Headline numbers"
+            sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))' }}
+          >
+            <StatCard label="Total Investors" value={kpiData.totalInvestors} hint="intermediaries and promotion agents not counted" to="/investors" />
+            <StatCard label="Total Projects" value={kpiData.totalProjects} hint="all registered projects" to="/projects" />
+            <StatCard label="All-Time Interactions" value={kpiData.recentInteractions} hint="all interactions logged" to="/interactions" />
+          </Box>
+          <Box
+            component="section"
+            aria-label="SABER indicators"
+            sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))' }}
+          >
             <IssuesShareWidget />
             <AnnouncementsWidget />
           </Box>
           <LifecycleChart data={kpiData.projectsByStage} />
-        </>
+        </Box>
       )}
     </Box>
   );

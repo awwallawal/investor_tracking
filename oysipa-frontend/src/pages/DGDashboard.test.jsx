@@ -113,6 +113,17 @@ describe('DGDashboard', () => {
     expect(document.body).toMatchSnapshot();
   });
 
+  it('a token without a name: "Welcome Director-General" (no "undefined")', async () => {
+    getAuthenticatedUser.mockReturnValue({ role: 'Director-General' });
+    render(
+      <BrowserRouter>
+        <DGDashboard />
+      </BrowserRouter>
+    );
+    expect(await screen.findByText('Welcome Director-General')).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
   // Optional: Enable if you implement a loading indicator in DGDashboard
   it.skip('shows loading indicator before data loads', async () => {
     apiClient.get.mockImplementation(() => new Promise(() => {})); // Simulate pending request

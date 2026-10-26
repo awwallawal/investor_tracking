@@ -1,17 +1,13 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
-import Header from './components/Header';
-import Sidebar from './components/Sidebar';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import theme from './theme';
 import LoginPage from './pages/Login';
-import DGDashboard from './pages/DGDashboard';
-import StaffDashboard from './pages/StaffDashboard';
 import UserManagementPage from './pages/UserManagementPage';
 import InvestorDirectoryPage from './pages/InvestorDirectoryPage';
 import InvestorProfilePage from './pages/InvestorProfilePage'; // Import the profile page
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import ProjectListPage from './pages/ProjectListPage';
-import AdminDashboard from './pages/AdminDashboard';
 import AdminPage from './pages/AdminPage';
 import InteractionListPage from './pages/InteractionListPage'; // Import the new page
 import ProtectedRoute from './components/ProtectedRoute';
@@ -25,49 +21,6 @@ import AnnouncementsPage from './pages/AnnouncementsPage';
 import AnnouncementDetailPage from './pages/AnnouncementDetailPage';
 import ChangeLogPage from './pages/ChangeLogPage';
 
-// Define the theme based on front-end-spec.md
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#850504',
-    },
-    secondary: {
-      main: '#F9F9F9',
-    },
-    accent: {
-      main: '#0A558C',
-    },
-    success: {
-      main: '#198754',
-    },
-    warning: {
-      main: '#FFC107',
-    },
-    error: {
-      main: '#DC3545',
-    },
-    text: {
-      primary: '#212529',
-      secondary: '#6C757D',
-    },
-    background: {
-      default: '#F9F9F9',
-      paper: '#ffffff',
-    },
-  },
-  typography: {
-    fontFamily: 'Poppins, sans-serif',
-    // Headings shrink on phones (below 600px) so long titles fit.
-    h1: { fontSize: '32px', fontWeight: 700, lineHeight: 1.2, '@media (max-width:599.95px)': { fontSize: '26px' } },
-    h2: { fontSize: '24px', fontWeight: 700, lineHeight: 1.3, '@media (max-width:599.95px)': { fontSize: '21px' } },
-    h3: { fontSize: '20px', fontWeight: 600, lineHeight: 1.4, '@media (max-width:599.95px)': { fontSize: '18px' } },
-    h4: { '@media (max-width:599.95px)': { fontSize: '1.5rem', lineHeight: 1.3 } },
-    h5: { '@media (max-width:599.95px)': { fontSize: '1.25rem' } },
-    body1: { fontSize: '16px', fontWeight: 400, lineHeight: 1.5 },
-    body2: { fontSize: '14px', fontWeight: 400, lineHeight: 1.5 },
-  },
-});
-
 const isAuthenticated = () => {
   return localStorage.getItem('token') !== null;
 };
@@ -75,6 +28,7 @@ const isAuthenticated = () => {
 function App() {
   return (
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

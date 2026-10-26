@@ -6,301 +6,366 @@ exports[`DGDashboard > matches snapshot after successful render 1`] = `
     <div
       class="MuiBox-root css-0"
     >
-      <h1
-        class="MuiTypography-root MuiTypography-h4 css-f84ov1-MuiTypography-root"
+      <header
+        class="MuiBox-root css-1vz1xc"
       >
-        Dashboard
-      </h1>
-      <h6
-        class="MuiTypography-root MuiTypography-subtitle1 css-1wapfoa-MuiTypography-root"
-      >
-        Welcome Director-General, Test User
-      </h6>
+        <div
+          class="MuiBox-root css-31l7gp"
+        >
+          <p
+            class="MuiTypography-root MuiTypography-overline css-1fgmie7-MuiTypography-root"
+          >
+            Oyo State investment pipeline
+          </p>
+          <h1
+            class="MuiTypography-root MuiTypography-h4 css-uassgx-MuiTypography-root"
+          >
+            Dashboard
+          </h1>
+          <p
+            class="MuiTypography-root MuiTypography-body1 css-quq68s-MuiTypography-root"
+          >
+            Welcome Director-General, Test User
+          </p>
+        </div>
+      </header>
       <div
-        class="MuiBox-root css-yk6m85"
+        class="MuiBox-root css-1i43dhb"
       >
-        <div
-          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
-        >
-          <button
-            class="MuiButtonBase-root MuiCardActionArea-root css-1vpvro0-MuiButtonBase-root-MuiCardActionArea-root"
-            tabindex="0"
-            type="button"
-          >
-            <div
-              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
-            >
-              <h2
-                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-              >
-                Total Investors
-              </h2>
-              <p
-                class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
-              >
-                150
-              </p>
-            </div>
-            <span
-              class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
-            />
-          </button>
-        </div>
-        <div
-          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
-        >
-          <button
-            class="MuiButtonBase-root MuiCardActionArea-root css-1vpvro0-MuiButtonBase-root-MuiCardActionArea-root"
-            tabindex="0"
-            type="button"
-          >
-            <div
-              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
-            >
-              <h2
-                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-              >
-                Total Projects
-              </h2>
-              <p
-                class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
-              >
-                60
-              </p>
-            </div>
-            <span
-              class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
-            />
-          </button>
-        </div>
-        <div
-          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
-        >
-          <button
-            class="MuiButtonBase-root MuiCardActionArea-root css-1vpvro0-MuiButtonBase-root-MuiCardActionArea-root"
-            tabindex="0"
-            type="button"
-          >
-            <div
-              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
-            >
-              <h2
-                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-              >
-                All-Time Interactions
-              </h2>
-              <p
-                class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
-              >
-                500
-              </p>
-            </div>
-            <span
-              class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
-            />
-          </button>
-        </div>
-        <div
-          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
+        <section
+          aria-label="Headline numbers"
+          class="MuiBox-root css-d8wsn8"
         >
           <div
-            class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-586v9f-MuiPaper-root-MuiCard-root"
+            data-tone="default"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
           >
-            <div
-              class="MuiBox-root css-1wrcl4x"
+            <a
+              class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
+              data-discover="true"
+              href="/investors"
+              tabindex="0"
             >
-              <h2
-                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-              >
-                <button
-                  class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
-                >
-                  Investor issues resolved
-                </button>
-              </h2>
               <div
-                class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
+                class="MuiBox-root css-12lsjfn"
               >
-                <label
-                  class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
-                  data-shrink="true"
-                  id="issues-share-year-label"
-                >
-                  Year
-                </label>
                 <div
-                  class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+                  class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
                 >
-                  <div
-                    aria-expanded="false"
-                    aria-haspopup="listbox"
-                    aria-labelledby="issues-share-year-label"
-                    class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
-                    role="combobox"
-                    tabindex="0"
-                  >
-                    2026
-                  </div>
-                  <input
-                    aria-hidden="true"
-                    aria-invalid="false"
-                    class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
-                    tabindex="-1"
-                    value="2026"
-                  />
-                  <svg
-                    aria-hidden="true"
-                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
-                    data-testid="ArrowDropDownIcon"
-                    focusable="false"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M7 10l5 5 5-5z"
-                    />
-                  </svg>
+                  Total Investors
+                </div>
+                <p
+                  class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
+                >
+                  150
+                </p>
+                <div
+                  class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+                >
+                  intermediaries and promotion agents not counted
                 </div>
               </div>
-            </div>
-            <p
-              class="MuiTypography-root MuiTypography-h6 css-1miy0lu-MuiTypography-root"
-            >
-              No issues registered
-            </p>
+              <span
+                class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
+              />
+            </a>
           </div>
-        </div>
-        <div
-          class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
+          <div
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-586v9f-MuiPaper-root-MuiCard-root"
+            data-tone="default"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <a
+              class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
+              data-discover="true"
+              href="/projects"
+              tabindex="0"
+            >
+              <div
+                class="MuiBox-root css-12lsjfn"
+              >
+                <div
+                  class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
+                >
+                  Total Projects
+                </div>
+                <p
+                  class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
+                >
+                  60
+                </p>
+                <div
+                  class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+                >
+                  all registered projects
+                </div>
+              </div>
+              <span
+                class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
+              />
+            </a>
+          </div>
+          <div
+            class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-586v9f-MuiPaper-root-MuiCard-root"
+            data-tone="default"
+            style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
+          >
+            <a
+              class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
+              data-discover="true"
+              href="/interactions"
+              tabindex="0"
+            >
+              <div
+                class="MuiBox-root css-12lsjfn"
+              >
+                <div
+                  class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
+                >
+                  All-Time Interactions
+                </div>
+                <p
+                  class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
+                >
+                  500
+                </p>
+                <div
+                  class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+                >
+                  all interactions logged
+                </div>
+              </div>
+              <span
+                class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
+              />
+            </a>
+          </div>
+        </section>
+        <section
+          aria-label="SABER indicators"
+          class="MuiBox-root css-ty29z5"
         >
           <div
-            class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
+            class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
           >
             <div
-              class="MuiBox-root css-1wrcl4x"
+              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
             >
-              <h2
-                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-              >
-                <button
-                  class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
-                >
-                  Investment announcements
-                </button>
-              </h2>
               <div
-                class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
+                class="MuiBox-root css-1wrcl4x"
               >
-                <label
-                  class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
-                  data-shrink="true"
-                  id="announcements-year-label"
+                <h2
+                  class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
                 >
-                  Year
-                </label>
+                  <button
+                    class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
+                  >
+                    Investor issues resolved
+                  </button>
+                </h2>
                 <div
-                  class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+                  class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
                 >
+                  <label
+                    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
+                    data-shrink="true"
+                    id="issues-share-year-label"
+                  >
+                    Year
+                  </label>
                   <div
-                    aria-expanded="false"
-                    aria-haspopup="listbox"
-                    aria-labelledby="announcements-year-label"
-                    class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
-                    role="combobox"
-                    tabindex="0"
+                    class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
                   >
-                    2026
-                  </div>
-                  <input
-                    aria-hidden="true"
-                    aria-invalid="false"
-                    class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
-                    tabindex="-1"
-                    value="2026"
-                  />
-                  <svg
-                    aria-hidden="true"
-                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
-                    data-testid="ArrowDropDownIcon"
-                    focusable="false"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="M7 10l5 5 5-5z"
+                    <div
+                      aria-expanded="false"
+                      aria-haspopup="listbox"
+                      aria-labelledby="issues-share-year-label"
+                      class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+                      role="combobox"
+                      tabindex="0"
+                    >
+                      2026
+                    </div>
+                    <input
+                      aria-hidden="true"
+                      aria-invalid="false"
+                      class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
+                      tabindex="-1"
+                      value="2026"
                     />
-                  </svg>
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
+                      data-testid="ArrowDropDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7 10l5 5 5-5z"
+                      />
+                    </svg>
+                  </div>
                 </div>
               </div>
+              <p
+                class="MuiTypography-root MuiTypography-h6 css-1miy0lu-MuiTypography-root"
+              >
+                No issues registered
+              </p>
             </div>
-            <p
-              class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
-            >
-              1 of 5
-            </p>
-            <p
-              class="MuiTypography-root MuiTypography-body2 css-7ctihp-MuiTypography-root"
-            >
-              OYSIPA named
-            </p>
-            <p
-              class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
-            >
-              Basic band (1–4)
-            </p>
           </div>
-        </div>
-      </div>
-      <div
-        class="MuiBox-root css-7elqso"
-      >
-        <div
-          class="MuiTypography-root MuiTypography-h6 MuiTypography-gutterBottom css-1wmifpn-MuiTypography-root"
-        >
-          Projects by Status
-        </div>
-        <div
-          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiTableContainer-root css-y2ff7i-MuiPaper-root-MuiTableContainer-root"
+          <div
+            class="MuiPaper-root MuiPaper-outlined MuiPaper-rounded MuiCard-root css-1fxi118-MuiPaper-root-MuiCard-root"
+          >
+            <div
+              class="MuiCardContent-root css-1lt5qva-MuiCardContent-root"
+            >
+              <div
+                class="MuiBox-root css-1wrcl4x"
+              >
+                <h2
+                  class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
+                >
+                  <button
+                    class="MuiTypography-root MuiTypography-body2 MuiLink-root MuiLink-underlineHover MuiLink-button css-18b92lk-MuiTypography-root-MuiLink-root"
+                  >
+                    Investment announcements
+                  </button>
+                </h2>
+                <div
+                  class="MuiFormControl-root css-1iw3t7y-MuiFormControl-root"
+                >
+                  <label
+                    class="MuiFormLabel-root MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard MuiFormLabel-colorPrimary MuiFormLabel-filled MuiInputLabel-root MuiInputLabel-formControl MuiInputLabel-animated MuiInputLabel-shrink MuiInputLabel-sizeSmall MuiInputLabel-standard css-yv0sew-MuiFormLabel-root-MuiInputLabel-root"
+                    data-shrink="true"
+                    id="announcements-year-label"
+                  >
+                    Year
+                  </label>
+                  <div
+                    class="MuiInputBase-root MuiInput-root MuiInput-underline MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-sizeSmall MuiSelect-root css-j218zi-MuiInputBase-root-MuiInput-root-MuiSelect-root"
+                  >
+                    <div
+                      aria-expanded="false"
+                      aria-haspopup="listbox"
+                      aria-labelledby="announcements-year-label"
+                      class="MuiSelect-select MuiSelect-standard MuiInputBase-input MuiInput-input MuiInputBase-inputSizeSmall css-4j3uur-MuiNativeSelect-root-MuiSelect-select-MuiInputBase-input-MuiInput-input"
+                      role="combobox"
+                      tabindex="0"
+                    >
+                      2026
+                    </div>
+                    <input
+                      aria-hidden="true"
+                      aria-invalid="false"
+                      class="MuiSelect-nativeInput css-j0riat-MuiSelect-nativeInput"
+                      tabindex="-1"
+                      value="2026"
+                    />
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSelect-icon MuiSelect-iconStandard css-ug7h84-MuiSvgIcon-root-MuiNativeSelect-root-MuiSelect-icon"
+                      data-testid="ArrowDropDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7 10l5 5 5-5z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <p
+                class="MuiTypography-root MuiTypography-h4 css-10e4yog-MuiTypography-root"
+              >
+                1 of 5
+              </p>
+              <p
+                class="MuiTypography-root MuiTypography-body2 css-7ctihp-MuiTypography-root"
+              >
+                OYSIPA named
+              </p>
+              <p
+                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
+              >
+                Basic band (1–4)
+              </p>
+            </div>
+          </div>
+        </section>
+        <section
+          aria-label="Projects by Status"
+          class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-qq33x1-MuiPaper-root-MuiCard-root"
           style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
         >
-          <table
-            aria-label="projects by lifecycle status"
-            class="MuiTable-root css-1xwxv7r-MuiTable-root"
+          <div
+            class="MuiBox-root css-wrkc4u"
           >
-            <thead
-              class="MuiTableHead-root css-1a7iywq-MuiTableHead-root"
+            <div
+              class="MuiBox-root css-31l7gp"
             >
-              <tr
-                class="MuiTableRow-root MuiTableRow-head css-1xtozoh-MuiTableRow-root"
+              <h2
+                class="MuiTypography-root MuiTypography-h6 css-cyirow-MuiTypography-root"
               >
-                <th
-                  class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeMedium css-1orzuox-MuiTableCell-root"
-                  scope="col"
-                >
-                  Status
-                </th>
-                <th
-                  class="MuiTableCell-root MuiTableCell-head MuiTableCell-alignRight MuiTableCell-sizeMedium css-to33az-MuiTableCell-root"
-                  scope="col"
-                >
-                  Count
-                </th>
-              </tr>
-            </thead>
-            <tbody
-              class="MuiTableBody-root css-gmh7jj-MuiTableBody-root"
+                Projects by Status
+              </h2>
+              <p
+                class="MuiTypography-root MuiTypography-body2 css-1wle3ir-MuiTypography-root"
+              >
+                Click a status to see its projects
+              </p>
+            </div>
+          </div>
+          <div
+            class="MuiBox-root css-1cwznr"
+          >
+            <div
+              class="MuiTableContainer-root css-19xghkq-MuiTableContainer-root"
             >
-              <tr
-                class="MuiTableRow-root css-1xtozoh-MuiTableRow-root"
+              <table
+                aria-label="projects by lifecycle status"
+                class="MuiTable-root css-1xwxv7r-MuiTable-root"
               >
-                <td
-                  class="MuiTableCell-root MuiTableCell-body MuiTableCell-alignCenter MuiTableCell-sizeMedium css-14y13q2-MuiTableCell-root"
-                  colspan="2"
+                <thead
+                  class="MuiTableHead-root css-1a7iywq-MuiTableHead-root"
                 >
-                  No project data available.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                  <tr
+                    class="MuiTableRow-root MuiTableRow-head css-1xtozoh-MuiTableRow-root"
+                  >
+                    <th
+                      class="MuiTableCell-root MuiTableCell-head MuiTableCell-sizeMedium css-1orzuox-MuiTableCell-root"
+                      scope="col"
+                    >
+                      Status
+                    </th>
+                    <th
+                      class="MuiTableCell-root MuiTableCell-head MuiTableCell-alignRight MuiTableCell-sizeMedium css-to33az-MuiTableCell-root"
+                      scope="col"
+                    >
+                      Count
+                    </th>
+                  </tr>
+                </thead>
+                <tbody
+                  class="MuiTableBody-root css-gmh7jj-MuiTableBody-root"
+                >
+                  <tr
+                    class="MuiTableRow-root css-1xtozoh-MuiTableRow-root"
+                  >
+                    <td
+                      class="MuiTableCell-root MuiTableCell-body MuiTableCell-alignCenter MuiTableCell-sizeMedium css-14y13q2-MuiTableCell-root"
+                      colspan="2"
+                    >
+                      No project data available.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>

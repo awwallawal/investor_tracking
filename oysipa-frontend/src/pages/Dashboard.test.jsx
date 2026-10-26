@@ -88,6 +88,18 @@ describe('DashboardPage', () => {
     });
   });
 
+  it('Staff with a token without a name: the heading is "Welcome"', async () => {
+    jwtDecode.mockReturnValue({ user: { id: 'staff123', role: 'Staff' } });
+    apiClient.get.mockResolvedValueOnce({ data: [] });
+    render(
+      <Router>
+        <DashboardPage />
+      </Router>
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome' })).toBeInTheDocument();
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
   it('displays "No projects assigned" if no projects are returned', async () => {
     apiClient.get.mockResolvedValueOnce({ data: [] });
 

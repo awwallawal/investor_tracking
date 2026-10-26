@@ -51,4 +51,20 @@ describe('LifecycleChart', () => {
     );
     expect(screen.getByText('No project data available.')).toBeInTheDocument();
   });
+
+  it('each status is a keyboard-reachable link with an encoded filter', () => {
+    mockedUsedNavigate.mockClear();
+    render(
+      <BrowserRouter>
+        <LifecycleChart data={[{ status: 'MoU Signed & Sealed', count: 2 }]} />
+      </BrowserRouter>
+    );
+    const link = screen.getByRole('link', { name: 'MoU Signed & Sealed' });
+    expect(link).toHaveAttribute('href', '/projects?lifecycleStatus=MoU%20Signed%20%26%20Sealed');
+    link.focus();
+    expect(link).toHaveFocus();
+    fireEvent.click(link);
+    expect(mockedUsedNavigate).toHaveBeenCalledTimes(1);
+    expect(mockedUsedNavigate).toHaveBeenCalledWith('/projects?lifecycleStatus=MoU%20Signed%20%26%20Sealed');
+  });
 });

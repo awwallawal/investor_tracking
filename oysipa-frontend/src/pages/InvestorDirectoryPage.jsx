@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Box,
   Button,
-  Chip,
-  Container,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,19 +13,19 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
+  Link,
   MenuItem,
-  Paper,
   Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Typography
 } from '@mui/material';
 import ClearIcon from '@mui/icons-material/Clear';
+import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
+import PageHeader from '../components/ui/PageHeader';
+import FilterBar from '../components/ui/FilterBar';
+import DataTable from '../components/ui/DataTable';
+import StatusBadge from '../components/ui/StatusBadge';
+import EmptyState from '../components/ui/EmptyState';
 import InvestorForm from '../components/InvestorForm';
 import ImportInvestorsDialog from '../components/ImportInvestorsDialog';
 import { LEAD_SOURCES, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE } from '../constants/investorFields';
@@ -83,8 +81,6 @@ const DeleteInvestorDialog = ({ investor, onClose, onDeleted }) => {
     );
 };
 
-const hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } };
-
 const SEARCH_DEBOUNCE_MS = 300;
 
 const InvestorDirectoryPage = () => {
@@ -102,6 +98,7 @@ const InvestorDirectoryPage = () => {
     const [q, setQ] = useState(() => (searchParams.get('q') || '').trim());
     const [total, setTotal] = useState(null);
     const [loaded, setLoaded] = useState(false);
+    const [fetchError, setFetchError] = useState('');
     const urlQ = (searchParams.get('q') || '').trim();
     // The q last written to (or read from) the URL: tells our own URL writes
     // apart from back/forward or a link.
@@ -133,8 +130,10 @@ const InvestorDirectoryPage = () => {
             if (header !== undefined && Number.isFinite(Number(header))) setTotal(Number(header));
             else if (Object.keys(params).length === 0) setTotal(response.data.length);
             setLoaded(true);
+            setFetchError('');
         } catch (error) {
             console.error("Fetch error:", error);
+            if (id === requestId.current) setFetchError('Could not load investors. Check your connection and try again.');
         }
     }, [leadSource, organisationType, q]);
 
@@ -184,60 +183,131 @@ const InvestorDirectoryPage = () => {
         fetchInvestors();
     };
 
+    const clearAllFilters = () => {
+        setLeadSource('');
+        setOrganisationType('');
+        clearSearch();
+    };
+
+    // Active filters as removable chips under the search box.
+    const chips = [
+        q && { key: 'q', label: `Search: "${q}"`, onRemove: clearSearch },
+        leadSource && { key: 'leadSource', label: `Lead source: ${leadSource}`, onRemove: () => setLeadSource('') },
+        organisationType && { key: 'organisationType', label: `Type: ${organisationType}`, onRemove: () => setOrganisationType('') },
+    ].filter(Boolean);
+
+    const columns = [
+        {
+            key: 'investorName',
+            label: 'Name',
+            sortable: true,
+            render: (investor) => {
+                const type = investor.organisationType || DEFAULT_ORGANISATION_TYPE;
+                return (
+                    <>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                            <Link component={RouterLink} to={`/investors/${investor._id}`} underline="hover" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                                {investor.investorName}
+                            </Link>
+                            <StatusBadge label={type} tone={type === DEFAULT_ORGANISATION_TYPE ? 'default' : 'info'} />
+                        </Box>
+                        {/* On phones the sector and country show under the name. */}
+                        <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.5 }}>
+                            {[investor.sector, investor.countryOfOrigin].filter(Boolean).join(' · ')}
+                        </Typography>
+                    </>
+                );
+            },
+        },
+        { key: 'sector', label: 'Sector', sortable: true, hideOnPhone: true },
+        { key: 'countryOfOrigin', label: 'Country', sortable: true, hideOnPhone: true },
+        ...(canDelete ? [{
+            key: 'actions',
+            label: 'Actions',
+            align: 'right',
+            render: (investor) => (
+                <Button size="small" color="error" onClick={() => setDeleting(investor)}>
+                    Delete
+                </Button>
+            ),
+        }] : []),
+    ];
+
+    const retry = (
+        <Button variant="outlined" onClick={() => fetchInvestors()}>Retry</Button>
+    );
+
+    let emptyState;
+    if (fetchError) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="Could not load investors" text={fetchError} action={retry} />;
+    else if (q) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title={`No investors match "${q}"`} text="Try another name, sector, place or contact." />;
+    else if (leadSource || organisationType) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors match these filters" />;
+    else emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors yet" text="Register the first investor to start the directory." />;
+
     return (
-        <Container maxWidth="lg" disableGutters sx={{ mt: { xs: 1, sm: 4 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
-                <Typography variant="h4" component="h1">Investor Directory</Typography>
-                <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
-                    {canImport && (
-                        <Button variant="outlined" onClick={() => setIsImportOpen(true)}>
-                            Import investors
+        <Box>
+            <PageHeader
+                eyebrow="Pipeline"
+                title="Investors"
+                actions={(
+                    <>
+                        {canImport && (
+                            <Button variant="outlined" onClick={() => setIsImportOpen(true)}>
+                                Import investors
+                            </Button>
+                        )}
+                        <Button variant="contained" onClick={() => setIsFormOpen(true)}>
+                            Register New Investor
                         </Button>
-                    )}
-                    <Button variant="contained" onClick={() => setIsFormOpen(true)}>
-                        Register New Investor
-                    </Button>
-                </Box>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, mb: 2 }}>
-                <TextField
-                    size="small"
-                    label="Search investors"
-                    placeholder="Name, sector, place, contact..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    sx={{ minWidth: { sm: 280 }, flexGrow: 1 }}
-                    slotProps={{
-                        input: {
-                            endAdornment: searchInput ? (
-                                <InputAdornment position="end">
-                                    <IconButton size="small" aria-label="Clear search" onClick={clearSearch} edge="end">
-                                        <ClearIcon fontSize="small" />
-                                    </IconButton>
-                                </InputAdornment>
-                            ) : null,
-                        },
-                    }}
-                />
-                <FormControl size="small" sx={{ minWidth: 240 }}>
-                    <InputLabel id="filter-leadSource-label">Lead source</InputLabel>
-                    <Select labelId="filter-leadSource-label" label="Lead source" value={leadSource} onChange={(e) => setLeadSource(e.target.value)}>
-                        <MenuItem value="">All lead sources</MenuItem>
-                        {LEAD_SOURCES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-                    </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                    <InputLabel id="filter-organisationType-label">Organisation type</InputLabel>
-                    <Select labelId="filter-organisationType-label" label="Organisation type" value={organisationType} onChange={(e) => setOrganisationType(e.target.value)}>
-                        <MenuItem value="">All types</MenuItem>
-                        {ORGANISATION_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                    </Select>
-                </FormControl>
-            </Box>
-            {loaded && (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {`${investors.length} of ${total ?? investors.length} investors`}
-                </Typography>
+                    </>
+                )}
+            />
+            <FilterBar
+                search={(
+                    <TextField
+                        size="small"
+                        label="Search investors"
+                        placeholder="Name, sector, place, contact..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        slotProps={{
+                            input: {
+                                endAdornment: searchInput ? (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" aria-label="Clear search" onClick={clearSearch} edge="end">
+                                            <ClearIcon fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ) : null,
+                            },
+                        }}
+                    />
+                )}
+                filters={(
+                    <>
+                        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
+                            <InputLabel id="filter-leadSource-label">Lead source</InputLabel>
+                            <Select labelId="filter-leadSource-label" label="Lead source" value={leadSource} onChange={(e) => setLeadSource(e.target.value)}>
+                                <MenuItem value="">All lead sources</MenuItem>
+                                {LEAD_SOURCES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 0 200px' } }}>
+                            <InputLabel id="filter-organisationType-label">Organisation type</InputLabel>
+                            <Select labelId="filter-organisationType-label" label="Organisation type" value={organisationType} onChange={(e) => setOrganisationType(e.target.value)}>
+                                <MenuItem value="">All types</MenuItem>
+                                {ORGANISATION_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                    </>
+                )}
+                resultCount={loaded ? `${investors.length} of ${total ?? investors.length} investors` : null}
+                chips={chips}
+                onClearAll={clearAllFilters}
+            />
+            {fetchError && investors.length > 0 && (
+                <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => fetchInvestors()}>Retry</Button>}>
+                    {fetchError}
+                </Alert>
             )}
             {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
             <InvestorForm
@@ -252,58 +322,20 @@ const InvestorDirectoryPage = () => {
                     onImported={() => fetchInvestors()}
                 />
             )}
-            <TableContainer component={Paper}>
-            <Table>
-                <TableHead>
-                    <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell sx={hideOnPhone}>Sector</TableCell>
-                        <TableCell sx={hideOnPhone}>Country</TableCell>
-                        {canDelete && <TableCell align="right">Actions</TableCell>}
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {investors.map(investor => (
-                        <TableRow hover key={investor._id}>
-                            <TableCell>
-                                <Link to={`/investors/${investor._id}`}>{investor.investorName}</Link>
-                                <Chip
-                                    size="small"
-                                    label={investor.organisationType || DEFAULT_ORGANISATION_TYPE}
-                                    color={(investor.organisationType || DEFAULT_ORGANISATION_TYPE) === DEFAULT_ORGANISATION_TYPE ? 'default' : 'info'}
-                                    variant="outlined"
-                                    sx={{ ml: 1 }}
-                                />
-                                {/* On phones the sector and country show under the name. */}
-                                <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.5 }}>
-                                    {[investor.sector, investor.countryOfOrigin].filter(Boolean).join(' · ')}
-                                </Typography>
-                            </TableCell>
-                            <TableCell sx={hideOnPhone}>{investor.sector}</TableCell>
-                            <TableCell sx={hideOnPhone}>{investor.countryOfOrigin}</TableCell>
-                            {canDelete && (
-                                <TableCell align="right">
-                                    <Button size="small" color="error" onClick={() => setDeleting(investor)}>
-                                        Delete
-                                    </Button>
-                                </TableCell>
-                            )}
-                        </TableRow>
-                    ))}
-                    {loaded && investors.length === 0 && q && (
-                        <TableRow>
-                            <TableCell colSpan={canDelete ? 4 : 3}>
-                                <Typography color="text.secondary">{`No investors match "${q}"`}</Typography>
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-            </TableContainer>
+            <DataTable
+                ariaLabel="Investors"
+                columns={columns}
+                rows={investors}
+                rowLink={(investor) => `/investors/${investor._id}`}
+                loading={!loaded && !fetchError}
+                emptyState={emptyState}
+                pageSize={50}
+                resetKey={`${q}|${leadSource}|${organisationType}`}
+            />
             {deleting && (
                 <DeleteInvestorDialog investor={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />
             )}
-        </Container>
+        </Box>
     );
 };
 
