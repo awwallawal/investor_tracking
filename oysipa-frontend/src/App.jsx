@@ -20,6 +20,7 @@ import IssueDetailPage from './pages/IssueDetailPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import AnnouncementDetailPage from './pages/AnnouncementDetailPage';
 import ChangeLogPage from './pages/ChangeLogPage';
+import SaberReportPage from './pages/SaberReportPage';
 
 const isAuthenticated = () => {
   return localStorage.getItem('token') !== null;
@@ -72,6 +73,8 @@ function App() {
             <Route path="/admin" element={<AppLayout><AdminPage /></AppLayout>} />
             {/* Read-only ChangeLog viewer (story 11.10) */}
             <Route path="/changelog" element={<AppLayout><ChangeLogPage /></AppLayout>} />
+            {/* SABER report / verifier export (story 11.9) */}
+            <Route path="/saber-report" element={<AppLayout><SaberReportPage /></AppLayout>} />
           </Route>
 
         </Routes>

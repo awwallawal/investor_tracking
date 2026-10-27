@@ -82,7 +82,8 @@ const countedAnnouncementCondition = async () => {
 
 const announcementsMetric = async (year) => {
   const counted = await InvestmentAnnouncement.countDocuments({
-    announcementDate: yearRange(year),
+    // year null: every year (the 11.9 SABER report for "all").
+    ...(year === null ? {} : { announcementDate: yearRange(year) }),
     oysipaNamed: true,
     ...(await countedAnnouncementCondition()),
   });
@@ -98,4 +99,6 @@ module.exports = {
   checkSupportingInteractions,
   announcementsMetric,
   countedAnnouncementCondition,
+  // The year range the metric uses (shared with the 11.9 report rows).
+  yearRange,
 };

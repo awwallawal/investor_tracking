@@ -15,6 +15,7 @@ export const CHANGELOG_ENTITIES = [
   { value: 'EvidenceFolder', label: 'Evidence folder' },
   { value: 'LifecycleStatus', label: 'Lifecycle status' },
   { value: 'ChangeLog', label: 'Change log (exports)' },
+  { value: 'SaberReport', label: 'SABER report (downloads)' },
 ];
 
 export const CHANGELOG_ACTIONS = ['create', 'update', 'delete', 'import', 'upload', 'link', 'unlink', 'export'];

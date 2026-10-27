@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
-  Alert, Box, Button, Card, LinearProgress, Link, ToggleButton, ToggleButtonGroup, Typography,
+  Alert, Box, Card, LinearProgress, Link, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
+import YearSelector, { ALL_YEARS } from '../components/ui/YearSelector';
 import ChartCard from '../components/ui/ChartCard';
 import { BarList, YearColumns } from '../components/analytics/Charts';
 import apiClient from '../api/api';
@@ -19,10 +20,9 @@ import { ANNOUNCEMENT_TARGET, ANNOUNCEMENT_BAND_LABELS } from '../constants/anno
 import { issueYears } from '../constants/issueFields';
 import { tokens } from '../theme';
 
-const FIRST_YEAR = 2023;
 const TYPE_ONE = { Investor: 'investor', Intermediary: 'intermediary', 'Promotion agent': 'promotion agent', Contact: 'contact' };
 const TYPE_MANY = { Investor: 'investors', Intermediary: 'intermediaries', 'Promotion agent': 'promotion agents', Contact: 'contacts' };
-const ALL = 'all';
+const ALL = ALL_YEARS;
 
 // Click-through targets (story 11.15). organisationType=Investor keeps the
 // list in the same scope as the headline figure, so the counts match.
@@ -32,30 +32,6 @@ const UNTAGGED_FILES_LINK = '/evidence?untagged=1';
 const firstContactLink = (year) => `/investors?firstContactYear=${year}&organisationType=Investor`;
 
 const grid = (min) => ({ display: 'grid', gap: 2, gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${min}px), 1fr))` });
-
-// Year buttons: 2023 … current, then "All years".
-const YearSelector = ({ value, onChange, currentYear }) => {
-  const years = [];
-  for (let y = FIRST_YEAR; y <= currentYear; y += 1) years.push(y);
-  return (
-    <Box role="group" aria-label="Year" sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-      {[...years.map(String), ALL].map((y) => {
-        const active = String(value) === y;
-        return (
-          <Button
-            key={y}
-            size="small"
-            variant={active ? 'contained' : 'outlined'}
-            aria-pressed={active}
-            onClick={() => onChange(y === ALL ? ALL : Number(y))}
-          >
-            {y === ALL ? 'All years' : y}
-          </Button>
-        );
-      })}
-    </Box>
-  );
-};
 
 // One SABER indicator card (big figure on the left, text on the right).
 const SaberCard = ({ figure, label, children }) => (
@@ -362,7 +338,17 @@ const DGDashboard = () => {
         <ChartCard
           title={`Services delivered (SABER codes) · ${selectedLabel}`}
           subtitle={`${formatCount(services.interactions)} interactions with a happened date in ${selectedLabel} · ${formatCount(services.tagged)} tagged with a code${services.creditLinkage ? ` · ${formatCount(services.creditLinkage)} credit linkage` : ''}${ch && ch.services ? ` · ${changeText(ch.services, prev)}` : ''}`}
-          footnote={`Interactions without a happened date are not counted by year (${formatCount(yoy.interactions.undated)} undated).`}
+          footnote={(
+            <>
+              {`Interactions without a happened date are not counted by year (${formatCount(yoy.interactions.undated)} undated).`}
+              {services.to && (
+                <>
+                  {' '}
+                  <Link component={RouterLink} to={services.to}>Open the tagged interactions</Link>
+                </>
+              )}
+            </>
+          )}
         >
           <Box
             role="img"

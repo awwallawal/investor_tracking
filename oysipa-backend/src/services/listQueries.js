@@ -332,6 +332,14 @@ const buildProjects = async (query = {}, ctx = {}) => {
   if (officer) b.add('officer', officer.applied, { investor: { $in: await investorIdsWhere(officer.condition) } });
   const types = pick(query.organisationType, ORGANISATION_TYPES);
   if (types.length) b.add('organisationType', types, { investor: { $in: await investorIdsWhere(organisationTypeCondition(types)) } });
+  // saberYear=Y: the projects the 11.9 SABER report checks for T1–T11 in year Y
+  // (the report's own scope function, so the card count and the list agree).
+  const saberYears = yearsOf(query.saberYear);
+  if (saberYears.length) {
+    // Required here (not at the top): saberReport loads the metrics modules.
+    const { saberScopeProjectIds } = require('./saberReport');
+    b.add('saberYear', String(saberYears[0]), { _id: { $in: await saberScopeProjectIds(saberYears[0]) } });
+  }
   const q = qText(query.q);
   if (q) {
     const regex = regexFor(q);
@@ -395,6 +403,11 @@ const buildInteractions = async (query = {}, ctx = {}) => {
   const codes = pick(query.serviceCode, SERVICE_CODES);
   if (codes.length) b.add('serviceCode', codes, { serviceCodes: { $in: codes } });
   if (flag(query.noCode)) b.add('noCode', '1', attention.untaggedLogFilter());
+  // creditLinkage=1: logs marked credit linkage (the 11.9 SABER report card).
+  if (flag(query.creditLinkage)) b.add('creditLinkage', '1', { creditLinkage: true });
+  // dated=1: logs with a happened date only (the year filter then has no
+  // recorded-time fallback), as the dashboard's and the SABER report's counts.
+  if (flag(query.dated)) b.add('dated', '1', { interactionDate: { $ne: null } });
   const investors = ids(query.investor);
   if (investors.length) {
     const projectIds = await InvestmentProject.find({ investor: { $in: investors } }).distinct('_id');

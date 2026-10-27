@@ -38,6 +38,8 @@ export const PROJECT_SPEC = {
   currency: { type: 'multi', options: CURRENCIES },
   hasValue: 'flag',
   hasJobs: 'flag',
+  // The projects the SABER report (11.9) checks for T1–T11 in that year.
+  saberYear: { type: 'year' },
   investor: { type: 'multi', pattern: OBJECT_ID },
   officer: { type: 'multi', pattern: OFFICER_PATTERN },
   organisationType: { type: 'multi', options: ORGANISATION_TYPES },
@@ -49,6 +51,10 @@ export const INTERACTION_SPEC = {
   category: { type: 'multi', options: INTERACTION_CATEGORIES },
   serviceCode: { type: 'multi', options: SERVICE_CODES.map((s) => s.code) },
   noCode: 'flag',
+  // Credit-linkage interactions (the 11.9 SABER report card).
+  creditLinkage: 'flag',
+  // Logs with a happened date only (no recorded-date fallback for year), as the counts.
+  dated: 'flag',
   // Officer logs only (no System Update rows), as the "Logged this month" card counts.
   officerLogs: 'flag',
   investor: { type: 'multi', pattern: OBJECT_ID },

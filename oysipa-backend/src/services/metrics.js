@@ -67,6 +67,8 @@ const isInvestorType = (inv) => inv.organisationType === undefined || inv.organi
 const hasJobs = (p) => typeof p.estimatedNumberOfJobs === 'number' && p.estimatedNumberOfJobs > 0;
 const currencyOf = (p) => (CURRENCIES.includes(p.currency) ? p.currency : DEFAULT_CURRENCY);
 const yearOf = (d) => (d ? new Date(d).getUTCFullYear() : null);
+// Happened date in `year` (null = every year, undated included).
+const inYear = (d, year) => year === null || yearOf(d) === year;
 const coverage = (withCount, total) => ({ with: withCount, total });
 
 const median = (nums) => {
@@ -298,6 +300,16 @@ const organisationTypeBreakdown = (records) => {
   return { items, coverage: coverage(records.length, records.length) };
 };
 
+// Credit linkage: one predicate for the dashboard count and the 11.9 rows.
+const isCreditLinkage = (l) => !!(l && l.creditLinkage);
+
+// The interactions lists behind the services / credit-linkage counts (11.9):
+// officer logs and, for a year, a happened date in it (dated=1: no recorded-time
+// fallback, as the counts). year null = every year, undated included.
+const yearLogParams = (year) => (year === null ? [] : [['dated', '1'], ['year', String(year)]]);
+const servicesLink = (year) => `/interactions?${new URLSearchParams([['officerLogs', '1'], ...yearLogParams(year), ...SERVICE_CODES.map((c) => ['serviceCode', c])]).toString()}`;
+const creditLinkageLink = (year) => `/interactions?${new URLSearchParams([['officerLogs', '1'], ['creditLinkage', '1'], ...yearLogParams(year)]).toString()}`;
+
 // Interaction counts per SABER code (each code on an interaction counts once).
 const servicesByCode = (logs) => {
   const counts = new Map(SERVICE_CODES.map((c) => [c, 0]));
@@ -306,7 +318,7 @@ const servicesByCode = (logs) => {
   logs.forEach((l) => {
     const codes = [...new Set((l.serviceCodes || []).filter((c) => counts.has(c)))];
     if (codes.length) tagged += 1;
-    if (l.creditLinkage) creditLinkage += 1;
+    if (isCreditLinkage(l)) creditLinkage += 1;
     codes.forEach((c) => counts.set(c, counts.get(c) + 1));
   });
   return {
@@ -398,7 +410,7 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
   const namedByYear = new Map(annNamed.series.map((s) => [s.year, s.count]));
   const newInvestors = yearSeries(investors.map((i) => i.firstContactDate), chartTo);
   const interactions = yearSeries(logs.map((l) => l.interactionDate), chartTo);
-  const logsInYear = year === null ? logs : logs.filter((l) => yearOf(l.interactionDate) === year);
+  const logsInYear = logs.filter((l) => inYear(l.interactionDate, year));
   const prevLogs = year === null ? null : logs.filter((l) => yearOf(l.interactionDate) === year - 1);
   const countIn = (series, y) => {
     const row = series.series.find((s) => s.year === y);
@@ -413,7 +425,9 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
     },
     newInvestors: { ...newInvestors, coverage: coverage(newInvestors.total - newInvestors.undated, newInvestors.total), to: '/investors?organisationType=Investor' },
     interactions: { ...interactions, coverage: coverage(interactions.total - interactions.undated, interactions.total), to: '/interactions?officerLogs=1' },
-    services: { year, ...services },
+    services: {
+      year, ...services, to: servicesLink(year), creditLinkageTo: creditLinkageLink(year),
+    },
     change: year === null ? null : {
       year,
       previousYear: year - 1,
@@ -601,7 +615,15 @@ module.exports = {
   leadSourceBreakdown,
   organisationTypeBreakdown,
   servicesByCode,
+  isCreditLinkage,
+  servicesLink,
+  creditLinkageLink,
   resolveYear,
+  isInvestorType,
+  yearOf,
+  inYear,
+  LOG_FIELDS,
+  loadStatuses,
   // database
   overview,
   mine,

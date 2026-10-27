@@ -4,17 +4,17 @@ import apiClient from './api';
 // same filters as the list, refuses more than 5,000 rows (400 "narrow the
 // filters") and records every export in the ChangeLog.
 
-const fileNameFrom = (headers, list) => {
+export const fileNameFrom = (headers, list, fallback = `oysipa-${list}.csv`) => {
   const disposition = headers?.['content-disposition'] || '';
   const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
   if (m) {
     try { return decodeURIComponent(m[1]); } catch { return m[1]; }
   }
-  return `oysipa-${list}.csv`;
+  return fallback;
 };
 
 // Same download pattern as the import report (ImportInvestorsDialog).
-const saveBlob = (blob, fileName) => {
+export const saveBlob = (blob, fileName) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

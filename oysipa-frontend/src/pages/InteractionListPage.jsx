@@ -76,6 +76,8 @@ const InteractionListPage = () => {
     serviceCode: 'Code',
     noCode: 'Without a SABER code',
     officerLogs: 'Officer logs only',
+    creditLinkage: 'Credit linkage',
+    dated: { label: 'With a happened date', format: () => 'With a happened date' },
     investor: { label: 'Investor', format: (id) => `Investor: ${investorNames[id] || id}` },
     loggedBy: { label: 'Logged by', format: (id) => `Logged by: ${userNames[id] || id}` },
     officer: { label: 'Officer', format: (id) => `Officer: ${{ unassigned: 'Unassigned' }[id] || userNames[id] || id}` },

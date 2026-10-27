@@ -20,6 +20,7 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import HistoryIcon from '@mui/icons-material/History';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { getCurrentUser } from '../utils/currentUser';
@@ -91,6 +92,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       key: 'admin',
       title: 'Admin',
       items: [
+        { path: '/saber-report', name: 'SABER report', icon: AssessmentOutlinedIcon, roles: ADMINS },
         { path: '/changelog', name: 'Change log', icon: HistoryIcon, roles: ADMINS },
         { path: '/users', name: 'Users', icon: PersonAddAltOutlinedIcon, roles: ADMINS },
         { path: '/admin', name: 'Settings', icon: SettingsOutlinedIcon, roles: ADMINS },
@@ -177,7 +179,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
 
       {userRole === 'Staff' && (
         <Typography sx={{ mt: 'auto', fontSize: 12, color: tokens.textSecondary, px: 1.5 }}>
-          Staff account: Admin, users and the change log are for the DG and Portal-Admin.
+          Staff account: Admin, users, the change log and the SABER report are for the DG and Portal-Admin.
         </Typography>
       )}
     </Box>

@@ -54,6 +54,10 @@ describe('list specs', () => {
       '/issues?year=2026&status=Open&status=In+progress&status=Resolved&status=Closed+unresolved',
       '/projects?lifecycleStatus=Lead&officer=me',
       '/projects?lifecycleStatus=Lead&organisationType=Investor',
+      // SABER report card links (11.9).
+      '/projects?saberYear=2025',
+      '/interactions?officerLogs=1&dated=1&year=2025&serviceCode=M1&serviceCode=M4',
+      '/interactions?officerLogs=1&creditLinkage=1&dated=1&year=2025',
     ].filter((p) => listForPath(p));
     expect(links.length).toBeGreaterThan(15);
     links.forEach(survives);
@@ -70,6 +74,15 @@ describe('list specs', () => {
     // A status name (any text, from the API) with a comma, repeated: kept whole.
     expect(parseQuery(LIST_SPECS.projects, 'lifecycleStatus=Lead%2C+warm&lifecycleStatus=Exit').lifecycleStatus).toEqual(['Lead, warm', 'Exit']);
     expect(canonicalQuery(inv, 'sector=Agribusiness,Manufacturing')).toBe('sector=Agribusiness&sector=Manufacturing');
+  });
+
+  it('SABER report links (11.9): creditLinkage and dated flags, saberYear', () => {
+    expect(parseQuery(LIST_SPECS.interactions, 'officerLogs=1&creditLinkage=1&dated=1&year=2025')).toMatchObject({
+      officerLogs: true, creditLinkage: true, dated: true, year: ['2025'],
+    });
+    expect(parseQuery(LIST_SPECS.interactions, 'year=2025')).toMatchObject({ creditLinkage: false, dated: false });
+    expect(parseQuery(LIST_SPECS.projects, 'saberYear=2025').saberYear).toEqual(['2025']);
+    expect(parseQuery(LIST_SPECS.projects, 'saberYear=abc').saberYear).toEqual([]);
   });
 
   it('at most 50 values; an inverted date range is ignored', () => {

@@ -67,3 +67,41 @@ describe('/changelog route guard (11.10)', () => {
     expect(screen.queryByRole('heading', { name: 'Change log' })).not.toBeInTheDocument();
   });
 });
+
+describe('/saber-report route guard (11.9)', () => {
+  const summary = {
+    year: 2026,
+    currentYear: 2026,
+    summary: {
+      projectsChecked: 0, projectsComplete: 0, completeShare: null, fieldsFilledShare: null, interactions: 0, servicesTagged: 0, creditLinkage: 0, announcements: 0, announcementsCounted: 0, issues: 0, issuesResolved: 0, issuesResolvedShare: null,
+    },
+    links: {
+      completeness: '/projects', services: '/interactions', credit: '/interactions', announcements: '/announcements', issues: '/issues',
+    },
+    parts: [],
+  };
+  beforeEach(() => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url) => Promise.resolve({ data: url === '/api/saber-report' ? summary : [] }));
+    window.history.pushState({}, '', '/saber-report');
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.removeItem('token');
+    window.history.pushState({}, '', '/');
+  });
+
+  it.each(['Director-General', 'Portal-Admin'])('%s → the SABER report page renders', async (role) => {
+    localStorage.setItem('token', tokenFor(role));
+    render(<App />);
+    expect(await screen.findByRole('heading', { level: 1, name: 'SABER report' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/saber-report');
+  });
+
+  it('Staff → redirected to /dashboard, the report API never called', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    render(<App />);
+    await waitFor(() => expect(window.location.pathname).toBe('/dashboard'));
+    expect(screen.queryByRole('heading', { level: 1, name: 'SABER report' })).not.toBeInTheDocument();
+    expect(apiClient.get).not.toHaveBeenCalledWith('/api/saber-report', expect.anything());
+  });
+});

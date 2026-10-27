@@ -22,6 +22,7 @@ const sectorRoutes = require('./api/sectors');
 const viewRoutes = require('./api/views');
 const exportRoutes = require('./api/export');
 const searchRoutes = require('./api/search');
+const saberReportRoutes = require('./api/saberReport');
 
 const app = express();
 
@@ -102,6 +103,8 @@ app.use('/api/sectors', sectorRoutes);
 app.use('/api/views', viewRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/search', searchRoutes);
+// Story 11.9: SABER report / verifier export (DG / Portal-Admin).
+app.use('/api/saber-report', saberReportRoutes);
 
 const PORT = process.env.PORT || 3001;
 

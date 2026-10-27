@@ -264,6 +264,9 @@ const ROUTES = [
   { name: 'GET /api/export/:list (investors)', method: 'get', path: () => '/api/export/investors?sector=Agribusiness', allow: ALL },
   { name: 'GET /api/export/:list (changelog)', method: 'get', path: () => '/api/export/changelog?entity=Investor', allow: ADMINS },
   { name: 'GET /api/search', method: 'get', path: () => '/api/search?q=matrix', allow: ALL },
+  // Story 11.9: SABER report / verifier export (DG / Portal-Admin only).
+  { name: 'GET /api/saber-report', method: 'get', path: () => '/api/saber-report?year=2026', allow: ADMINS },
+  { name: 'GET /api/saber-report/download', method: 'get', path: () => '/api/saber-report/download?year=2026&part=issues', allow: ADMINS },
 ];
 
 const send = (route, ctx, token) => {
@@ -456,8 +459,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 82 unique entries', () => {
-    expect(ROUTES.length).toBe(82);
+  it('ROUTES list has 84 unique entries', () => {
+    expect(ROUTES.length).toBe(84);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

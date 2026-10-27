@@ -35,6 +35,8 @@ const EXPORT_ENTITY_IDS = {
   announcements: '0000000000000000000e0005',
   evidence: '0000000000000000000e0006',
   changelog: '0000000000000000000e0007',
+  // Story 11.9: SABER report downloads (entity SaberReport).
+  saberReport: '0000000000000000000e0008',
 };
 
 const ENTITY = {

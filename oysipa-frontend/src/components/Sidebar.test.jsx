@@ -119,13 +119,14 @@ describe('Sidebar — groups, roles and active item (11.13)', () => {
     localStorage.removeItem('token');
   });
 
-  it.each(['Director-General', 'Portal-Admin'])('%s: Dashboard; Pipeline 3; SABER evidence 3; Admin 3; no Staff footnote', (role) => {
+  it.each(['Director-General', 'Portal-Admin'])('%s: Dashboard; Pipeline 3; SABER evidence 3; Admin 4; no Staff footnote', (role) => {
     localStorage.setItem('token', tokenFor(role));
     renderSidebar();
     expect(groupLinks('Main')).toEqual(['Dashboard']);
     expect(groupLinks('Pipeline')).toEqual(['Investors', 'Projects', 'Interactions']);
     expect(groupLinks('SABER evidence')).toEqual(['Issues', 'Announcements', 'Evidence library']);
-    expect(groupLinks('Admin')).toEqual(['Change log', 'Users', 'Settings']);
+    expect(groupLinks('Admin')).toEqual(['SABER report', 'Change log', 'Users', 'Settings']);
+    expect(screen.getByRole('link', { name: 'SABER report' })).toHaveAttribute('href', '/saber-report');
     expect(screen.queryByText(/admin screens|are for the DG and Portal-Admin/i)).not.toBeInTheDocument();
   });
 
@@ -137,6 +138,7 @@ describe('Sidebar — groups, roles and active item (11.13)', () => {
     expect(groupLinks('Pipeline')).toEqual(['Investors', 'Projects', 'Interactions']);
     expect(groupLinks('SABER evidence')).toEqual(['Issues', 'Announcements', 'Evidence library']);
     expect(screen.queryByRole('navigation', { name: 'Admin' })).not.toBeInTheDocument();
+    expect(screen.queryByText('SABER report')).not.toBeInTheDocument();
     expect(screen.getByText(/are for the DG and Portal-Admin/)).toBeInTheDocument();
   });
 

@@ -146,7 +146,8 @@ const yearRange = (y) => ({
 // dateReported, Withdrawn left out. Never counted by createdAt.
 const issuesMetric = async (year) => {
   const rows = await InvestorIssue.aggregate([
-    { $match: { dateReported: yearRange(year) } },
+    // year null: every year (the 11.9 SABER report for "all").
+    { $match: year === null ? {} : { dateReported: yearRange(year) } },
     { $group: { _id: '$status', count: { $sum: 1 } } },
   ]);
   const by = new Map(rows.map((r) => [r._id, r.count]));

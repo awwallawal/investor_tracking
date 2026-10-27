@@ -77,6 +77,7 @@ const ProjectListPage = () => {
     currency: 'Currency',
     hasValue: { label: 'With a value', format: () => 'With a value' },
     hasJobs: { label: 'With jobs', format: () => 'With jobs' },
+    saberYear: { label: 'SABER report', format: (v) => `SABER report ${v}` },
     investor: { label: 'Investor', format: (v) => `Investor: ${investorName(v)}` },
     officer: { label: 'Officer', format: (v) => `Officer: ${officerLabel(v)}` },
     organisationType: 'Type',
