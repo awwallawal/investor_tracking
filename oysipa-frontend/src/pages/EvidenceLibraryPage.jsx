@@ -6,10 +6,21 @@ import {
 } from '@mui/material';
 import CreateNewFolderOutlined from '@mui/icons-material/CreateNewFolderOutlined';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
-import { createFolder, evidenceErrorMessage, fetchFolders } from '../api/evidence';
+import {
+  EVIDENCE_CHIP_LABELS, EVIDENCE_LIST_SPEC, EVIDENCE_SORTS, createFolder, evidenceErrorMessage, fetchFolders,
+} from '../api/evidence';
+import FilterBar, { SortMenu } from '../components/ui/FilterBar';
+import DataTable from '../components/ui/DataTable';
+import StatusBadge from '../components/ui/StatusBadge';
+import ViewTabs from '../components/ui/ViewTabs';
+import ExportButton from '../components/ExportButton';
+import useListQuery from '../hooks/useListQuery';
+import useListData from '../hooks/useListData';
+import { resultCountLabel } from '../utils/listQuery';
+import { formatDate } from '../utils/dates';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import {
-  EmptyState, FolderCard, FolderGrid, IconTile, StatTile,
+  EmptyState, EvidenceFilters, EvidenceSearchField, FolderCard, FolderGrid, IconTile, StatTile,
 } from '../components/EvidenceUi';
 import { plural } from '../utils/evidenceUi';
 
@@ -74,6 +85,60 @@ const NewFolderDialog = ({ tops, onClose, onCreated }) => {
   );
 };
 
+// Where a library search result opens: its folder, filtered to the file.
+const fileLink = (f) => `/evidence/${f.folder?._id || f.folder}?${new URLSearchParams({ q: f.fileName }).toString()}`;
+
+const RESULT_COLUMNS = [
+  {
+    key: 'fileName',
+    sortKey: 'name',
+    label: 'File',
+    sortable: true,
+    render: (f) => (
+      <>
+        <MuiLink component={RouterLink} to={fileLink(f)} underline="hover" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{f.fileName}</MuiLink>
+        {f.what && <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{f.what}</Typography>}
+      </>
+    ),
+  },
+  {
+    key: 'folder',
+    label: 'Folder',
+    hideOnPhone: true,
+    render: (f) => (f.folder?._id
+      ? <MuiLink component={RouterLink} to={`/evidence/${f.folder._id}`} underline="hover" sx={{ overflowWrap: 'anywhere' }}>{f.folder.name}</MuiLink>
+      : ''),
+  },
+  { key: 'date', label: 'Date', sortable: true, render: (f) => formatDate(f.documentDate || f.uploadedAt) },
+  {
+    key: 'tags',
+    label: 'Tags',
+    render: (f) => ((f.links || []).length
+      ? <StatusBadge label={plural(f.links.length, 'tag')} tone="success" />
+      : <StatusBadge label="Untagged" tone="warning" />),
+  },
+];
+
+// Files across every folder that match the filters (story 11.15).
+const LibraryResults = ({ lq, rows, loaded, error }) => (
+  <>
+    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    <DataTable
+      ariaLabel="Matching files"
+      columns={RESULT_COLUMNS}
+      rows={rows}
+      rowLink={fileLink}
+      loading={!loaded && !error}
+      sort={lq.sort}
+      onSortChange={lq.setSort}
+      manualSort
+      pageSize={50}
+      resetKey={lq.queryString}
+      emptyState={<Typography color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>No files match these filters.</Typography>}
+    />
+  </>
+);
+
 const countLine = (files, untagged) => `${plural(files, 'file')}${untagged ? ` · ${untagged} untagged` : ''}`;
 
 // Evidence library: a summary strip, then each top-level folder with its
@@ -85,6 +150,13 @@ const EvidenceLibraryPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const lq = useListQuery(EVIDENCE_LIST_SPEC);
+  const searching = lq.activeCount > 0;
+  const results = useListData('/api/evidence/files', lq.apiParams, {
+    enabled: searching,
+    errorMessage: 'Could not search the library. Check your connection and try again.',
+  });
+  const resultRows = Array.isArray(results.data) ? results.data : [];
 
   const load = useCallback(async () => {
     try {
@@ -114,13 +186,29 @@ const EvidenceLibraryPage = () => {
             Private files kept once, then tagged to investors, interactions and issues. Files open through a short-lived secure link.
           </Typography>
         </Box>
-        {isAdmin && (
-          <Button variant="contained" startIcon={<CreateNewFolderOutlined />} onClick={() => setCreating(true)} sx={{ flexShrink: 0 }}>
-            New folder
-          </Button>
-        )}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexShrink: 0 }}>
+          <ExportButton list="evidence" params={lq.apiParams} />
+          {isAdmin && (
+            <Button variant="contained" startIcon={<CreateNewFolderOutlined />} onClick={() => setCreating(true)}>
+              New folder
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
+      <ViewTabs list="evidence" current={lq.filterKey} canonical={lq.canonical} saveQuery={lq.queryString} onApply={lq.applyQuery} />
+      <FilterBar
+        search={<EvidenceSearchField lq={lq} />}
+        filters={<EvidenceFilters lq={lq} />}
+        resultCount={searching && results.loaded ? resultCountLabel(resultRows.length, results.total, 'file') : null}
+        chips={lq.chips(EVIDENCE_CHIP_LABELS)}
+        onClearAll={() => lq.clearAll()}
+        end={searching ? <SortMenu options={EVIDENCE_SORTS} value={lq.sort} onChange={lq.setSort} defaultLabel="Date, oldest first" /> : null}
+      />
+      {searching && <LibraryResults lq={lq} rows={resultRows} loaded={results.loaded} error={results.error} />}
+
+      {!searching && (
+      <>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>}
 
@@ -157,6 +245,8 @@ const EvidenceLibraryPage = () => {
           </Paper>
         ))}
       </Stack>
+      </>
+      )}
 
       {creating && (
         <NewFolderDialog

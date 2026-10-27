@@ -32,17 +32,18 @@ const { EXCLUDED_ORGANISATION_TYPES } = require('../constants/announcementFields
 const { SECTORS, NOT_RECORDED, resolveSector } = require('../constants/sectors');
 const { countryLabel } = require('../constants/countries');
 const { issuesMetric } = require('./issueRegister');
+const { ISSUE_STATUSES, WITHDRAWN } = require('../constants/issueFields');
 const { announcementsMetric } = require('./announcementRegister');
 const { getFxRates } = require('./fxRates');
 const { todayLagos, TIME_ZONE } = require('../utils/happenedDate');
 
-const SYSTEM_CATEGORY = 'System Update';
-const OPEN_ISSUE_STATUSES = ['Open', 'In progress'];
-const NO_CONTACT_DAYS = 60;
-const STALE_ISSUE_DAYS = 14;
+const {
+  SYSTEM_CATEGORY, OPEN_ISSUE_STATUSES, NO_CONTACT_DAYS, STALE_ISSUE_DAYS, happenedExpr, OFFICER_LOG, ISSUE_FIELDS,
+  hasValue, untaggedLogFilter, interactionScopeFor, lastContactByInvestor, noContactRecords, missingFieldRecords, isStaleIssue,
+} = require('./attention');
+
 const TOP_COUNTRIES = 8;
 const FIRST_CHART_YEAR = 2023;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Stage groups for the headline (status names compared in lower case).
 const STAGE_GROUPS = [
@@ -63,7 +64,6 @@ const stageGroup = (name) => {
 // Same rule as INVESTOR_COUNT_FILTER: type Investor, or none set (missing / null).
 const isInvestorType = (inv) => inv.organisationType === undefined || inv.organisationType === null
   || inv.organisationType === DEFAULT_ORGANISATION_TYPE;
-const hasValue = (p) => typeof p.estimatedValue === 'number' && p.estimatedValue > 0;
 const hasJobs = (p) => typeof p.estimatedNumberOfJobs === 'number' && p.estimatedNumberOfJobs > 0;
 const currencyOf = (p) => (CURRENCIES.includes(p.currency) ? p.currency : DEFAULT_CURRENCY);
 const yearOf = (d) => (d ? new Date(d).getUTCFullYear() : null);
@@ -203,13 +203,14 @@ const qs = (params) => {
 const investorLink = (params) => `/investors${qs({ ...params, organisationType: DEFAULT_ORGANISATION_TYPE })}`;
 
 // Projects by lifecycle status, in status order (statuses with no project kept).
-const stageBreakdown = (projects, statuses) => {
+// `linkParams` scope each bar's list link like the counted projects (11.15).
+const stageBreakdown = (projects, statuses, linkParams = {}) => {
   const counts = countBy(projects, (p) => (p.lifecycleStatus ? String(p.lifecycleStatus) : ''));
   const items = statuses.map((s) => ({
     label: s.name,
     count: counts.get(String(s._id)) || 0,
     group: stageGroup(s.name),
-    to: `/projects${qs({ lifecycleStatus: s.name })}`,
+    to: `/projects${qs({ lifecycleStatus: s.name, ...linkParams })}`,
   }));
   const known = new Set(statuses.map((s) => String(s._id)));
   const unknown = projects.filter((p) => !p.lifecycleStatus || !known.has(String(p.lifecycleStatus))).length;
@@ -234,6 +235,21 @@ const sectorBreakdown = (investors) => {
     label: NOT_RECORDED, priority: false, notRecorded: true, count: notRecorded, to: investorLink({ sector: NOT_RECORDED }),
   });
   return { items, coverage: coverage(investors.length - notRecorded, investors.length) };
+};
+
+// Projects by project sector (story 11.15, 11.14 #27): links to the project list,
+// scoped like the headline (projects of organisation type Investor).
+const projectLink = (params) => `/projects${qs({ ...params, organisationType: DEFAULT_ORGANISATION_TYPE })}`;
+const projectSectorBreakdown = (projects) => {
+  const counts = countBy(projects, (p) => resolveSector(p.sector).sector);
+  const items = SECTORS.map((s) => ({
+    label: s.name, priority: s.priority, count: counts.get(s.name) || 0, to: projectLink({ sector: s.name }),
+  }));
+  const notRecorded = counts.get(NOT_RECORDED) || 0;
+  items.push({
+    label: NOT_RECORDED, priority: false, notRecorded: true, count: notRecorded, to: projectLink({ sector: NOT_RECORDED }),
+  });
+  return { items, coverage: coverage(projects.length - notRecorded, projects.length) };
 };
 
 const countryBreakdown = (investors) => {
@@ -302,8 +318,6 @@ const servicesByCode = (logs) => {
   };
 };
 
-const daysAgo = (date, today) => Math.floor((Date.parse(`${today}T00:00:00Z`) - new Date(date).getTime()) / DAY_MS);
-
 // ---------- database loads ----------
 
 const INVESTOR_FIELDS = 'investorName sector countryOfOrigin leadSource organisationType firstContactDate assignedTo';
@@ -349,7 +363,8 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
 
   // Headline
   const typeItems = organisationTypeBreakdown(records);
-  const stages = { ...stageBreakdown(investorProjects, statuses), scope: PROJECT_SCOPE };
+  const INVESTOR_TYPE = { organisationType: DEFAULT_ORGANISATION_TYPE };
+  const stages = { ...stageBreakdown(investorProjects, statuses, INVESTOR_TYPE), scope: PROJECT_SCOPE };
   const values = { ...valueStats(investorProjects), scope: PROJECT_SCOPE };
   const headline = {
     investors: {
@@ -357,16 +372,19 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
       records: records.length,
       byType: Object.fromEntries(typeItems.items.map((i) => [i.label, i.count])),
       coverage: coverage(records.filter((r) => r.organisationType).length, records.length),
+      to: investorLink({}),
     },
     projects: {
       total: investorProjects.length,
+      to: projectLink({}),
       all: projects.length,
       byStageGroup: stageGroups(stages.items),
       coverage: stages.coverage,
       scope: PROJECT_SCOPE,
     },
-    values: { ...values, ngnEquivalent: ngnEquivalent(values.byCurrency, fx) },
-    jobs: { ...jobStats(investorProjects), scope: PROJECT_SCOPE },
+    // to: the projects with a value (count = coverage.with) / with jobs (count).
+    values: { ...values, ngnEquivalent: ngnEquivalent(values.byCurrency, fx), to: projectLink({ hasValue: 1 }) },
+    jobs: { ...jobStats(investorProjects), scope: PROJECT_SCOPE, to: projectLink({ hasJobs: 1 }) },
   };
 
   // Year on year (happened dates only)
@@ -394,7 +412,7 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
       to: '/announcements',
     },
     newInvestors: { ...newInvestors, coverage: coverage(newInvestors.total - newInvestors.undated, newInvestors.total), to: '/investors?organisationType=Investor' },
-    interactions: { ...interactions, coverage: coverage(interactions.total - interactions.undated, interactions.total), to: '/interactions' },
+    interactions: { ...interactions, coverage: coverage(interactions.total - interactions.undated, interactions.total), to: '/interactions?officerLogs=1' },
     services: { year, ...services },
     change: year === null ? null : {
       year,
@@ -410,10 +428,13 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
   // SABER (the selected year; the current year for "All years")
   const saberYear = year || currentYear;
   const [issues, named] = await Promise.all([issuesMetric(saberYear), announcementsMetric(saberYear)]);
+  // Links (11.15): the issues the share is over (reported that year, Withdrawn
+  // left out) and the counted announcements.
+  const shareStatuses = ISSUE_STATUSES.filter((st) => st !== WITHDRAWN);
   const saber = {
     year: saberYear,
-    issues,
-    announcements: named,
+    issues: { ...issues, to: `/issues?${new URLSearchParams([['year', String(saberYear)], ...shareStatuses.map((st) => ['status', st])]).toString()}` },
+    announcements: { ...named, to: `/announcements${qs({ year: saberYear, oysipaNamed: 'true', counted: 1 })}` },
     evidence: { files, untagged: untaggedFiles, to: '/evidence' },
   };
 
@@ -426,6 +447,7 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
     breakdowns: {
       stage: stages,
       sector: sectorBreakdown(investors),
+      projectSector: { ...projectSectorBreakdown(investorProjects), scope: PROJECT_SCOPE },
       country: countryBreakdown(investors),
       leadSource: leadSourceBreakdown(investors),
       organisationType: typeItems,
@@ -444,8 +466,6 @@ const monthKey = (today, delta = 0) => {
   const d = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + delta, 1));
   return d.toISOString().slice(0, 7);
 };
-const happenedExpr = { $ifNull: ['$interactionDate', '$createdAt'] };
-const OFFICER_LOG = { category: { $ne: SYSTEM_CATEGORY } };
 
 // Staff: investors assigned to them. DG / Portal-Admin: every investor.
 // Counts come from aggregations; only the 5 most recent officer logs are loaded.
@@ -454,14 +474,17 @@ const mine = async ({ user, today = todayLagos() }) => {
   const investorFilter = scope === 'assigned' ? { assignedTo: user._id } : {};
   const records = await Investor.find(investorFilter).select(INVESTOR_FIELDS).lean();
   const ids = records.map((r) => r._id);
-  const logScope = { ...OFFICER_LOG, ...(scope === 'assigned' ? { investor: { $in: ids } } : { investor: { $ne: null } }) };
-  const [projects, lastContacts, untaggedLogs, recentLogs, issues, statuses, fx, untaggedFiles, myMonths] = await Promise.all([
-    InvestmentProject.find({ investor: { $in: ids } }).select(PROJECT_FIELDS).lean(),
-    InteractionLog.aggregate([
-      { $match: logScope },
-      { $group: { _id: '$investor', last: { $max: happenedExpr } } },
-    ]),
-    InteractionLog.countDocuments({ ...logScope, $or: [{ serviceCodes: { $exists: false } }, { serviceCodes: { $size: 0 } }] }),
+  const assigned = scope === 'assigned';
+  const investorScope = assigned ? { investor: { $in: ids } } : { investor: { $ne: null } };
+  const logScope = { ...OFFICER_LOG, ...investorScope };
+  // Card scopes = the scopes of the lists they open (11.15): Staff → their
+  // investors' records (officer=me); DG / Portal-Admin → every record.
+  const recordScope = assigned ? { investor: { $in: ids } } : {};
+  const untaggedScope = assigned ? await interactionScopeFor(ids) : {};
+  const [projects, lastContact, untaggedLogs, recentLogs, issues, statuses, fx, untaggedFiles, myMonths] = await Promise.all([
+    InvestmentProject.find(recordScope).select(PROJECT_FIELDS).lean(),
+    lastContactByInvestor(assigned ? ids : null),
+    InteractionLog.countDocuments(untaggedLogFilter(untaggedScope)),
     InteractionLog.aggregate([
       { $match: logScope },
       { $addFields: { sortDate: happenedExpr } },
@@ -469,7 +492,7 @@ const mine = async ({ user, today = todayLagos() }) => {
       { $limit: 5 },
       { $project: { description: 1, category: 1, interactionDate: 1, createdAt: 1, serviceCodes: 1, investor: 1, project: 1, loggedBy: 1 } },
     ]),
-    InvestorIssue.find({ investor: { $in: ids }, status: { $in: OPEN_ISSUE_STATUSES } }).select('investor status dateReported dateRegistered actions.date').lean(),
+    InvestorIssue.find({ ...recordScope, status: { $in: OPEN_ISSUE_STATUSES } }).select(ISSUE_FIELDS).lean(),
     loadStatuses(),
     getFxRates(today),
     EvidenceFile.countDocuments(EvidenceFile.UNTAGGED),
@@ -485,39 +508,24 @@ const mine = async ({ user, today = todayLagos() }) => {
     { path: 'loggedBy', select: 'name' },
   ]);
 
+  const mineParam = (name) => (assigned ? `&${name}=me` : '');
+  const officerMe = assigned ? { officer: 'me' } : {};
+  const monthStart = `${monthKey(today)}-01`;
+  const monthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10);
+  const lastMonthStart = `${monthKey(today, -1)}-01`;
+  const lastMonthEnd = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, 0)).toISOString().slice(0, 10);
+  const loggedLink = (from, to) => `/interactions${qs({
+    loggedBy: 'me', officerLogs: 1, from, to,
+  })}`;
   const values = valueStats(projects);
   const months = new Map(myMonths.map((r) => [r._id, r.count]));
   const thisMonth = months.get(monthKey(today)) || 0;
   const lastMonth = months.get(monthKey(today, -1)) || 0;
 
-  // Needs attention
-  const lastContact = new Map(lastContacts.map((r) => [String(r._id), new Date(r.last).getTime()]));
-  const noContact = records.filter((r) => {
-    const last = lastContact.get(String(r._id));
-    return last === undefined || daysAgo(last, today) >= NO_CONTACT_DAYS;
-  });
-  const projectsByInvestor = countBy(projects.filter((p) => !hasValue(p)), (p) => String(p.investor));
-  const missingReasons = {
-    sector: 0, country: 0, leadSource: 0, firstContactDate: 0, projectValue: 0,
-  };
-  const missingFields = records.filter((r) => {
-    const gaps = {
-      sector: resolveSector(r.sector).sector === NOT_RECORDED,
-      country: countryLabel(r.countryOfOrigin) === NOT_RECORDED,
-      leadSource: !LEAD_SOURCES.includes(r.leadSource) || r.leadSource === UNKNOWN_LEAD_SOURCE,
-      firstContactDate: !r.firstContactDate,
-      projectValue: (projectsByInvestor.get(String(r._id)) || 0) > 0,
-    };
-    Object.entries(gaps).forEach(([k, v]) => { if (v) missingReasons[k] += 1; });
-    return Object.values(gaps).some(Boolean);
-  });
-  // An issue whose last action date cannot be read counts as stale (it needs a look).
-  const staleIssues = issues.filter((i) => {
-    const dates = (i.actions || []).map((a) => a.date).filter(Boolean).map((d) => new Date(d).getTime());
-    const last = dates.length ? Math.max(...dates) : new Date(i.dateReported || i.dateRegistered).getTime();
-    const age = daysAgo(last, today);
-    return !Number.isFinite(age) || age > STALE_ISSUE_DAYS;
-  });
+  // Needs attention (rules in services/attention.js, shared with the list filters)
+  const noContact = noContactRecords(records, lastContact, today, NO_CONTACT_DAYS);
+  const { records: missingFields, reasons: missingReasons } = missingFieldRecords(records, projects);
+  const staleIssues = issues.filter((i) => isStaleIssue(i, today));
 
   const recent = recentLogs.map((l) => ({
     _id: l._id,
@@ -540,26 +548,37 @@ const mine = async ({ user, today = todayLagos() }) => {
   return {
     scope,
     today,
-    investors: { total: records.length, investors: records.filter(isInvestorType).length },
-    projects: { total: projects.length },
-    values: { ...values, ngnEquivalent: ngnEquivalent(values.byCurrency, fx) },
-    interactionsLogged: { thisMonth, lastMonth },
-    openIssues: issues.length,
-    attention: {
-      noContact: { count: noContact.length, days: NO_CONTACT_DAYS, to: '/investors' },
-      missingFields: { count: missingFields.length, reasons: missingReasons, to: '/investors' },
-      staleIssues: { count: staleIssues.length, days: STALE_ISSUE_DAYS, to: '/issues' },
-      untaggedInteractions: { count: untaggedLogs, to: '/interactions' },
-      // Untagged files belong to no investor yet: this count is library-wide.
-      untaggedFiles: { count: untaggedFiles, scope: 'library', to: '/evidence' },
+    investors: { total: records.length, investors: records.filter(isInvestorType).length, to: `/investors${qs(officerMe)}` },
+    projects: { total: projects.length, to: `/projects${qs(officerMe)}` },
+    values: { ...values, ngnEquivalent: ngnEquivalent(values.byCurrency, fx), to: `/projects${qs({ hasValue: 1, ...officerMe })}` },
+    interactionsLogged: {
+      thisMonth, lastMonth, to: loggedLink(monthStart, monthEnd), lastMonthTo: loggedLink(lastMonthStart, lastMonthEnd),
     },
-    stages: stageBreakdown(projects, statuses),
+    openIssues: issues.length,
+    openIssuesTo: `/issues?${new URLSearchParams([...OPEN_ISSUE_STATUSES.map((st) => ['status', st]), ...(assigned ? [['officer', 'me']] : [])]).toString()}`,
+    attention: {
+      // Click-throughs (11.15): Staff open their own records (officer=me /
+      // loggedBy=me); DG/Admin (scope all) open every record.
+      noContact: { count: noContact.length, days: NO_CONTACT_DAYS, to: `/investors?noContactDays=${NO_CONTACT_DAYS}${mineParam('officer')}` },
+      missingFields: { count: missingFields.length, reasons: missingReasons, to: `/investors?incomplete=1${mineParam('officer')}` },
+      staleIssues: { count: staleIssues.length, days: STALE_ISSUE_DAYS, to: `/issues?stale=1${mineParam('officer')}` },
+      untaggedInteractions: { count: untaggedLogs, to: `/interactions?noCode=1${mineParam('officer')}` },
+      // Untagged files belong to no investor yet: this count is library-wide.
+      untaggedFiles: { count: untaggedFiles, scope: 'library', to: '/evidence?untagged=1' },
+    },
+    stages: stageBreakdown(projects, statuses, officerMe),
     recent,
     glance: {
       investors: glanceInvestorIds.length,
       projects: allProjects.length,
       values: { ...allValues, ngnEquivalent: ngnEquivalent(allValues.byCurrency, fx) },
       jobs: jobStats(allProjects),
+      to: {
+        investors: investorLink({}),
+        projects: projectLink({}),
+        values: projectLink({ hasValue: 1 }),
+        jobs: projectLink({ hasJobs: 1 }),
+      },
     },
     fx: { stale: fx.stale, missing: fx.missing },
   };
@@ -577,6 +596,7 @@ module.exports = {
   stageGroup,
   stageBreakdown,
   sectorBreakdown,
+  projectSectorBreakdown,
   countryBreakdown,
   leadSourceBreakdown,
   organisationTypeBreakdown,

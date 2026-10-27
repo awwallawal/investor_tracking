@@ -146,7 +146,7 @@ describe('AppLayout — laptop', () => {
     localStorage.setItem('token', tokenFor('Director-General'));
     renderAt('/dashboard');
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByLabelText('Search investors…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Search everything' })).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveTextContent('dashboard page');
   });
 });

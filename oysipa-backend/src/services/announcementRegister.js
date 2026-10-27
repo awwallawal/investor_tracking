@@ -69,15 +69,22 @@ const checkSupportingInteractions = async (rawIds, projectDoc) => {
 // DLR 4.4 for year Y: announcements with announcementDate in Y (Lagos day) and
 // oysipaNamed = true. Projects of Intermediaries / Promotion agents are left
 // out. Never counted by createdAt.
-const announcementsMetric = async (year) => {
+// Condition for announcements in the DLR 4.4 scope: not of a project of an
+// Intermediary / Promotion agent. Shared with the list filter `counted=1`
+// (story 11.15), so the dashboard count and its list agree.
+const countedAnnouncementCondition = async () => {
   const excludedInvestors = await Investor.find({ organisationType: { $in: EXCLUDED_ORGANISATION_TYPES } }).distinct('_id');
   const excludedProjects = excludedInvestors.length
     ? await InvestmentProject.find({ investor: { $in: excludedInvestors } }).distinct('_id')
     : [];
+  return excludedProjects.length ? { project: { $nin: excludedProjects } } : {};
+};
+
+const announcementsMetric = async (year) => {
   const counted = await InvestmentAnnouncement.countDocuments({
     announcementDate: yearRange(year),
     oysipaNamed: true,
-    ...(excludedProjects.length && { project: { $nin: excludedProjects } }),
+    ...(await countedAnnouncementCondition()),
   });
   return { year, counted, band: announcementBand(counted) };
 };
@@ -90,4 +97,5 @@ module.exports = {
   ensureAnnouncementFolder,
   checkSupportingInteractions,
   announcementsMetric,
+  countedAnnouncementCondition,
 };

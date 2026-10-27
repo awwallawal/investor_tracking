@@ -45,6 +45,36 @@ describe('Staff "My work" (11.14)', () => {
     expect(screen.getByRole('link', { name: '+ Log interaction' })).toHaveAttribute('href', '/interactions');
   });
 
+  it('the number cards open exactly what they count (officer=me for Staff, everything for scope all)', async () => {
+    api(makeMine({ scope: 'assigned' }));
+    const { unmount } = renderPage();
+    const numbers = await screen.findByRole('region', { name: 'My numbers' });
+    const hrefs = within(numbers).getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/investors?officer=me', '/issues?status=Open&status=In%20progress&officer=me']);
+    unmount();
+    api(makeMine({ scope: 'all' }));
+    renderPage();
+    const all = await screen.findByRole('region', { name: 'My numbers' });
+    expect(within(all).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/investors', '/issues?status=Open&status=In%20progress']);
+  });
+
+  it('uses the links the API sends for the number cards', async () => {
+    const m = makeMine();
+    api({
+      ...m,
+      investors: { ...m.investors, to: '/investors?officer=me' },
+      openIssuesTo: '/issues?status=Open&status=In+progress&officer=me',
+      interactionsLogged: { ...m.interactionsLogged, to: '/interactions?loggedBy=me&officerLogs=1&from=2026-10-01&to=2026-10-27' },
+    });
+    renderPage();
+    const numbers = await screen.findByRole('region', { name: 'My numbers' });
+    expect(within(numbers).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
+      '/investors?officer=me',
+      '/interactions?loggedBy=me&officerLogs=1&from=2026-10-01&to=2026-10-27',
+      '/issues?status=Open&status=In+progress&officer=me',
+    ]);
+  });
+
   it('"Needs your attention" shows the five counts with links', async () => {
     api(makeMine());
     renderPage();
@@ -55,12 +85,13 @@ describe('Staff "My work" (11.14)', () => {
       expect(row).toHaveTextContent(title);
       expect(row).toHaveAttribute('href', href);
     };
-    expectRow('noContact', '4', 'No contact in 60+ days', '/investors');
-    expectRow('missingFields', '5', 'Records missing T1–T11 fields', '/investors');
-    expectRow('staleIssues', '1', 'Open issues waiting on an action', '/issues');
+    // Story 11.15: each row opens the list filtered to exactly those records.
+    expectRow('noContact', '4', 'No contact in 60+ days', '/investors?noContactDays=60&officer=me');
+    expectRow('missingFields', '5', 'Records missing T1–T11 fields', '/investors?incomplete=1&officer=me');
+    expectRow('staleIssues', '1', 'Open issues waiting on an action', '/issues?stale=1&officer=me');
     expect(screen.getByTestId('attention-staleIssues')).toHaveTextContent('Last action more than 14 days ago.');
-    expectRow('untaggedInteractions', '6', 'Interactions without a SABER code', '/interactions');
-    expectRow('untaggedFiles', '87', 'Files in the library waiting for a tag', '/evidence');
+    expectRow('untaggedInteractions', '6', 'Interactions without a SABER code', '/interactions?noCode=1&officer=me');
+    expectRow('untaggedFiles', '87', 'Files in the library waiting for a tag', '/evidence?untagged=1');
   });
 
   it('shows my stages, recent interactions and the state at a glance', async () => {

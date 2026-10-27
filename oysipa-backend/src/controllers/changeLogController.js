@@ -56,47 +56,56 @@ const publicRow = (row) => ({
   changes: (row.changes || []).map(publicChange(row.entity)),
 });
 
+// The viewer's filters → { filter } or { error } (shared with the CSV export, story 11.15).
+const changeLogFilter = (query = {}) => {
+  const {
+    entity, action, entityId, by, batchId, from, to,
+  } = query;
+  const filter = {};
+  if (entity !== undefined && entity !== '') {
+    if (typeof entity !== 'string' || !ChangeLog.ENTITIES.includes(entity)) return { error: 'Invalid entity.' };
+    filter.entity = entity;
+  }
+  if (action !== undefined && action !== '') {
+    if (typeof action !== 'string' || !ChangeLog.ACTIONS.includes(action)) return { error: 'Invalid action.' };
+    filter.action = action;
+  }
+  if (entityId !== undefined && entityId !== '') {
+    if (typeof entityId !== 'string' || !OBJECT_ID_RE.test(entityId)) return { error: 'Invalid record id.' };
+    filter.entityId = new mongoose.Types.ObjectId(entityId);
+  }
+  if (by !== undefined && by !== '') {
+    if (typeof by !== 'string' || !OBJECT_ID_RE.test(by)) return { error: 'Invalid user id.' };
+    filter.by = new mongoose.Types.ObjectId(by);
+  }
+  if (batchId !== undefined && batchId !== '') {
+    if (typeof batchId !== 'string' || batchId.length > MAX_BATCH_ID) return { error: 'Invalid batch id.' };
+    filter.batchId = batchId;
+  }
+  const createdAt = {};
+  if (from !== undefined && from !== '') {
+    const start = lagosDayStart(from);
+    if (!start) return { error: 'from must be a date (YYYY-MM-DD).' };
+    createdAt.$gte = start;
+  }
+  if (to !== undefined && to !== '') {
+    const start = lagosDayStart(to);
+    if (!start) return { error: 'to must be a date (YYYY-MM-DD).' };
+    createdAt.$lt = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  }
+  if (createdAt.$gte && createdAt.$lt && createdAt.$gte >= createdAt.$lt) {
+    return { error: 'from must not be after to.' };
+  }
+  if (Object.keys(createdAt).length) filter.createdAt = createdAt;
+  return { filter };
+};
+
 const listChangeLog = async (req, res) => {
   try {
-    const {
-      entity, action, entityId, by, batchId, from, to, page,
-    } = req.query || {};
-    const filter = {};
-    if (entity !== undefined && entity !== '') {
-      if (typeof entity !== 'string' || !ChangeLog.ENTITIES.includes(entity)) return res.status(400).json({ message: 'Invalid entity.' });
-      filter.entity = entity;
-    }
-    if (action !== undefined && action !== '') {
-      if (typeof action !== 'string' || !ChangeLog.ACTIONS.includes(action)) return res.status(400).json({ message: 'Invalid action.' });
-      filter.action = action;
-    }
-    if (entityId !== undefined && entityId !== '') {
-      if (typeof entityId !== 'string' || !OBJECT_ID_RE.test(entityId)) return res.status(400).json({ message: 'Invalid record id.' });
-      filter.entityId = new mongoose.Types.ObjectId(entityId);
-    }
-    if (by !== undefined && by !== '') {
-      if (typeof by !== 'string' || !OBJECT_ID_RE.test(by)) return res.status(400).json({ message: 'Invalid user id.' });
-      filter.by = new mongoose.Types.ObjectId(by);
-    }
-    if (batchId !== undefined && batchId !== '') {
-      if (typeof batchId !== 'string' || batchId.length > MAX_BATCH_ID) return res.status(400).json({ message: 'Invalid batch id.' });
-      filter.batchId = batchId;
-    }
-    const createdAt = {};
-    if (from !== undefined && from !== '') {
-      const start = lagosDayStart(from);
-      if (!start) return res.status(400).json({ message: 'from must be a date (YYYY-MM-DD).' });
-      createdAt.$gte = start;
-    }
-    if (to !== undefined && to !== '') {
-      const start = lagosDayStart(to);
-      if (!start) return res.status(400).json({ message: 'to must be a date (YYYY-MM-DD).' });
-      createdAt.$lt = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-    }
-    if (createdAt.$gte && createdAt.$lt && createdAt.$gte >= createdAt.$lt) {
-      return res.status(400).json({ message: 'from must not be after to.' });
-    }
-    if (Object.keys(createdAt).length) filter.createdAt = createdAt;
+    const { page } = req.query || {};
+    const built = changeLogFilter(req.query || {});
+    if (built.error) return res.status(400).json({ message: built.error });
+    const { filter } = built;
 
     let pageNo = 1;
     if (page !== undefined && page !== '') {
@@ -140,4 +149,6 @@ const changeLogHealth = async (req, res) => {
   });
 };
 
-module.exports = { listChangeLog, changeLogHealth, PAGE_SIZE };
+module.exports = {
+  listChangeLog, changeLogHealth, changeLogFilter, publicRow, PAGE_SIZE,
+};

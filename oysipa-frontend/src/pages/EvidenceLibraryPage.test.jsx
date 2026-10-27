@@ -21,11 +21,25 @@ const tree = [
   },
 ];
 
-const renderPage = () => render(<MemoryRouter><EvidenceLibraryPage /></MemoryRouter>);
+const results = [
+  {
+    _id: 'f-1', fileName: 'forum-photo.jpg', uploadedAt: '2026-10-23T09:00:00.000Z', documentDate: '2025-05-15T00:00:00.000Z', links: [], folder: { _id: 'sub-1', name: 'Forum 2025' },
+  },
+  {
+    _id: 'f-2', fileName: 'forum-programme.pdf', uploadedAt: '2026-10-23T09:00:00.000Z', links: [{ _id: 'l-1' }], folder: { _id: 'sub-2', name: 'Expo' },
+  },
+];
+
+const renderPage = (start = '/evidence') => render(<MemoryRouter initialEntries={[start]}><EvidenceLibraryPage /></MemoryRouter>);
 
 describe('EvidenceLibraryPage', () => {
   beforeEach(() => {
-    vi.spyOn(apiClient, 'get').mockResolvedValue({ data: tree });
+    vi.spyOn(apiClient, 'get').mockImplementation(async (url) => {
+      if (url === '/api/evidence/folders') return { data: tree };
+      if (url === '/api/views') return { data: [] };
+      if (url === '/api/evidence/files') return { data: results, headers: { 'x-total-count': '70' } };
+      throw new Error(`unexpected GET ${url}`);
+    });
   });
 
   afterEach(() => {
@@ -67,4 +81,37 @@ describe('EvidenceLibraryPage', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create' }));
     await waitFor(() => expect(postSpy).toHaveBeenCalledWith('/api/evidence/folders', { name: 'Oyo Business Forum', parent: 'top-1' }));
   }, 30000);
+
+  it('?q= shows matching files across folders from /api/evidence/files, linked to their folder', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage('/evidence?q=forum');
+    const table = await screen.findByRole('table', { name: 'Matching files' });
+    expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/files', { params: { q: 'forum' } });
+    expect(await within(table).findByRole('link', { name: 'forum-photo.jpg' })).toHaveAttribute('href', '/evidence/sub-1?q=forum-photo.jpg');
+    expect(within(table).getByRole('link', { name: 'Expo' })).toHaveAttribute('href', '/evidence/sub-2');
+    expect(within(table).getByText('Untagged')).toBeInTheDocument();
+    expect(within(table).getByText('1 tag')).toBeInTheDocument();
+    expect(screen.getByText('2 of 70 files')).toBeInTheDocument();
+    // The folder view is hidden while searching.
+    expect(screen.queryByText('69 files · 68 untagged')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Search files')).toHaveValue('forum');
+  });
+
+  it('?untagged=1 (dashboard link) searches untagged files; Clear all goes back to the folders', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage('/evidence?untagged=1');
+    await screen.findByRole('table', { name: 'Matching files' });
+    expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/files', { params: { untagged: '1' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    expect(await screen.findByText('69 files · 68 untagged')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Matching files' })).not.toBeInTheDocument();
+  });
+
+  it('no filter → no library-wide request', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage();
+    await screen.findByText('Forum 2025');
+    expect(apiClient.get).not.toHaveBeenCalledWith('/api/evidence/files', expect.anything());
+    expect(apiClient.get).not.toHaveBeenCalledWith('/api/evidence/files');
+  });
 });

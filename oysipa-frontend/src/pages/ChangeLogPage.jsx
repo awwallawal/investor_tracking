@@ -1,13 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, FormControl, InputLabel, Link, MenuItem, Paper, Select, Table, TableBody, TableCell,
+  Alert, Box, Button, Link, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TextField, Typography,
 } from '@mui/material';
+import FilterBar, { DateRangeFilter, FacetFilter } from '../components/ui/FilterBar';
+import ViewTabs from '../components/ui/ViewTabs';
+import ExportButton from '../components/ExportButton';
+import useListQuery from '../hooks/useListQuery';
+import { OBJECT_ID, resultCountLabel } from '../utils/listQuery';
+import { formatDate } from '../utils/dates';
 import {
   CHANGELOG_ACTIONS, CHANGELOG_ENTITIES, changeLogErrorMessage, entityLabel, fetchChangeLog,
   fetchChangeLogHealth, fetchChangeLogUsers,
 } from '../api/changelog';
 import { formatTime, shortValue } from '../utils/changeLog';
+import { CHANGELOG_SPEC as SPEC } from '../constants/listSpecs';
 
 const hideOnPhone = { display: { xs: 'none', md: 'table-cell' } };
 const EMPTY = {
@@ -48,16 +55,27 @@ const ChangeList = ({ changes }) => {
   );
 };
 
+// Filters in the URL (story 11.15). Newest first only: no sort.
+const dayLabel = (v) => formatDate(`${v}T00:00:00.000Z`);
+
 // Read-only ChangeLog viewer (story 11.10, DG / Portal-Admin).
 const ChangeLogPage = () => {
-  const [entity, setEntity] = useState('');
-  const [action, setAction] = useState('');
-  const [by, setBy] = useState('');
-  const [batchId, setBatchId] = useState('');
-  const [entityId, setEntityId] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [page, setPage] = useState(1);
+  const lq = useListQuery(SPEC);
+  const {
+    entity, action, by, batchId, entityId, from, to,
+  } = lq.values;
+  // The batch id box: typed text stays as typed; the URL gets the trimmed value.
+  const [batchInput, setBatchInput] = useState(batchId);
+  useEffect(() => {
+    setBatchInput((current) => (current.trim() === batchId ? current : batchId));
+  }, [batchId]);
+  // The page belongs to the current filters: a filter change goes back to page 1.
+  const [paging, setPaging] = useState({ key: lq.filterKey, page: 1 });
+  const page = paging.key === lq.filterKey ? paging.page : 1;
+  const setPage = (update) => setPaging((prev) => {
+    const current = prev.key === lq.filterKey ? prev.page : 1;
+    return { key: lq.filterKey, page: typeof update === 'function' ? update(current) : update };
+  });
   const [data, setData] = useState(EMPTY);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -81,7 +99,7 @@ const ChangeLogPage = () => {
     setLoading(true);
     try {
       const result = await fetchChangeLog({
-        entity, action, entityId, by, batchId: batchId.trim(), from, to, page,
+        entity, action, entityId, by, batchId, from, to, page,
       });
       if (id !== requestId.current) return;
       setData(result);
@@ -98,9 +116,7 @@ const ChangeLogPage = () => {
 
   useEffect(() => { load(); }, [load]);
 
-  // A filter change goes back to the first page.
-  const onFilter = (setter) => (e) => { setter(e.target.value); setPage(1); };
-  const filterRecord = (id) => { setEntityId(id); setPage(1); };
+  const filterRecord = (id) => lq.set({ entityId: id });
 
   const { rows, total, pageSize } = data;
   const pages = Math.max(1, Math.ceil(total / pageSize));
@@ -111,7 +127,10 @@ const ChangeLogPage = () => {
 
   return (
     <Box>
-      <Typography variant="h4" component="h1" sx={{ mb: 1 }}>Change log</Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+        <Typography variant="h4" component="h1">Change log</Typography>
+        <ExportButton list="changelog" params={lq.apiParams} />
+      </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Who created or edited investors, projects, interactions, issues, announcements and the MoU MDAs setting,
         with the server time and the old and new values; plus deletes, imports and Evidence library file actions.
@@ -124,49 +143,54 @@ const ChangeLogPage = () => {
           . The data was saved; check the server log.
         </Alert>
       )}
-      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, flexWrap: 'wrap', mb: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel id="changelog-entity-label">Record type</InputLabel>
-          <Select labelId="changelog-entity-label" label="Record type" value={entity} onChange={onFilter(setEntity)}>
-            <MenuItem value="">All records</MenuItem>
-            {CHANGELOG_ENTITIES.map((e) => <MenuItem key={e.value} value={e.value}>{e.label}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel id="changelog-action-label">Action</InputLabel>
-          <Select labelId="changelog-action-label" label="Action" value={action} onChange={onFilter(setAction)}>
-            <MenuItem value="">All actions</MenuItem>
-            {CHANGELOG_ACTIONS.map((a) => <MenuItem key={a} value={a}>{a}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel id="changelog-by-label">Who</InputLabel>
-          <Select labelId="changelog-by-label" label="Who" value={by} onChange={onFilter(setBy)}>
-            <MenuItem value="">Everyone</MenuItem>
-            {users.map((u) => <MenuItem key={u._id} value={u._id}>{u.name}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <TextField size="small" label="Batch id" value={batchId} onChange={onFilter(setBatchId)} />
-        <TextField
-          size="small"
-          type="date"
-          label="From"
-          value={from}
-          onChange={onFilter(setFrom)}
-          slotProps={{ inputLabel: { shrink: true }, htmlInput: { max: to || undefined } }}
-        />
-        <TextField
-          size="small"
-          type="date"
-          label="To"
-          value={to}
-          onChange={onFilter(setTo)}
-          slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: from || undefined } }}
-        />
-      </Box>
-      {entityId && (
-        <Chip sx={{ mb: 2, maxWidth: '100%' }} label={`Record ${entityId}`} onDelete={() => filterRecord('')} />
-      )}
+      <ViewTabs list="changelog" current={lq.filterKey} canonical={lq.canonical} saveQuery={lq.queryString} onApply={lq.applyQuery} />
+      <FilterBar
+        filters={(
+          <>
+            <FacetFilter
+              label="Record type"
+              single
+              options={CHANGELOG_ENTITIES}
+              selected={entity ? [entity] : []}
+              onChange={(v) => lq.set({ entity: v[0] || '' })}
+            />
+            <FacetFilter
+              label="Action"
+              single
+              options={CHANGELOG_ACTIONS}
+              selected={action ? [action] : []}
+              onChange={(v) => lq.set({ action: v[0] || '' })}
+            />
+            <FacetFilter
+              label="Who"
+              single
+              searchable
+              options={users.map((u) => ({ value: u._id, label: u.name }))}
+              selected={by ? [by] : []}
+              onChange={(v) => lq.set({ by: v[0] || '' })}
+            />
+            <DateRangeFilter label="Date" from={from} to={to} onChange={(range) => lq.set(range)} />
+            <TextField
+              size="small"
+              label="Batch id"
+              value={batchInput}
+              onChange={(e) => { setBatchInput(e.target.value); lq.set({ batchId: e.target.value.trim() }, { replace: true }); }}
+              sx={{ flex: { xs: '1 1 100%', sm: '0 0 220px' } }}
+            />
+          </>
+        )}
+        resultCount={loading && rows.length === 0 ? null : resultCountLabel(total, null, 'change')}
+        chips={lq.chips({
+          entity: { label: 'Record type', format: (v) => `Record type: ${entityLabel(v)}` },
+          action: 'Action',
+          by: { label: 'Who', format: (v) => `Who: ${(users.find((u) => u._id === v) || {}).name || v}` },
+          from: { label: 'From', format: (v) => `From ${dayLabel(v)}` },
+          to: { label: 'To', format: (v) => `To ${dayLabel(v)}` },
+          batchId: 'Batch',
+          entityId: { label: 'Record', format: (v) => `Record ${v}` },
+        })}
+        onClearAll={() => { setBatchInput(''); lq.clearAll(); }}
+      />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {!loading && !error && rows.length === 0 && (
         <Typography color="text.secondary" sx={{ my: 2 }}>{`No changes recorded${filtered ? ' for these filters' : ''}.`}</Typography>

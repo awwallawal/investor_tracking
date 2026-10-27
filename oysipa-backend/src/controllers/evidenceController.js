@@ -18,6 +18,7 @@ const { isAdminRole, isAssignedTo, hasOperatorKey } = require('../middleware/acc
 const {
   sha256, topOrder, compareTop, compareSub, parseFolderDate, parseLinkCodes,
 } = require('../services/evidenceLibrary');
+const { runEvidence, unfilteredTotal } = require('../services/listQueries');
 
 const LINK_TTL_SECONDS = 5 * 60;
 const DENIED_MSG = 'Forbidden: You can only change investors assigned to you';
@@ -201,24 +202,42 @@ const populateFile = (query) => query
   .populate('links.linkedBy', 'name')
   .populate('uploadedBy', 'name');
 
-const happened = (f) => new Date(f.documentDate || f.uploadedAt).getTime();
-
-// @route GET /api/evidence/folders/:id/files[?untagged=1]
+// @route GET /api/evidence/folders/:id/files — filters, search and sort from
+// services/listQueries.js (story 11.15): q, untagged, type, from, to,
+// sort=date|-date|name|-name. X-Total-Count = files in the folder.
 exports.getFolderFiles = async (req, res) => {
   try {
     const { id } = req.params;
     const folder = mongoose.isValidObjectId(id) && await EvidenceFolder.findById(id).populate('parent', 'name key').lean();
     if (!folder) return res.status(404).json({ message: 'Folder not found.' });
-    const filter = { folder: folder._id };
-    if (req.query.untagged === '1' || req.query.untagged === 'true') Object.assign(filter, EvidenceFile.UNTAGGED);
-    const files = await populateFile(EvidenceFile.find(filter));
-    const json = files.map((f) => f.toJSON())
-      .sort((a, b) => (happened(a) - happened(b)) || String(a.fileName).localeCompare(String(b.fileName)));
+    const [{ docs }, total] = await Promise.all([
+      runEvidence(req.query || {}, { user: req.user, folder: folder._id }),
+      unfilteredTotal('evidence', { folder: folder._id }),
+    ]);
     // A top-level folder also lists its subfolders (with counts) to navigate to.
     const children = await EvidenceFolder.find({ parent: folder._id }).lean();
     const counts = children.length ? await folderCounts(children.map((c) => c._id)) : new Map();
     const subfolders = children.map((c) => folderJson(c, counts)).sort(compareSub);
-    return res.status(200).json({ folder, subfolders, files: json });
+    res.set('X-Total-Count', String(total));
+    return res.status(200).json({ folder, subfolders, files: docs });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// @route GET /api/evidence/files — library-wide file list (story 11.15), same
+// filters as a folder's files; each file carries `folder` { _id, name }.
+// X-Total-Count = every file in the library.
+exports.getLibraryFiles = async (req, res) => {
+  try {
+    const query = { ...(req.query || {}) };
+    delete query.folder;
+    const [{ docs }, total] = await Promise.all([
+      runEvidence(query, { user: req.user }, { withFolder: true }),
+      unfilteredTotal('evidence'),
+    ]);
+    res.set('X-Total-Count', String(total));
+    return res.status(200).json(docs);
   } catch (error) {
     return handleError(res, error);
   }

@@ -124,10 +124,10 @@ describe('click-through filters', () => {
     expect(names(await get(`country=${encodeURIComponent('Not recorded')}`).expect(200))).toEqual(['Unknown Sector']);
   });
 
-  it('filters combine with each other and with q; a bad sector → 400', async () => {
+  it('filters combine with each other and with q; a bad sector is ignored (11.15)', async () => {
     expect(names(await get('sector=Manufacturing&country=China').expect(200))).toEqual(['Chinese Co']);
     expect(names(await get('sector=Agribusiness&q=old').expect(200))).toEqual(['Agri Old']);
-    await get('sector=Agro').expect(400);
+    expect((await get('sector=Agro').expect(200)).body).toHaveLength(6);
   });
 
   it('GET /api/projects?sector= filters projects; Not recorded matches none set', async () => {
@@ -137,7 +137,9 @@ describe('click-through filters', () => {
     expect(agri.body.map((p) => p.projectTitle)).toEqual(['Farm']);
     const none = await request(app).get(`/api/projects?sector=${encodeURIComponent('Not recorded')}`).set('Authorization', bearer(staffToken)).expect(200);
     expect(none.body.map((p) => p.projectTitle)).toEqual(['Test Project']);
-    await request(app).get('/api/projects?sector=Farming').set('Authorization', bearer(staffToken)).expect(400);
+    // A sector not on the list is ignored (11.15): every project.
+    const farming = await request(app).get('/api/projects?sector=Farming').set('Authorization', bearer(staffToken)).expect(200);
+    expect(farming.body).toHaveLength(2);
   });
 });
 

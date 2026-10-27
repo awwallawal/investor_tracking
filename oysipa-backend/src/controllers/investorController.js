@@ -4,16 +4,13 @@ const InvestmentProject = require('../models/InvestmentProject');
 const InteractionLog = require('../models/InteractionLog');
 const InvestorIssue = require('../models/InvestorIssue');
 const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
-const { investorSearchFilter } = require('../services/investorSearch');
-const { sectorCondition, countryCondition, canonicalSector } = require('../services/recordFilters');
+const { runInvestors, unfilteredTotal } = require('../services/listQueries');
 const { isSectorValue } = require('../constants/sectors');
 const { recordActionGroups } = require('../utils/recordDeletion');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 const { isAdminRole } = require('../middleware/accessHelpers');
 const { findLinksTo, unlinkSnapshots, pullLinks } = require('../services/evidenceLibrary');
-const {
-  LEAD_SOURCES, UNKNOWN_LEAD_SOURCE, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE, INVESTOR_COUNT_FILTER,
-} = require('../constants/investorFields');
+const { LEAD_SOURCES, UNKNOWN_LEAD_SOURCE } = require('../constants/investorFields');
 
 // Validates body.firstContactDate in place. On create an empty value becomes
 // today; on update an empty value leaves the stored date alone.
@@ -127,51 +124,22 @@ exports.createInvestor = async (req, res) => {
   }
 };
 
-// GET /api/investors?leadSource=&organisationType=&sector=&country=&q=
-// sector / country (11.14 click-through): "Not recorded" matches empty or
-// unknown values; other values match on the analytics grouping.
-// organisationType=Investor also matches old records with no type set.
-// q: search (see services/investorSearch.js), ANDed with the filters.
+// GET /api/investors — filters, search and sort from services/listQueries.js
+// (story 11.15): q, sector, country, leadSource, organisationType, stage,
+// officer, firstContactYear, hasValue, noContactDays, incomplete, sort.
+// Multi-values are comma-separated; values not on a list are ignored.
 // The response stays an array; X-Total-Count holds the unfiltered total.
 exports.getAllInvestors = async (req, res) => {
     try {
-        const filter = {};
-        const { leadSource, organisationType } = req.query || {};
-        if (typeof leadSource === 'string' && leadSource) {
-            if (!LEAD_SOURCES.includes(leadSource)) return res.status(400).json({ message: 'Invalid lead source filter.' });
-            filter.leadSource = leadSource === UNKNOWN_LEAD_SOURCE ? { $in: [UNKNOWN_LEAD_SOURCE, null] } : leadSource;
-        }
-        if (typeof organisationType === 'string' && organisationType) {
-            if (!ORGANISATION_TYPES.includes(organisationType)) return res.status(400).json({ message: 'Invalid organisation type filter.' });
-            filter.organisationType = organisationType === DEFAULT_ORGANISATION_TYPE
-                ? INVESTOR_COUNT_FILTER.organisationType
-                : organisationType;
-        }
-        const conditions = [];
-        const { sector, country } = req.query || {};
-        if (sector !== undefined && sector !== '') {
-            if (!canonicalSector(sector)) return res.status(400).json({ message: 'Invalid sector filter.' });
-            conditions.push(await sectorCondition(Investor, canonicalSector(sector)));
-        }
-        if (country !== undefined && country !== '') {
-            if (typeof country !== 'string' || country.length > 100) return res.status(400).json({ message: 'Invalid country filter.' });
-            conditions.push(await countryCondition(Investor, country.trim()));
-        }
-        if (conditions.length) Object.assign(filter, { $and: conditions });
-        const { q } = req.query || {};
-        if (q !== undefined && typeof q !== 'string') return res.status(400).json({ message: 'Invalid search.' });
-        const search = q ? await investorSearchFilter(q) : null;
-        // A query with nothing searchable left (e.g. "!!!") matches nothing.
-        if (q && !search) {
-            res.set('X-Total-Count', String(await Investor.countDocuments({})));
-            return res.send([]);
-        }
-        const query = search ? { $and: [filter, search] } : filter;
-        const [investors, total] = await Promise.all([Investor.find(query), Investor.countDocuments({})]);
+        const [{ docs }, total] = await Promise.all([
+            runInvestors(req.query || {}, { user: req.user }),
+            unfilteredTotal('investors'),
+        ]);
         res.set('X-Total-Count', String(total));
-        res.send(investors);
+        return res.send(docs);
     } catch (error) {
-        res.status(500).send(error);
+        console.error(error);
+        return res.status(500).send(error);
     }
 };
 

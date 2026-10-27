@@ -14,9 +14,10 @@ export const CHANGELOG_ENTITIES = [
   { value: 'EvidenceFile', label: 'Evidence file' },
   { value: 'EvidenceFolder', label: 'Evidence folder' },
   { value: 'LifecycleStatus', label: 'Lifecycle status' },
+  { value: 'ChangeLog', label: 'Change log (exports)' },
 ];
 
-export const CHANGELOG_ACTIONS = ['create', 'update', 'delete', 'import', 'upload', 'link', 'unlink'];
+export const CHANGELOG_ACTIONS = ['create', 'update', 'delete', 'import', 'upload', 'link', 'unlink', 'export'];
 
 export const entityLabel = (entity) => (CHANGELOG_ENTITIES.find((e) => e.value === entity) || {}).label || entity;
 

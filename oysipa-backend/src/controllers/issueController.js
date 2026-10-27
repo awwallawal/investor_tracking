@@ -22,12 +22,13 @@ const {
   sha256, findLinksTo, unlinkSnapshots, pullLinks,
 } = require('../services/evidenceLibrary');
 const {
-  ensureIssueFolder, parseYear, yearRange, createWithReference, REFERENCE_EXHAUSTED,
+  ensureIssueFolder, createWithReference, REFERENCE_EXHAUSTED,
 } = require('../services/issueRegister');
 const {
   ISSUE_STATUSES, RESOLVED, NOTE_REQUIRED_STATUSES, DEFAULT_ISSUE_STATUS, ISSUE_CATEGORIES, REPORTED_VIA,
 } = require('../constants/issueFields');
 const { MDA_CODES } = require('../constants/mdas');
+const { runIssues, unfilteredTotal } = require('../services/listQueries');
 
 const DENIED_MSG = 'Forbidden: You can only change investors assigned to you';
 const MAX_TEXT = 5000;
@@ -101,29 +102,17 @@ const issueFiles = async (issueId) => {
     || String(a.fileName).localeCompare(String(b.fileName)));
 };
 
-// @route GET /api/issues?status=&year=&investor=
+// @route GET /api/issues — filters, search and sort from services/listQueries.js
+// (story 11.15): q, status, category, mda, year, stale, investor, officer,
+// sort=date|-date. Values not on a list are ignored. X-Total-Count = unfiltered total.
 exports.listIssues = async (req, res) => {
   try {
-    const { status, year, investor } = req.query || {};
-    const filter = {};
-    if (status !== undefined && status !== '') {
-      if (typeof status !== 'string' || !ISSUE_STATUSES.includes(status)) return res.status(400).json({ message: 'Invalid status filter.' });
-      filter.status = status;
-    }
-    if (year !== undefined && year !== '') {
-      const y = parseYear(year);
-      if (!y) return res.status(400).json({ message: 'Invalid year filter.' });
-      filter.dateReported = yearRange(y);
-    }
-    if (investor !== undefined && investor !== '') {
-      if (!mongoose.isValidObjectId(investor)) return res.status(400).json({ message: 'Invalid investor filter.' });
-      filter.investor = investor;
-    }
-    const issues = await InvestorIssue.find(filter)
-      .populate('investor', 'investorName')
-      .populate('project', 'projectTitle')
-      .sort({ dateReported: -1, createdAt: -1 });
-    return res.status(200).json(issues);
+    const [{ docs }, total] = await Promise.all([
+      runIssues(req.query || {}, { user: req.user }),
+      unfilteredTotal('issues'),
+    ]);
+    res.set('X-Total-Count', String(total));
+    return res.status(200).json(docs);
   } catch (error) {
     return handleError(res, error);
   }

@@ -244,7 +244,7 @@ describe('Supporting interactions', () => {
 });
 
 describe('List', () => {
-  it('filters by year, OYSIPA named and project; bad filter → 400', async () => {
+  it('filters by year, OYSIPA named and project; a bad filter value is ignored (11.15)', async () => {
     await mkAnn({ oysipaNamed: true, oysipaRoleText: 'x' });
     await mkAnn({ announcementDate: new Date('2025-05-01T00:00:00.000Z') });
     await mkAnn({ project: otherProject._id });
@@ -256,9 +256,9 @@ describe('List', () => {
     const byProject = (await get(`?project=${otherProject._id}`).expect(200)).body;
     expect(byProject).toHaveLength(1);
     expect(byProject[0].project.investor.investorName).toBe('Ann Other');
-    await get('?year=26').expect(400);
-    await get('?oysipaNamed=maybe').expect(400);
-    await get('?project=nope').expect(400);
+    expect((await get('?year=26').expect(200)).body).toHaveLength(3);
+    expect((await get('?oysipaNamed=maybe').expect(200)).body).toHaveLength(3);
+    expect((await get('?project=nope').expect(200)).body).toHaveLength(3);
   });
 });
 

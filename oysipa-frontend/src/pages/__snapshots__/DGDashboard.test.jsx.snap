@@ -130,7 +130,7 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
             <a
               class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
               data-discover="true"
-              href="/projects"
+              href="/projects?organisationType=Investor"
               tabindex="0"
             >
               <div
@@ -162,29 +162,39 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
             data-tone="primary"
             style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
           >
-            <div
-              class="MuiBox-root css-12lsjfn"
+            <a
+              class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
+              data-discover="true"
+              href="/projects?hasValue=1&organisationType=Investor"
+              tabindex="0"
             >
               <div
-                class="MuiTypography-root MuiTypography-overline css-1cunp7f-MuiTypography-root"
+                class="MuiBox-root css-12lsjfn"
               >
-                Pipeline value
+                <div
+                  class="MuiTypography-root MuiTypography-overline css-1cunp7f-MuiTypography-root"
+                >
+                  Pipeline value
+                </div>
+                <p
+                  class="MuiTypography-root MuiTypography-body1 tabular-nums css-x95s2d-MuiTypography-root"
+                >
+                  ₦1.79tn
+                </p>
+                <div
+                  class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+                >
+                  ₦ equivalent: ₦1.26tn + US$391m
+                  <br />
+                  at USD ₦1,361.84 (23 Oct 2026)
+                  <br />
+                  47 of 183 projects of investors carry a value (intermediaries, agents and contacts not counted)
+                </div>
               </div>
-              <p
-                class="MuiTypography-root MuiTypography-body1 tabular-nums css-x95s2d-MuiTypography-root"
-              >
-                ₦1.79tn
-              </p>
-              <div
-                class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
-              >
-                ₦ equivalent: ₦1.26tn + US$391m
-                <br />
-                at USD ₦1,361.84 (23 Oct 2026)
-                <br />
-                47 of 183 projects of investors carry a value (intermediaries, agents and contacts not counted)
-              </div>
-            </div>
+              <span
+                class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
+              />
+            </a>
           </div>
           <div
             class="MuiPaper-root MuiPaper-elevation MuiPaper-rounded MuiPaper-elevation1 MuiCard-root css-586v9f-MuiPaper-root-MuiCard-root"
@@ -216,25 +226,35 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
             data-tone="default"
             style="--Paper-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2),0px 1px 1px 0px rgba(0,0,0,0.14),0px 1px 3px 0px rgba(0,0,0,0.12);"
           >
-            <div
-              class="MuiBox-root css-12lsjfn"
+            <a
+              class="MuiButtonBase-root MuiCardActionArea-root css-17455wo-MuiButtonBase-root-MuiCardActionArea-root"
+              data-discover="true"
+              href="/projects?hasJobs=1&organisationType=Investor"
+              tabindex="0"
             >
               <div
-                class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
+                class="MuiBox-root css-12lsjfn"
               >
-                Jobs pledged
+                <div
+                  class="MuiTypography-root MuiTypography-overline css-nbmro7-MuiTypography-root"
+                >
+                  Jobs pledged
+                </div>
+                <p
+                  class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
+                >
+                  14,957
+                </p>
+                <div
+                  class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
+                >
+                  39 of 183 projects of investors have a jobs figure
+                </div>
               </div>
-              <p
-                class="MuiTypography-root MuiTypography-body1 tabular-nums css-15gzurm-MuiTypography-root"
-              >
-                14,957
-              </p>
-              <div
-                class="MuiTypography-root MuiTypography-body2 css-18qbkao-MuiTypography-root"
-              >
-                39 of 183 projects of investors have a jobs figure
-              </div>
-            </div>
+              <span
+                class="MuiCardActionArea-focusHighlight css-1h5un5t-MuiCardActionArea-focusHighlight"
+              />
+            </a>
           </div>
         </section>
         <section
@@ -339,7 +359,7 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
                 <a
                   class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-1orsvah-MuiTypography-root-MuiLink-root"
                   data-discover="true"
-                  href="/evidence"
+                  href="/evidence?untagged=1"
                 >
                   87 still need tagging
                 </a>
@@ -537,8 +557,11 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
                 <div
                   class="MuiBox-root css-1nk7dty"
                 >
-                  <div
-                    class="MuiBox-root css-dkxnah"
+                  <a
+                    aria-label="2023: 21"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/investors?firstContactYear=2023&organisationType=Investor"
                   >
                     <span
                       class="tabular-nums MuiBox-root css-hy5x3p"
@@ -548,9 +571,12 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
                     <span
                       class="bar-fill MuiBox-root css-csiqib"
                     />
-                  </div>
-                  <div
-                    class="MuiBox-root css-dkxnah"
+                  </a>
+                  <a
+                    aria-label="2024: 11"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/investors?firstContactYear=2024&organisationType=Investor"
                   >
                     <span
                       class="tabular-nums MuiBox-root css-hy5x3p"
@@ -560,9 +586,12 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
                     <span
                       class="bar-fill MuiBox-root css-y32b9l"
                     />
-                  </div>
-                  <div
-                    class="MuiBox-root css-dkxnah"
+                  </a>
+                  <a
+                    aria-label="2025: 60"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/investors?firstContactYear=2025&organisationType=Investor"
                   >
                     <span
                       class="tabular-nums MuiBox-root css-hy5x3p"
@@ -572,9 +601,12 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
                     <span
                       class="bar-fill MuiBox-root css-1f2tiop"
                     />
-                  </div>
-                  <div
-                    class="MuiBox-root css-dkxnah"
+                  </a>
+                  <a
+                    aria-label="2026: 14"
+                    class="MuiBox-root css-104r959"
+                    data-discover="true"
+                    href="/investors?firstContactYear=2026&organisationType=Investor"
                   >
                     <span
                       class="tabular-nums MuiBox-root css-hy5x3p"
@@ -584,7 +616,7 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
                     <span
                       class="bar-fill MuiBox-root css-pqpdm8"
                     />
-                  </div>
+                  </a>
                 </div>
                 <div
                   aria-hidden="true"
@@ -622,7 +654,7 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
               <a
                 class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineAlways css-1orsvah-MuiTypography-root-MuiLink-root"
                 data-discover="true"
-                href="/investors?organisationType=Investor"
+                href="/investors?firstContactYear=none&organisationType=Investor"
               >
                 fill them in
               </a>
@@ -759,6 +791,30 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
             <div
               class="MuiBox-root css-1cwznr"
             >
+              <div
+                aria-label="Count by sector"
+                class="MuiToggleButtonGroup-root MuiToggleButtonGroup-horizontal css-156tebt-MuiToggleButtonGroup-root"
+                role="group"
+              >
+                <button
+                  aria-pressed="true"
+                  class="MuiButtonBase-root MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal MuiToggleButton-root Mui-selected MuiToggleButton-sizeSmall MuiToggleButton-standard MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal MuiToggleButtonGroup-firstButton css-qofxz1-MuiButtonBase-root-MuiToggleButton-root"
+                  tabindex="0"
+                  type="button"
+                  value="investors"
+                >
+                  Investors
+                </button>
+                <button
+                  aria-pressed="false"
+                  class="MuiButtonBase-root MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal MuiToggleButton-root MuiToggleButton-sizeSmall MuiToggleButton-standard MuiToggleButtonGroup-grouped MuiToggleButtonGroup-groupedHorizontal MuiToggleButtonGroup-lastButton css-qofxz1-MuiButtonBase-root-MuiToggleButton-root"
+                  tabindex="0"
+                  type="button"
+                  value="projects"
+                >
+                  Projects
+                </button>
+              </div>
               <div
                 aria-label="Investors by sector: Infrastructure 3, Waste and circular economy 31, Real estate and construction 22, Agribusiness 27, Renewable energy 5, Culture and tourism 16, Manufacturing 5, Not recorded 13"
                 class="MuiBox-root css-1821gv5"

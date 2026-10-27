@@ -17,6 +17,8 @@ router.post('/folders', auth, adminOnly, evidence.createFolder);
 router.put('/folders/:id', auth, adminOnly, evidence.updateFolder);
 router.get('/folders/:id/files', auth, canRead, evidence.getFolderFiles);
 router.post('/folders/:id/files', auth, adminOnly, evidence.loadFolder, requireStorage, singleDocument, evidence.uploadFile);
+// Library-wide file list with the list filters (story 11.15).
+router.get('/files', auth, canRead, evidence.getLibraryFiles);
 router.get('/files/:id/link', auth, canRead, evidence.getFileLink);
 router.post('/files/:id/links', auth, canRead, evidence.addLink);
 router.delete('/files/:id/links/:linkId', auth, adminOnly, evidence.removeLink);

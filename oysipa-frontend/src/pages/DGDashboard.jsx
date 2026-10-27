@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
-  Alert, Box, Button, Card, LinearProgress, Link, Typography,
+  Alert, Box, Button, Card, LinearProgress, Link, ToggleButton, ToggleButtonGroup, Typography,
 } from '@mui/material';
 import PageHeader from '../components/ui/PageHeader';
 import StatCard from '../components/ui/StatCard';
@@ -23,6 +23,13 @@ const FIRST_YEAR = 2023;
 const TYPE_ONE = { Investor: 'investor', Intermediary: 'intermediary', 'Promotion agent': 'promotion agent', Contact: 'contact' };
 const TYPE_MANY = { Investor: 'investors', Intermediary: 'intermediaries', 'Promotion agent': 'promotion agents', Contact: 'contacts' };
 const ALL = 'all';
+
+// Click-through targets (story 11.15). organisationType=Investor keeps the
+// list in the same scope as the headline figure, so the counts match.
+const PIPELINE_VALUE_LINK = '/projects?hasValue=1&organisationType=Investor';
+const JOBS_LINK = '/projects?hasJobs=1&organisationType=Investor';
+const UNTAGGED_FILES_LINK = '/evidence?untagged=1';
+const firstContactLink = (year) => `/investors?firstContactYear=${year}&organisationType=Investor`;
 
 const grid = (min) => ({ display: 'grid', gap: 2, gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${min}px), 1fr))` });
 
@@ -78,7 +85,7 @@ const IssuesCard = ({ issues }) => {
   return (
     <SaberCard figure={figure} label="DLR 4.5 · issues resolved">
       <Typography variant="body1" sx={{ fontWeight: 600 }}>
-        <Link component={RouterLink} to="/issues" underline="hover" color="inherit">{line}</Link>
+        <Link component={RouterLink} to={(issues && issues.to) || '/issues'} underline="hover" color="inherit">{line}</Link>
       </Typography>
       {issues && issues.total > 0 && <Typography variant="body2" color="text.secondary">{BAND_LABELS[issues.band] || issues.band}</Typography>}
     </SaberCard>
@@ -90,7 +97,7 @@ const AnnouncementsCard = ({ named, series }) => {
   return (
     <SaberCard figure={`${named.counted}/${ANNOUNCEMENT_TARGET}`} label="DLR 4.4 · announcements naming OYSIPA">
       <Typography variant="body1" sx={{ fontWeight: 600 }}>
-        <Link component={RouterLink} to={`/announcements?year=${named.year}&oysipaNamed=true`} underline="hover" color="inherit">
+        <Link component={RouterLink} to={named.to || `/announcements?year=${named.year}&oysipaNamed=true`} underline="hover" color="inherit">
           {`${named.counted} of ${ANNOUNCEMENT_TARGET} in ${named.year}`}
         </Link>
       </Typography>
@@ -106,7 +113,7 @@ const EvidenceCard = ({ evidence }) => (
     <Typography variant="body1" sx={{ fontWeight: 600 }}>{`${formatCount(evidence.files)} private files`}</Typography>
     <Typography variant="body2">
       {evidence.untagged > 0
-        ? <Link component={RouterLink} to="/evidence">{`${formatCount(evidence.untagged)} still need tagging`}</Link>
+        ? <Link component={RouterLink} to={UNTAGGED_FILES_LINK}>{`${formatCount(evidence.untagged)} still need tagging`}</Link>
         : 'All files tagged'}
     </Typography>
   </SaberCard>
@@ -118,6 +125,7 @@ const DGDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sectorView, setSectorView] = useState('investors');
   const user = getAuthenticatedUser();
 
   useEffect(() => {
@@ -190,6 +198,9 @@ const DGDashboard = () => {
   const excludedNote = eq && eq.excluded && eq.excluded.length ? `${eq.excluded.join(', ')} currency not converted.` : null;
   let pipelineValue;
   let pipelineHint;
+  // The whole card links to the projects, except when its hint carries its own
+  // links (a missing rate): links cannot nest.
+  const pipelineLinked = !!(eq && eq.value !== null);
   if (eq && eq.value !== null) {
     pipelineValue = formatMoneyCompact(eq.value, 'NGN');
     pipelineHint = (
@@ -212,6 +223,8 @@ const DGDashboard = () => {
         {excludedNote && <><br />{excludedNote}</>}
         <br />
         {valueCoverage}
+        {' · '}
+        <Link component={RouterLink} to={PIPELINE_VALUE_LINK}>See the projects</Link>
       </>
     );
   }
@@ -227,12 +240,18 @@ const DGDashboard = () => {
   const annSeries = yoy.announcements.series.map((s) => ({
     ...s, overlay: s.oysipaNamed, to: listYears.has(s.year) ? `/announcements?year=${s.year}` : null, highlight: false,
   }));
-  const fcSeries = yoy.newInvestors.series.map((s) => ({ ...s, highlight: s.year === year }));
+  const fcSeries = yoy.newInvestors.series.map((s) => ({ ...s, highlight: s.year === year, to: firstContactLink(s.year) }));
   const services = yoy.services;
-  const sectorItems = breakdowns.sector.items.filter((i) => i.count > 0 || i.priority);
+  // Sector chart: investors, or (11.14 #27) projects by project sector.
+  const projectSector = breakdowns.projectSector && Array.isArray(breakdowns.projectSector.items) ? breakdowns.projectSector : null;
+  const showProjects = sectorView === 'projects' && !!projectSector;
+  const sectorBreakdown = showProjects ? projectSector : breakdowns.sector;
+  const sectorNoun = showProjects ? 'projects' : 'investors';
+  const sectorTitle = showProjects ? 'Projects by sector' : 'Investors by sector';
+  const sectorItems = sectorBreakdown.items.filter((i) => i.count > 0 || i.priority);
   const stageItems = breakdowns.stage.items.filter((i) => i.count > 0);
   const leadItems = breakdowns.leadSource.items.filter((i) => i.count > 0);
-  const notRecordedSector = breakdowns.sector.items.find((i) => i.notRecorded);
+  const notRecordedSector = sectorBreakdown.items.find((i) => i.notRecorded);
 
   return (
     <Box>
@@ -247,13 +266,14 @@ const DGDashboard = () => {
         )}
         <Box component="section" aria-label="Headline numbers" sx={grid(200)}>
           <StatCard label="Investors" value={formatCount(inv.total)} hint={`${typeHint}${newInvestorsHint}`} to="/investors?organisationType=Investor" />
-          <StatCard label="Projects" value={formatCount(headline.projects.total)} hint={stageHint || 'no projects yet'} to="/projects" />
-          <StatCard label="Pipeline value" tone="primary" value={pipelineValue} hint={pipelineHint} />
+          <StatCard label="Projects" value={formatCount(headline.projects.total)} hint={stageHint || 'no projects yet'} to="/projects?organisationType=Investor" />
+          <StatCard label="Pipeline value" tone="primary" value={pipelineValue} hint={pipelineHint} to={pipelineLinked ? PIPELINE_VALUE_LINK : undefined} />
           <StatCard label="Typical project size" value={sizeValue} hint={sizeHint} />
           <StatCard
             label="Jobs pledged"
             value={formatCount(jobs.sum)}
             hint={coverageText(jobs.coverage, 'projects of investors', 'have a jobs figure')}
+            to={JOBS_LINK}
           />
         </Box>
 
@@ -286,7 +306,7 @@ const DGDashboard = () => {
                 {yoy.newInvestors.undated > 0 && (
                   <>
                     {` ${formatCount(yoy.newInvestors.undated)} have no first-contact date yet: `}
-                    <Link component={RouterLink} to={yoy.newInvestors.to || '/investors'}>fill them in</Link>
+                    <Link component={RouterLink} to={firstContactLink('none')}>fill them in</Link>
                     .
                   </>
                 )}
@@ -302,11 +322,11 @@ const DGDashboard = () => {
             <BarList title="Pipeline by stage" items={stageItems} emptyText="No projects yet." />
           </ChartCard>
           <ChartCard
-            title="Investors by sector"
+            title={sectorTitle}
             legend={[{ label: 'SABER priority (★)', color: tokens.maroon }, { label: 'Other sectors', color: tokens.blue }]}
             footnote={(
               <>
-                {`${coverageText(breakdowns.sector.coverage, 'investors', 'have a sector')}.`}
+                {`${coverageText(sectorBreakdown.coverage, sectorNoun, 'have a sector')}.`}
                 {notRecordedSector && notRecordedSector.count > 0 && (
                   <>
                     {' '}
@@ -316,7 +336,20 @@ const DGDashboard = () => {
               </>
             )}
           >
-            <BarList title="Investors by sector" items={sectorItems} />
+            {projectSector && (
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={showProjects ? 'projects' : 'investors'}
+                onChange={(e, v) => { if (v) setSectorView(v); }}
+                aria-label="Count by sector"
+                sx={{ mb: 2 }}
+              >
+                <ToggleButton value="investors">Investors</ToggleButton>
+                <ToggleButton value="projects">Projects</ToggleButton>
+              </ToggleButtonGroup>
+            )}
+            <BarList title={sectorTitle} items={sectorItems} />
           </ChartCard>
           <ChartCard title="Where investors come from" footnote={`${coverageText(breakdowns.country.coverage, 'investors', 'have a country')}.`}>
             <BarList title="Investors by country" items={breakdowns.country.items} color={tokens.blue} />

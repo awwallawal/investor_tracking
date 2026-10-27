@@ -216,7 +216,7 @@ describe('Status, resolve and actions', () => {
     expect(metric.body).toMatchObject({ year: 2026, total: 1, resolved: 1, share: 1, band: 'stretch' });
   });
 
-  it('list filters by status, year and investor; bad filter → 400', async () => {
+  it('list filters by status, year and investor; a bad filter value is ignored (11.15)', async () => {
     await mkIssue({ status: 'Resolved', resolution: 'ok' });
     await mkIssue({ dateReported: new Date('2025-05-01T00:00:00.000Z') });
     await mkIssue({ investor: other._id });
@@ -225,8 +225,8 @@ describe('Status, resolve and actions', () => {
     expect((await get('?status=Resolved').expect(200)).body).toHaveLength(1);
     expect((await get('?year=2025').expect(200)).body).toHaveLength(1);
     expect((await get(`?investor=${other._id}`).expect(200)).body).toHaveLength(1);
-    await get('?status=Lost').expect(400);
-    await get('?year=20x6').expect(400);
+    expect((await get('?status=Lost').expect(200)).body).toHaveLength(3);
+    expect((await get('?year=20x6').expect(200)).body).toHaveLength(3);
   });
 
   it('unknown or malformed id → 404', async () => {
@@ -612,10 +612,10 @@ describe('Investor Directory search', () => {
     await names(`?q=${encodeURIComponent('[(')}`);
   });
 
-  it('search + organisationType → intersection; bad filter still 400', async () => {
+  it('search + organisationType → intersection; a bad filter value is ignored (11.15)', async () => {
     expect(await names('?q=cashew&organisationType=Intermediary')).toEqual(['Cashew Brokers']);
     expect(await names('?q=cashew&organisationType=Investor')).toEqual(['Nutco Synthetic']);
-    await request(app).get('/api/investors?q=cashew&organisationType=Alien').set('Authorization', bearer(staffToken)).expect(400);
+    expect(await names('?q=cashew&organisationType=Alien')).toEqual(['Cashew Brokers', 'Nutco Synthetic']);
   });
 
   it('response stays an array; X-Total-Count is the unfiltered total', async () => {

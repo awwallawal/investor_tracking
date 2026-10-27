@@ -1,114 +1,167 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
-  Alert, Box, Button, Chip, FormControl, InputLabel, Link as MuiLink, MenuItem, Paper, Select, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Typography,
+  Alert, Box, Button, Chip, Link as MuiLink, Typography,
 } from '@mui/material';
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import IssueForm from '../components/IssueForm';
-import { fetchIssues, issueErrorMessage } from '../api/issues';
+import apiClient from '../api/api';
+import PageHeader from '../components/ui/PageHeader';
+import FilterBar, { FacetFilter, SearchField, ToggleFilter } from '../components/ui/FilterBar';
+import DataTable from '../components/ui/DataTable';
+import EmptyState from '../components/ui/EmptyState';
+import ViewTabs from '../components/ui/ViewTabs';
+import ExportButton from '../components/ExportButton';
+import useListQuery from '../hooks/useListQuery';
+import useListData from '../hooks/useListData';
+import { OBJECT_ID, OFFICER_PATTERN, resultCountLabel } from '../utils/listQuery';
 import {
-  ISSUE_STATUSES, STATUS_COLORS, issueReference, issueYears,
+  ISSUE_CATEGORIES, ISSUE_STATUSES, STATUS_COLORS, issueReference, issueYears,
 } from '../constants/issueFields';
 import { dateLine } from '../utils/dates';
 import { useMdas } from '../api/mdas';
+import { getCurrentUser, isAdminRole } from '../utils/currentUser';
+import { ISSUE_SPEC as SPEC } from '../constants/listSpecs';
 
-const hideOnPhone = { display: { xs: 'none', sm: 'table-cell' } };
 
-// Investor issues register (DLR 4.5): list with status and year filters.
+// Investor issues register (DLR 4.5, story 11.15): server-side filters in the
+// URL, saved views (built-in Open / Stale), CSV export of the view.
 const IssuesPage = () => {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState([]);
-  const [status, setStatus] = useState('');
-  const [year, setYear] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const isAdmin = isAdminRole(getCurrentUser()?.role);
   const [registering, setRegistering] = useState(false);
-  const { nameOf: mdaName } = useMdas();
+  const [staff, setStaff] = useState([]);
+  const { mdas, nameOf: mdaName } = useMdas();
+  const lq = useListQuery(SPEC);
+  const {
+    data, total, loaded, error, reload,
+  } = useListData('/api/issues', lq.apiParams, { errorMessage: 'Failed to load issues.' });
+  const issues = useMemo(() => (Array.isArray(data) ? data : []), [data]);
 
-  // Only the newest request may set the list (superseded filters are dropped).
-  const requestId = useRef(0);
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let active = true;
+    apiClient.get('/api/users/staff')
+      .then(({ data: users }) => { if (active && Array.isArray(users)) setStaff(users); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [isAdmin]);
 
-  const load = useCallback(async () => {
-    requestId.current += 1;
-    const id = requestId.current;
-    try {
-      const data = await fetchIssues({ status, year });
-      if (id !== requestId.current) return;
-      setIssues(data);
-      setError('');
-    } catch (err) {
-      if (id !== requestId.current) return;
-      setError(issueErrorMessage(err, 'Failed to load issues.'));
-    } finally {
-      if (id === requestId.current) setLoading(false);
-    }
-  }, [status, year]);
+  const investorNames = useMemo(() => {
+    const m = {};
+    issues.forEach((i) => { if (i.investor?._id) m[i.investor._id] = i.investor.investorName; });
+    return m;
+  }, [issues]);
+  const officerNames = useMemo(() => {
+    const m = { me: 'Me', unassigned: 'Unassigned' };
+    staff.forEach((u) => { m[u._id] = u.name; });
+    return m;
+  }, [staff]);
 
-  useEffect(() => { load(); }, [load]);
+  const { values } = lq;
+  const chips = lq.chips({
+    q: 'Search',
+    status: 'Status',
+    category: 'Category',
+    mda: { label: 'MDA', format: (c) => `MDA: ${mdaName(c)}` },
+    year: 'Year reported',
+    stale: 'Stale',
+    investor: { label: 'Investor', format: (id) => `Investor: ${investorNames[id] || id}` },
+    officer: { label: 'Officer', format: (id) => `Officer: ${officerNames[id] || id}` },
+  });
+
+  const columns = [
+    {
+      key: 'date', label: 'Reported', sortable: true, render: (issue) => dateLine(issue, 'dateReported'),
+    },
+    {
+      key: 'investor',
+      label: 'Investor',
+      render: (issue) => (
+        <Box sx={{ minWidth: 0 }}>
+          <MuiLink component={RouterLink} to={`/issues/${issue._id}`}>
+            {issue.investor?.investorName || 'Investor'}
+          </MuiLink>
+          {issueReference(issue) && <Typography component="span" variant="body2" color="text.secondary">{` · ${issueReference(issue)}`}</Typography>}
+          <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+            {issue.description?.length > 120 ? `${issue.description.slice(0, 120)}…` : issue.description}
+          </Typography>
+          {issue.mdaResponsible?.length > 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+              {`MDA: ${issue.mdaResponsible.map(mdaName).join(', ')}`}
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    { key: 'category', label: 'Category', hideOnPhone: true },
+    {
+      key: 'status', label: 'Status', render: (issue) => <Chip size="small" label={issue.status} color={STATUS_COLORS[issue.status] || 'default'} />,
+    },
+  ];
+
+  let emptyState;
+  if (error) emptyState = <EmptyState icon={<ReportProblemOutlinedIcon />} title="Could not load issues" text={error} action={<Button variant="outlined" onClick={reload}>Retry</Button>} />;
+  else if (lq.activeCount > 0) emptyState = <EmptyState icon={<ReportProblemOutlinedIcon />} title="No issues registered for these filters." />;
+  else emptyState = <EmptyState icon={<ReportProblemOutlinedIcon />} title="No issues registered." />;
+
+  const officerOptions = [
+    { value: 'me', label: 'Me' },
+    { value: 'unassigned', label: 'Unassigned' },
+    ...staff.map((u) => ({ value: u._id, label: u.name })),
+  ];
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
-        <Typography variant="h4" component="h1">Investor issues</Typography>
-        <Button variant="contained" onClick={() => setRegistering(true)}>Register issue</Button>
-      </Box>
-      <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' }, mb: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="issues-status-label">Status</InputLabel>
-          <Select labelId="issues-status-label" label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <MenuItem value="">All statuses</MenuItem>
-            {ISSUE_STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="issues-year-label">Year reported</InputLabel>
-          <Select labelId="issues-year-label" label="Year reported" value={year} onChange={(e) => setYear(e.target.value)}>
-            <MenuItem value="">All years</MenuItem>
-            {issueYears().map((y) => <MenuItem key={y} value={String(y)}>{y}</MenuItem>)}
-          </Select>
-        </FormControl>
-      </Box>
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {!loading && !error && issues.length === 0 && (
-        <Typography color="text.secondary" sx={{ my: 2 }}>No issues registered{status || year ? ' for these filters' : ''}.</Typography>
-      )}
-      {issues.length > 0 && (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Reported</TableCell>
-                <TableCell>Investor</TableCell>
-                <TableCell sx={hideOnPhone}>Category</TableCell>
-                <TableCell>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {issues.map((issue) => (
-                <TableRow hover key={issue._id} sx={{ cursor: 'pointer' }} onClick={() => navigate(`/issues/${issue._id}`)}>
-                  <TableCell>{dateLine(issue, 'dateReported')}</TableCell>
-                  <TableCell>
-                    <MuiLink component={RouterLink} to={`/issues/${issue._id}`} onClick={(e) => e.stopPropagation()}>
-                      {issue.investor?.investorName || 'Investor'}
-                    </MuiLink>
-                    {issueReference(issue) && <Typography component="span" variant="body2" color="text.secondary">{` · ${issueReference(issue)}`}</Typography>}
-                    <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                      {issue.description?.length > 120 ? `${issue.description.slice(0, 120)}…` : issue.description}
-                    </Typography>
-                    {issue.mdaResponsible?.length > 0 && (
-                      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
-                        {`MDA: ${issue.mdaResponsible.map(mdaName).join(', ')}`}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell sx={hideOnPhone}>{issue.category}</TableCell>
-                  <TableCell><Chip size="small" label={issue.status} color={STATUS_COLORS[issue.status] || 'default'} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader
+        eyebrow="SABER evidence"
+        title="Investor issues"
+        actions={(
+          <>
+            <ExportButton list="issues" params={lq.apiParams} />
+            <Button variant="contained" onClick={() => setRegistering(true)}>Register issue</Button>
+          </>
+        )}
+      />
+      <ViewTabs list="issues" current={lq.filterKey} canonical={lq.canonical} saveQuery={lq.queryString} onApply={lq.applyQuery} />
+      <FilterBar
+        search={(
+          <SearchField
+            label="Search issues"
+            placeholder="Reference or description..."
+            value={lq.searchInput}
+            onChange={lq.setSearchInput}
+            onClear={lq.clearSearch}
+          />
+        )}
+        filters={(
+          <>
+            <FacetFilter label="Status" options={ISSUE_STATUSES} selected={values.status} onChange={(v) => lq.set({ status: v })} />
+            <FacetFilter label="Category" options={ISSUE_CATEGORIES} selected={values.category} onChange={(v) => lq.set({ category: v })} />
+            <FacetFilter label="MDA" searchable options={mdas.map((m) => ({ value: m.code, label: mdaName(m.code) }))} selected={values.mda} onChange={(v) => lq.set({ mda: v })} />
+            <FacetFilter label="Year reported" options={issueYears().map(String)} selected={values.year} onChange={(v) => lq.set({ year: v })} />
+            <ToggleFilter label="Stale" active={values.stale} onChange={(v) => lq.set({ stale: v })} />
+            <FacetFilter label="Officer" options={officerOptions} selected={values.officer} onChange={(v) => lq.set({ officer: v })} />
+          </>
+        )}
+        resultCount={loaded ? resultCountLabel(issues.length, total, 'issue') : null}
+        chips={chips}
+        onClearAll={() => lq.clearAll()}
+      />
+      {error && issues.length > 0 && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <DataTable
+        ariaLabel="Investor issues"
+        columns={columns}
+        rows={issues}
+        rowLink={(issue) => `/issues/${issue._id}`}
+        loading={!loaded && !error}
+        emptyState={emptyState}
+        pageSize={50}
+        sort={lq.sort}
+        onSortChange={lq.setSort}
+        manualSort
+        resetKey={lq.filterKey}
+      />
       <IssueForm
         open={registering}
         onClose={() => setRegistering(false)}

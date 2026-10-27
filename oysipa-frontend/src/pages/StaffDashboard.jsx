@@ -110,6 +110,13 @@ const StaffDashboard = () => {
   }
 
   const myInvestors = mine ? mine.investors.total : 0;
+  // Card links open exactly the records the card counts (story 11.15): Staff
+  // see their assigned investors (officer=me); DG/Admin (scope all) everything.
+  const own = !mine || mine.scope === 'assigned';
+  // The API sends the targets (mine.investors.to, openIssuesTo, interactionsLogged.to); older responses fall back.
+  const investorsLink = mine?.investors?.to || (own ? '/investors?officer=me' : '/investors');
+  const openIssuesLink = mine?.openIssuesTo || `/issues?status=Open&status=${encodeURIComponent('In progress')}${own ? '&officer=me' : ''}`;
+  const loggedLink = mine?.interactionsLogged?.to || undefined;
   const pipeline = pipelineText(mine && mine.values);
   const stageItems = mine ? mine.stages.items.filter((i) => i.count > 0) : [];
   const glance = mine && mine.glance;
@@ -138,7 +145,7 @@ const StaffDashboard = () => {
         aria-label="My numbers"
         sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', mb: 3 }}
       >
-        <StatCard label="My investors" value={formatCount(myInvestors)} hint="assigned to you" tone="primary" to="/investors" />
+        <StatCard label="My investors" value={formatCount(myInvestors)} hint="assigned to you" tone="primary" to={investorsLink} />
         <StatCard
           label="My pipeline"
           value={pipeline.value}
@@ -148,9 +155,9 @@ const StaffDashboard = () => {
           label="Logged this month"
           value={formatCount(mine ? mine.interactionsLogged.thisMonth : 0)}
           hint={`interactions · ${formatCount(mine ? mine.interactionsLogged.lastMonth : 0)} last month`}
-          to="/interactions"
+          to={loggedLink}
         />
-        <StatCard label="Open issues" value={formatCount(mine ? mine.openIssues : 0)} hint="on your investors" tone="warning" to="/issues" />
+        <StatCard label="Open issues" value={formatCount(mine ? mine.openIssues : 0)} hint="on your investors" tone="warning" to={openIssuesLink} />
       </Box>
 
       {mine && myInvestors === 0 && (

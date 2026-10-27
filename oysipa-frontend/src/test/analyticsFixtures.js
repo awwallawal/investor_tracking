@@ -10,6 +10,7 @@ const codes = ['M1', 'M4', 'A7', 'V1'].map((code, i) => ({ code, count: [0, 5, 8
 const change = (current, previous) => ({
   current, previous, delta: current - previous, pct: previous ? (current - previous) / previous : null, isNew: previous === 0 && current > 0,
 });
+const projectSectorLink = (name) => `/projects?sector=${encodeURIComponent(name).replace(/%20/g, '+')}&organisationType=Investor`;
 const sectorLink = (name) => `/investors?sector=${encodeURIComponent(name).replace(/%20/g, '+')}&organisationType=Investor`;
 
 export const makeOverview = (overrides = {}) => ({
@@ -92,6 +93,18 @@ export const makeOverview = (overrides = {}) => ({
       ],
       coverage: { with: 153, total: 166 },
     },
+    // Story 11.15: projects of investors by project sector.
+    projectSector: {
+      items: [
+        ...SECTORS.map(([label, priority], i) => ({
+          label, priority, count: [4, 12, 30, 41, 9, 20, 7, 0][i], to: projectSectorLink(label),
+        })),
+        {
+          label: 'Not recorded', priority: false, notRecorded: true, count: 60, to: projectSectorLink('Not recorded'),
+        },
+      ],
+      coverage: { with: 123, total: 183 },
+    },
     country: {
       items: [
         { label: 'Nigeria', count: 110, to: '/investors?country=Nigeria&organisationType=Investor' },
@@ -148,13 +161,13 @@ export const makeMine = (overrides = {}) => ({
   interactionsLogged: { thisMonth: 7, lastMonth: 3 },
   openIssues: 2,
   attention: {
-    noContact: { count: 4, days: 60, to: '/investors' },
+    noContact: { count: 4, days: 60, to: '/investors?noContactDays=60&officer=me' },
     missingFields: {
-      count: 5, reasons: {}, to: '/investors',
+      count: 5, reasons: {}, to: '/investors?incomplete=1&officer=me',
     },
-    staleIssues: { count: 1, days: 14, to: '/issues' },
-    untaggedInteractions: { count: 6, to: '/interactions' },
-    untaggedFiles: { count: 87, to: '/evidence' },
+    staleIssues: { count: 1, days: 14, to: '/issues?stale=1&officer=me' },
+    untaggedInteractions: { count: 6, to: '/interactions?noCode=1&officer=me' },
+    untaggedFiles: { count: 87, to: '/evidence?untagged=1' },
   },
   stages: {
     items: [{ label: 'Lead', count: 4, to: '/projects?lifecycleStatus=Lead' }, { label: 'Commitment', count: 5, to: '/projects?lifecycleStatus=Commitment' }],

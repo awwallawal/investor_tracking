@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import {
   Alert, Box, Breadcrumbs, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText,
-  DialogTitle, FormControlLabel, Link as MuiLink, Paper, Stack, Switch, TextField, Typography,
+  DialogTitle, Link as MuiLink, Paper, Stack, TextField, Typography,
 } from '@mui/material';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
@@ -10,16 +10,21 @@ import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
 import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined';
 import {
-  deleteEvidenceFile, evidenceErrorMessage, fetchFolderFiles, notifyUntaggedChanged, removeEvidenceLink,
-  uploadEvidenceFile,
+  EVIDENCE_CHIP_LABELS, EVIDENCE_LIST_SPEC, EVIDENCE_SORTS, deleteEvidenceFile, evidenceErrorMessage, fetchFolderFilesResponse,
+  notifyUntaggedChanged, removeEvidenceLink, uploadEvidenceFile,
 } from '../api/evidence';
+import FilterBar, { SortMenu } from '../components/ui/FilterBar';
+import ViewTabs from '../components/ui/ViewTabs';
+import ExportButton from '../components/ExportButton';
+import useListQuery from '../hooks/useListQuery';
+import { resultCountLabel, totalFromResponse } from '../utils/listQuery';
 import { DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile } from '../api/documents';
 import EvidenceTagDialog from '../components/EvidenceTagDialog';
 import HappenedDateField from '../components/HappenedDateField';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { formatDate } from '../utils/dates';
 import {
-  EmptyState, FolderCard, FolderGrid, IconTile,
+  EmptyState, EvidenceFilters, EvidenceSearchField, FolderCard, FolderGrid, IconTile,
 } from '../components/EvidenceUi';
 import { fileIcon, plural } from '../utils/evidenceUi';
 
@@ -198,7 +203,10 @@ const EvidenceFolderPage = () => {
   const [folder, setFolder] = useState(null);
   const [files, setFiles] = useState([]);
   const [subfolders, setSubfolders] = useState([]);
-  const [untaggedOnly, setUntaggedOnly] = useState(false);
+  const [total, setTotal] = useState(null);
+  const lq = useListQuery(EVIDENCE_LIST_SPEC);
+  const untaggedOnly = lq.values.untagged;
+  const paramsKey = JSON.stringify(lq.apiParams);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tagging, setTagging] = useState(null);
@@ -206,19 +214,27 @@ const EvidenceFolderPage = () => {
   const [deleting, setDeleting] = useState(null);
   const [unlinking, setUnlinking] = useState(null);
 
+  // Only the newest request may set the list (filters change quickly).
+  const requestId = useRef(0);
   const load = useCallback(async () => {
+    requestId.current += 1;
+    const id = requestId.current;
     try {
-      const data = await fetchFolderFiles(folderId, { untagged: untaggedOnly });
+      const response = await fetchFolderFilesResponse(folderId, JSON.parse(paramsKey));
+      if (id !== requestId.current) return;
+      const data = response.data || {};
       setFolder(data.folder);
       setSubfolders(data.subfolders || []);
       setFiles(data.files || []);
+      setTotal(totalFromResponse(response));
       setError('');
     } catch (err) {
+      if (id !== requestId.current) return;
       setError(evidenceErrorMessage(err, 'Failed to load the folder.'));
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
-  }, [folderId, untaggedOnly]);
+  }, [folderId, paramsKey]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -254,9 +270,12 @@ const EvidenceFolderPage = () => {
               {folder?.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>{folder.description}</Typography>}
             </Box>
           </Stack>
-          {isAdmin && folder && (
-            <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => setAdding(true)} sx={{ flexShrink: 0 }}>Add files</Button>
-          )}
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexShrink: 0 }}>
+            <ExportButton list="evidence" params={{ ...lq.apiParams, folder: folderId }} />
+            {isAdmin && folder && (
+              <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => setAdding(true)}>Add files</Button>
+            )}
+          </Stack>
         </Stack>
       </Paper>
 
@@ -275,20 +294,27 @@ const EvidenceFolderPage = () => {
         </Box>
       )}
 
-      <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', mb: 1.5 }}>
-        <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
-          {loading ? 'Files' : `${plural(files.length, 'file')}${!untaggedOnly && untaggedHere ? ` · ${untaggedHere} untagged` : ''}`}
-        </Typography>
-        <FormControlLabel
-          sx={{ mr: 0 }}
-          control={<Switch checked={untaggedOnly} onChange={(e) => setUntaggedOnly(e.target.checked)} />}
-          label="Untagged only"
-        />
-      </Stack>
+      <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
+        {loading ? 'Files' : `${plural(files.length, 'file')}${!untaggedOnly && untaggedHere ? ` · ${untaggedHere} untagged` : ''}`}
+      </Typography>
+      <ViewTabs list="evidence" current={lq.filterKey} canonical={lq.canonical} saveQuery={lq.queryString} onApply={lq.applyQuery} />
+      <FilterBar
+        search={<EvidenceSearchField lq={lq} />}
+        filters={<EvidenceFilters lq={lq} />}
+        resultCount={loading ? null : resultCountLabel(files.length, total, 'file')}
+        chips={lq.chips(EVIDENCE_CHIP_LABELS)}
+        onClearAll={() => lq.clearAll()}
+        end={<SortMenu options={EVIDENCE_SORTS} value={lq.sort} onChange={lq.setSort} defaultLabel="Date, oldest first" />}
+      />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>}
       {!loading && files.length === 0 && (
-        <EmptyState icon={InsertDriveFileOutlined}>{untaggedOnly ? 'No untagged files.' : 'No files in this folder.'}</EmptyState>
+        <EmptyState icon={InsertDriveFileOutlined}>
+          {(() => {
+            if (lq.activeCount > (untaggedOnly ? 1 : 0)) return 'No files match these filters.';
+            return untaggedOnly ? 'No untagged files.' : 'No files in this folder.';
+          })()}
+        </EmptyState>
       )}
       {!loading && files.length > 0 && (
         <Stack component="ul" aria-label="Files" spacing={1.5} sx={{ p: 0, m: 0 }}>

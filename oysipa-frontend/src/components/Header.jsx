@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AppBar, Toolbar, Box, Button, IconButton, InputBase, Menu, MenuItem, ListItemIcon, Typography, ButtonBase,
+  AppBar, Toolbar, Box, Button, IconButton, Menu, MenuItem, ListItemIcon, Typography, ButtonBase,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import SearchIcon from '@mui/icons-material/Search';
@@ -9,8 +9,9 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import { getCurrentUser } from '../utils/currentUser';
 import { initialsFor, searchShortcutLabel } from '../utils/shell';
 import { tokens } from '../theme';
+import GlobalSearchDialog from './GlobalSearchDialog';
 
-const SEARCH_LABEL = 'Search investors…';
+const SEARCH_LABEL = 'Search investors, projects, issues, announcements, files…';
 
 const logout = (navigate) => {
   localStorage.removeItem('token');
@@ -18,73 +19,61 @@ const logout = (navigate) => {
 };
 
 // Ctrl/⌘ K is left alone while a dialog is open or another field has focus.
-const shortcutBlocked = (ownInput) => {
+const shortcutBlocked = (ownTrigger) => {
   if (document.querySelector('[role="dialog"], [role="alertdialog"], [aria-modal="true"]')) return true;
   const el = document.activeElement;
-  if (!el || el === ownInput || el === document.body) return false;
+  if (!el || el === ownTrigger || el === document.body) return false;
   const tag = el.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
 };
 
-// Global search (placeholder until 11.15): searches investors only. Enter goes
-// to the investor directory with ?q=<text>; Ctrl/⌘ K focuses the box.
+// Global search (story 11.15): the box in the top bar opens the search dialog
+// (click, Enter/Space, or Ctrl/⌘ K anywhere); see GlobalSearchDialog.
 const GlobalSearch = () => {
-  const navigate = useNavigate();
-  const [value, setValue] = useState('');
-  const inputRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
 
   useEffect(() => {
     const onKey = (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
-        if (shortcutBlocked(inputRef.current)) return;
+        if (shortcutBlocked(triggerRef.current)) return;
         e.preventDefault();
-        inputRef.current?.focus();
+        setOpen(true);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const onKeyDown = (e) => {
-    if (e.key !== 'Enter') return;
-    // Enter that confirms an IME composition (e.g. Chinese, Japanese input) is not a search.
-    if (e.nativeEvent?.isComposing || e.keyCode === 229) return;
-    e.preventDefault();
-    const q = value.trim();
-    if (!q) return;
-    navigate(`/investors?${new URLSearchParams({ q }).toString()}`);
-  };
-
   return (
-    <Box
-      component="label"
-      sx={{
-        flex: '1 1 320px', maxWidth: 560, minWidth: 0, display: 'flex', alignItems: 'center', gap: 1.25,
-        border: `1px solid ${tokens.border}`, borderRadius: '12px', px: { xs: 1.25, sm: 1.75 }, py: { xs: 0.5, sm: 0.75 },
-        bgcolor: tokens.inputBg, '&:focus-within': { borderColor: tokens.maroon },
-      }}
-    >
-      <SearchIcon aria-hidden="true" sx={{ fontSize: 20, color: tokens.textSecondary }} />
-      <InputBase
-        inputRef={inputRef}
-        type="search"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder={SEARCH_LABEL}
-        sx={{ flex: 1, minWidth: 0, fontSize: 14 }}
-        inputProps={{ 'aria-label': SEARCH_LABEL }}
-      />
-      <Box
-        component="kbd"
+    <>
+      <ButtonBase
+        ref={triggerRef}
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        aria-label="Search everything"
         sx={{
-          display: { xs: 'none', sm: 'inline-block' }, fontFamily: 'inherit', fontSize: 12, color: tokens.textSecondary,
-          border: `1px solid ${tokens.border}`, borderRadius: '6px', px: 0.75, py: '2px', whiteSpace: 'nowrap',
+          flex: '1 1 320px', maxWidth: 560, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 1.25,
+          border: `1px solid ${tokens.border}`, borderRadius: '12px', px: { xs: 1.25, sm: 1.75 }, py: { xs: 0.75, sm: 1 },
+          bgcolor: tokens.inputBg, textAlign: 'left', '&:focus-visible': { borderColor: tokens.maroon, outline: `2px solid ${tokens.maroon}` },
         }}
       >
-        {searchShortcutLabel()}
-      </Box>
-    </Box>
+        <SearchIcon aria-hidden="true" sx={{ fontSize: 20, color: tokens.textSecondary }} />
+        <Typography component="span" noWrap sx={{ flex: 1, minWidth: 0, fontSize: 14, color: tokens.textSecondary }}>
+          {SEARCH_LABEL}
+        </Typography>
+        <Box
+          component="kbd"
+          sx={{
+            display: { xs: 'none', sm: 'inline-block' }, fontFamily: 'inherit', fontSize: 12, color: tokens.textSecondary,
+            border: `1px solid ${tokens.border}`, borderRadius: '6px', px: 0.75, py: '2px', whiteSpace: 'nowrap',
+          }}
+        >
+          {searchShortcutLabel()}
+        </Box>
+      </ButtonBase>
+      <GlobalSearchDialog open={open} onClose={() => setOpen(false)} />
+    </>
   );
 };
 

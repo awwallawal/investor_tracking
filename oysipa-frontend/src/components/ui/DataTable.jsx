@@ -30,8 +30,13 @@ const defaultCompare = (a, b) => {
 // state, and an optional row link. It scrolls sideways inside its own box so
 // the page never does.
 //
-// columns: [{ key, label, render(row), sortable, sortValue(row), align, hideOnPhone, width }]
+// columns: [{ key, label, render(row), sortable, sortKey, sortValue(row), align, hideOnPhone, width }]
+// (sortKey: the sort's name when it differs from key, e.g. the server's sort key)
 // rowLink(row) → path: clicking the row (outside links and buttons) opens it.
+//
+// Controlled sort (story 11.15, the sort lives in the URL): pass `sort`
+// ({ key, direction } or null) and `onSortChange(next)`. With `manualSort` the
+// rows are shown in the order given (the server sorted them).
 const DataTable = ({
   columns,
   rows,
@@ -44,14 +49,19 @@ const DataTable = ({
   ariaLabel,
   initialSort = null, // { key, direction: 'asc' | 'desc' }
   resetKey, // back to the first page when this changes (e.g. a new search or filter)
+  sort: controlledSort,
+  onSortChange,
+  manualSort = false,
 }) => {
   const navigate = useNavigate();
-  const [sort, setSort] = useState(initialSort);
+  const [ownSort, setOwnSort] = useState(initialSort);
+  const controlled = typeof onSortChange === 'function';
+  const sort = controlled ? (controlledSort || null) : ownSort;
   const [page, setPage] = useState(0);
 
   const sorted = useMemo(() => {
-    if (!sort) return rows;
-    const col = columns.find((c) => c.key === sort.key);
+    if (!sort || manualSort) return rows;
+    const col = columns.find((c) => (c.sortKey || c.key) === sort.key);
     if (!col) return rows;
     const value = col.sortValue || ((row) => row[col.key]);
     const dir = sort.direction === 'desc' ? -1 : 1;
@@ -67,7 +77,7 @@ const DataTable = ({
         return (defaultCompare(va, vb) * dir) || (a.i - b.i);
       })
       .map(({ row }) => row);
-  }, [rows, columns, sort]);
+  }, [rows, columns, sort, manualSort]);
 
   // Back to the first page only when the caller's resetKey changes.
   const lastResetKey = useRef(resetKey);
@@ -88,12 +98,14 @@ const DataTable = ({
     ? sorted.slice(currentPage * pageSize, currentPage * pageSize + pageSize)
     : sorted;
 
+  const nextSort = (prev, key) => {
+    if (!prev || prev.key !== key) return { key, direction: 'asc' };
+    if (prev.direction === 'asc') return { key, direction: 'desc' };
+    return null;
+  };
   const toggleSort = (key) => {
-    setSort((prev) => {
-      if (!prev || prev.key !== key) return { key, direction: 'asc' };
-      if (prev.direction === 'asc') return { key, direction: 'desc' };
-      return null;
-    });
+    if (controlled) onSortChange(nextSort(sort, key));
+    else setOwnSort((prev) => nextSort(prev, key));
     setPage(0);
   };
 
@@ -154,7 +166,7 @@ const DataTable = ({
           <TableHead>
             <TableRow>
               {columns.map((col) => {
-                const active = sort?.key === col.key;
+                const active = sort?.key === (col.sortKey || col.key);
                 let ariaSort;
                 if (col.sortable) ariaSort = active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none';
                 return (
@@ -168,7 +180,7 @@ const DataTable = ({
                       <TableSortLabel
                         active={active}
                         direction={active ? sort.direction : 'asc'}
-                        onClick={() => toggleSort(col.key)}
+                        onClick={() => toggleSort(col.sortKey || col.key)}
                       >
                         {col.label}
                       </TableSortLabel>

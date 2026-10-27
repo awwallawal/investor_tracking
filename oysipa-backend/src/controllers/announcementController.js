@@ -18,9 +18,9 @@ const { isAdminRole, isAssignedTo, hasOperatorKey } = require('../middleware/acc
 const {
   sha256, findLinksTo, unlinkSnapshots, pullLinks,
 } = require('../services/evidenceLibrary');
-const { parseYear, yearRange } = require('../services/issueRegister');
 const { ensureAnnouncementFolder, checkSupportingInteractions } = require('../services/announcementRegister');
 const { MAX_URL_LENGTH } = require('../constants/announcementFields');
+const { runAnnouncements, unfilteredTotal } = require('../services/listQueries');
 
 const DENIED_MSG = 'Forbidden: You can only change investors assigned to you';
 const MAX_TEXT = 5000;
@@ -114,32 +114,17 @@ const detailJson = async (id) => {
   return json;
 };
 
-// @route GET /api/announcements?year=&oysipaNamed=&project=
+// @route GET /api/announcements — filters, search and sort from
+// services/listQueries.js (story 11.15): q, year, oysipaNamed, project, from,
+// to, sort=date|-date. Values not on a list are ignored. X-Total-Count = unfiltered total.
 exports.listAnnouncements = async (req, res) => {
   try {
-    const { year, oysipaNamed, project } = req.query || {};
-    const filter = {};
-    if (year !== undefined && year !== '') {
-      const y = parseYear(year);
-      if (!y) return res.status(400).json({ message: 'Invalid year filter.' });
-      filter.announcementDate = yearRange(y);
-    }
-    if (oysipaNamed !== undefined && oysipaNamed !== '') {
-      if (oysipaNamed !== 'true' && oysipaNamed !== 'false') return res.status(400).json({ message: 'Invalid OYSIPA named filter.' });
-      filter.oysipaNamed = oysipaNamed === 'true';
-    }
-    if (project !== undefined && project !== '') {
-      if (typeof project !== 'string' || !mongoose.isValidObjectId(project)) return res.status(400).json({ message: 'Invalid project filter.' });
-      filter.project = project;
-    }
-    const list = await InvestmentAnnouncement.find(filter)
-      .populate({
-        path: 'project',
-        select: 'projectTitle investor',
-        populate: { path: 'investor', select: 'investorName' },
-      })
-      .sort({ announcementDate: -1, createdAt: -1 });
-    return res.status(200).json(list);
+    const [{ docs }, total] = await Promise.all([
+      runAnnouncements(req.query || {}, { user: req.user }),
+      unfilteredTotal('announcements'),
+    ]);
+    res.set('X-Total-Count', String(total));
+    return res.status(200).json(docs);
   } catch (error) {
     return handleError(res, error);
   }

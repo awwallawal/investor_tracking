@@ -7,6 +7,10 @@ import { alpha } from '@mui/material/styles';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
 import { formatDate } from '../utils/dates';
 import { plural } from '../utils/evidenceUi';
+import { EVIDENCE_TYPES } from '../api/evidence';
+import {
+  DateRangeFilter, FacetFilter, SearchField, ToggleFilter,
+} from './ui/FilterBar';
 
 // Shared look for the Evidence library screens.
 
@@ -126,4 +130,23 @@ export const EmptyState = ({ icon, children }) => (
     {icon && <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}><IconTile icon={icon} color="accent" /></Box>}
     <Typography>{children}</Typography>
   </Paper>
+);
+
+// The evidence filter controls, shared by the folder page and the library.
+export const EvidenceFilters = ({ lq }) => (
+  <>
+    <ToggleFilter label="Untagged only" active={lq.values.untagged} onChange={(on) => lq.set({ untagged: on })} />
+    <FacetFilter label="Type" options={EVIDENCE_TYPES} selected={lq.values.type} onChange={(type) => lq.set({ type })} />
+    <DateRangeFilter label="Date" from={lq.values.from} to={lq.values.to} onChange={({ from, to }) => lq.set({ from, to })} />
+  </>
+);
+
+export const EvidenceSearchField = ({ lq }) => (
+  <SearchField
+    label="Search files"
+    placeholder="File name or what it is..."
+    value={lq.searchInput}
+    onChange={lq.setSearchInput}
+    onClear={lq.clearSearch}
+  />
 );

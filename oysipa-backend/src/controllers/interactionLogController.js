@@ -8,6 +8,7 @@ const { hasOperatorKey, canWriteInteraction } = require('../middleware/accessHel
 const { DENIED_MSG } = require('../middleware/projectWriteAccess');
 const { recordDeletions, recordActionGroups } = require('../utils/recordDeletion');
 const { parseHappenedDate } = require('../utils/happenedDate');
+const { runInteractions, unfilteredTotal } = require('../services/listQueries');
 const documentStorage = require('../services/documentStorage');
 const {
   withEvidenceFiles, findLinksTo, unlinkSnapshots, pullLinks,
@@ -251,17 +252,20 @@ exports.tagInteractionServices = async (req, res) => {
   }
 };
 
-// @desc    Get all interaction logs across all projects
+// @desc    Get all interaction logs across all projects. Filters, search and
+//          sort from services/listQueries.js (story 11.15): q, category,
+//          serviceCode, noCode, investor, loggedBy, from, to, year, sort=date|-date.
+//          X-Total-Count = unfiltered total.
 // @route   GET /api/interactions
 // @access  Private
 exports.getAllInteractionLogs = async (req, res) => {
   try {
-    const interactionLogs = await InteractionLog.find({})
-      .populate('loggedBy', 'name email')
-      .populate('project', 'projectTitle') // Populate project title for context
-      .populate('investor', 'investorName');
-
-    res.status(200).json(await withEvidenceFiles(sortByHappened(interactionLogs)));
+    const [{ docs }, total] = await Promise.all([
+      runInteractions(req.query || {}, { user: req.user }),
+      unfilteredTotal('interactions'),
+    ]);
+    res.set('X-Total-Count', String(total));
+    res.status(200).json(docs);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });

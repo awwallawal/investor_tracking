@@ -3,7 +3,7 @@
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { vi } from 'vitest';
 import EvidenceFolderPage from './EvidenceFolderPage';
 import Sidebar from '../components/Sidebar';
@@ -25,10 +25,12 @@ let untaggedCount;
 let popup;
 
 const mockApi = () => {
-  vi.spyOn(apiClient, 'get').mockImplementation(async (url) => {
+  vi.spyOn(apiClient, 'get').mockImplementation(async (url, config) => {
     if (url === '/api/evidence/untagged-count') return { data: { count: untaggedCount } };
-    if (url === '/api/evidence/folders/fold-1/files?untagged=1') return { data: { folder, files: [untaggedFile] } };
-    if (url === '/api/evidence/folders/fold-1/files') return { data: { folder, files: [untaggedFile, taggedFile] } };
+    if (url === '/api/views') return { data: [] };
+    if (url === '/api/evidence/folders/fold-1/files' && config?.params?.untagged === '1') return { data: { folder, files: [untaggedFile] }, headers: { 'x-total-count': '2' } };
+    if (url === '/api/evidence/folders/fold-1/files' && config?.params?.q) return { data: { folder, files: [taggedFile] }, headers: { 'x-total-count': '2' } };
+    if (url === '/api/evidence/folders/fold-1/files') return { data: { folder, files: [untaggedFile, taggedFile] }, headers: { 'x-total-count': '2' } };
     if (url === '/api/investors') return { data: [{ _id: 'inv-2', investorName: 'Bower Tower', assignedTo: 'someone-else' }, { _id: 'inv-1', investorName: 'Acme Agro', assignedTo: 'u1' }] };
     if (url === '/api/evidence/folders/top-1/files') return { data: { folder: { _id: 'top-1', name: 'Programmes and events', parent: null }, subfolders: [{ _id: 'fold-1', name: 'Forum 2025', fileCount: 2, untaggedCount: 1 }], files: [] } };
     if (url === '/api/interactions/investors/inv-2') throw Object.assign(new Error('500'), { response: { status: 500, data: { message: 'Server Error' } } });
@@ -38,8 +40,15 @@ const mockApi = () => {
   });
 };
 
+let location;
+const LocationProbe = () => {
+  location = useLocation();
+  return null;
+};
+
 const renderPage = (start = '/evidence/fold-1') => render(
   <MemoryRouter initialEntries={[start]}>
+    <LocationProbe />
     <Sidebar mobileOpen={false} onDrawerToggle={() => {}} />
     <Routes>
       <Route path="/evidence/:folderId" element={<EvidenceFolderPage />} />
@@ -90,14 +99,58 @@ describe('EvidenceFolderPage', () => {
     expect(screen.getByRole('button', { name: 'Add files' })).toBeInTheDocument();
   });
 
-  it('Untagged only filter asks for ?untagged=1', async () => {
+  it('Untagged only writes ?untagged=1 and asks the API for it', async () => {
     localStorage.setItem('token', tokenFor('Staff'));
     renderPage();
     await screen.findByText('programme.pdf');
-    await userEvent.click(screen.getByLabelText('Untagged only'));
-    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/folders/fold-1/files?untagged=1'));
+    expect(screen.getByText('2 of 2 files')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Untagged only' }));
+    expect(location.search).toBe('?untagged=1');
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/folders/fold-1/files', { params: { untagged: '1' } }));
     await waitFor(() => expect(screen.queryByText('programme.pdf')).not.toBeInTheDocument());
     expect(screen.getByText('forum-photo.jpg')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Untagged only' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('?q= and ?untagged=1 on load filter the request (global search link) and show chips', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage('/evidence/fold-1?q=programme.pdf&type=pdf,video');
+    expect(await screen.findByText('programme.pdf')).toBeInTheDocument();
+    expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/folders/fold-1/files', { params: { q: 'programme.pdf', type: 'pdf' } });
+    expect(screen.queryByText('forum-photo.jpg')).not.toBeInTheDocument();
+    expect(screen.getByText('Search: "programme.pdf"')).toBeInTheDocument();
+    expect(screen.getByText('Type: PDF')).toBeInTheDocument();
+    expect(screen.getByLabelText('Search files')).toHaveValue('programme.pdf');
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    await waitFor(() => expect(location.search).toBe(''));
+    expect(await screen.findByText('forum-photo.jpg')).toBeInTheDocument();
+  });
+
+  it('type facet and sort land in the URL and the request', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    renderPage('/evidence/fold-1?untagged=1');
+    await screen.findByText('forum-photo.jpg');
+    await userEvent.click(screen.getByRole('button', { name: 'Type' }));
+    await userEvent.click(await screen.findByRole('menuitemcheckbox', { name: /Image/ }));
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/folders/fold-1/files', { params: { untagged: '1', type: 'image' } }));
+    await userEvent.click(screen.getByRole('button', { name: /Sort:/ }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Name, A–Z' }));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/evidence/folders/fold-1/files', { params: { untagged: '1', type: 'image', sort: 'name' } }));
+    expect(location.search).toBe('?untagged=1&type=image&sort=name');
+  });
+
+  it('Export this view downloads the folder view with its filters', async () => {
+    localStorage.setItem('token', tokenFor('Staff'));
+    const created = vi.fn(() => 'blob:x');
+    const revoked = vi.fn();
+    Object.assign(URL, { createObjectURL: created, revokeObjectURL: revoked });
+    renderPage('/evidence/fold-1?untagged=1');
+    await screen.findByText('forum-photo.jpg');
+    apiClient.get.mockImplementationOnce(async () => ({ data: new Blob(['a,b']), headers: { 'content-disposition': 'attachment; filename="oysipa-evidence-2026-10-27.csv"' } }));
+    await userEvent.click(screen.getByRole('button', { name: 'Export this view (CSV)' }));
+    await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/api/export/evidence', { params: { untagged: '1', folder: 'fold-1' }, responseType: 'blob' }));
+    await waitFor(() => expect(created).toHaveBeenCalled());
   });
 
   it('Open opens a tab, then points it at the signed link from the API', async () => {

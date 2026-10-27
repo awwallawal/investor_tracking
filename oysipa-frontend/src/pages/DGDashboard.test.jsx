@@ -67,7 +67,7 @@ describe('DGDashboard (11.14 analytics)', () => {
     expect(within(saber).getByRole('link', { name: '0 of 5 in 2026' })).toHaveAttribute('href', '/announcements?year=2026&oysipaNamed=true');
     expect(within(saber).getByText('0 of 4 reported in 2026 resolved')).toBeInTheDocument();
     expect(within(saber).getByText('302 private files')).toBeInTheDocument();
-    expect(within(saber).getByRole('link', { name: '87 still need tagging' })).toHaveAttribute('href', '/evidence');
+    expect(within(saber).getByRole('link', { name: '87 still need tagging' })).toHaveAttribute('href', '/evidence?untagged=1');
   });
 
   it('charts are images labelled with their values, and bars link to the filtered list', async () => {
@@ -88,7 +88,8 @@ describe('DGDashboard (11.14 analytics)', () => {
     const fc = screen.getByRole('img', { name: /^New investors by first-contact year:/ });
     expect(fc).toHaveAttribute('aria-label', expect.stringContaining('2025 60'));
     expect(screen.getByText(/67 have no first-contact date yet/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'fill them in' })).toHaveAttribute('href', '/investors?organisationType=Investor');
+    expect(screen.getByRole('link', { name: 'fill them in' })).toHaveAttribute('href', '/investors?firstContactYear=none&organisationType=Investor');
+    expect(within(fc).getByRole('link', { name: '2025: 60' })).toHaveAttribute('href', '/investors?firstContactYear=2025&organisationType=Investor');
 
     const country = screen.getByRole('img', { name: /^Investors by country:/ });
     expect(within(country).getByRole('link', { name: 'Nigeria: 110' })).toHaveAttribute('href', '/investors?country=Nigeria&organisationType=Investor');
@@ -104,6 +105,37 @@ describe('DGDashboard (11.14 analytics)', () => {
 
     const services = screen.getByRole('img', { name: /^Services by SABER code:/ });
     expect(services).toHaveAttribute('aria-label', 'Services by SABER code: M1 0, M4 5, A7 8, V1 4');
+  });
+
+  it('pipeline value and jobs cards open the projects behind them (11.15)', async () => {
+    renderPage();
+    const headline = await screen.findByRole('region', { name: 'Headline numbers' });
+    const links = within(headline).getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(links).toContain('/projects?hasValue=1&organisationType=Investor');
+    expect(links).toContain('/projects?hasJobs=1&organisationType=Investor');
+  });
+
+  it('the sector chart switches between investors and projects (11.15)', async () => {
+    renderPage();
+    await screen.findByRole('img', { name: /^Investors by sector:/ });
+    const toggle = screen.getByRole('group', { name: 'Count by sector' });
+    expect(within(toggle).getByRole('button', { name: 'Investors' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(within(toggle).getByRole('button', { name: 'Projects' }));
+    const chart = await screen.findByRole('img', { name: /^Projects by sector:/ });
+    expect(within(chart).getByRole('link', { name: 'Agribusiness: 41' }))
+      .toHaveAttribute('href', '/projects?sector=Agribusiness&organisationType=Investor');
+    expect(screen.getByText(/123 of 183 projects have a sector/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Fix the 60 not recorded' })).toHaveAttribute('href', '/projects?sector=Not+recorded&organisationType=Investor');
+    expect(screen.queryByRole('img', { name: /^Investors by sector:/ })).not.toBeInTheDocument();
+  });
+
+  it('without a project-sector breakdown there is no toggle', async () => {
+    const data = makeOverview();
+    delete data.breakdowns.projectSector;
+    apiClient.get.mockResolvedValue({ data });
+    renderPage();
+    await screen.findByRole('img', { name: /^Investors by sector:/ });
+    expect(screen.queryByRole('group', { name: 'Count by sector' })).not.toBeInTheDocument();
   });
 
   it('switching the year refetches with ?year=; "All years" sends year=all', async () => {
@@ -135,6 +167,7 @@ describe('DGDashboard (11.14 analytics)', () => {
     expect(within(headline).queryByText('₦1.79tn')).not.toBeInTheDocument();
     expect(within(headline).getByText(/No ₦ equivalent: no rate for USD/)).toBeInTheDocument();
     expect(within(headline).getByRole('link', { name: 'Set rates' })).toHaveAttribute('href', '/admin');
+    expect(within(headline).getByRole('link', { name: 'See the projects' })).toHaveAttribute('href', '/projects?hasValue=1&organisationType=Investor');
   });
 
   it('out-of-date rates show a warning', async () => {

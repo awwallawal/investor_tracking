@@ -8,7 +8,7 @@ const InvestorIssue = require('../models/InvestorIssue');
 const InvestmentAnnouncement = require('../models/InvestmentAnnouncement');
 const { parseHappenedDate, stripTimestamps } = require('../utils/happenedDate');
 const { isSectorValue, resolveSector } = require('../constants/sectors');
-const { sectorCondition, canonicalSector } = require('../services/recordFilters');
+const { runProjects, unfilteredTotal } = require('../services/listQueries');
 
 // Story 11.14: a sent sector must be a list value. Returns an error message or null.
 const sectorError = (body) => {
@@ -61,37 +61,20 @@ const systemUpdateLog = async ({ projectId, userId, oldStatusId, newStatusId, ha
   await interactionLog.save();
 };
 
-// @desc    Get all projects, optionally filtered by lifecycleStatus and sector
-//          (sector=Not recorded matches projects with none; 11.14 click-through)
+// @desc    Get all projects. Filters, search and sort from services/listQueries.js
+//          (story 11.15): q, sector, lifecycleStatus, currency, hasValue,
+//          hasJobs, investor, officer, organisationType, sort. Values not on a
+//          list are ignored. X-Total-Count = unfiltered total.
 // @route   GET /api/projects
 // @access  Private
 exports.getProjects = async (req, res) => {
   try {
-    const { lifecycleStatus, sector } = req.query;
-    const filter = {};
-
-    if (sector !== undefined && sector !== '') {
-      if (!canonicalSector(sector)) {
-        return res.status(400).json({ message: 'Invalid sector filter.' });
-      }
-      Object.assign(filter, await sectorCondition(InvestmentProject, canonicalSector(sector)));
-    }
-
-    if (lifecycleStatus) {
-      const statusDoc = await LifecycleStatus.findOne({ name: lifecycleStatus });
-      if (statusDoc) {
-        filter.lifecycleStatus = statusDoc._id;
-      } else {
-        // If a status is provided but not found, return no projects.
-        return res.status(200).json([]);
-      }
-    }
-
-    const projects = await InvestmentProject.find(filter)
-      .populate('investor', 'investorName')
-      .populate('lifecycleStatus');
-
-    res.status(200).json(projects);
+    const [{ docs }, total] = await Promise.all([
+      runProjects(req.query || {}, { user: req.user }),
+      unfilteredTotal('projects'),
+    ]);
+    res.set('X-Total-Count', String(total));
+    res.status(200).json(docs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

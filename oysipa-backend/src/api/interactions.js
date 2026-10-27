@@ -8,8 +8,8 @@ const { requireStorage, singleDocument } = require('../middleware/documentUpload
 
 const canRead = authorize('Director-General', 'Portal-Admin', 'Staff');
 
-// Get all interaction logs across all projects
-router.get('/', auth, interactionLogController.getAllInteractionLogs);
+// Get all interaction logs across all projects (filters: story 11.15)
+router.get('/', auth, canRead, interactionLogController.getAllInteractionLogs);
 
 // Investor-level interactions (no project needed). Staff write only for
 // investors assigned to them (projectWriteAccess resolves :investorId).

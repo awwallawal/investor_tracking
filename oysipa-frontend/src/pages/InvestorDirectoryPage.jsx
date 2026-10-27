@@ -1,37 +1,44 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Alert,
   Box,
   Button,
+  ButtonBase,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
-  FormControl,
-  IconButton,
-  InputAdornment,
-  InputLabel,
+  FormControlLabel,
   Link,
-  MenuItem,
-  Select,
+  Popover,
+  Stack,
   TextField,
   Typography
 } from '@mui/material';
-import ClearIcon from '@mui/icons-material/Clear';
 import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import PageHeader from '../components/ui/PageHeader';
-import FilterBar from '../components/ui/FilterBar';
+import FilterBar, { FacetFilter, SearchField, ToggleFilter } from '../components/ui/FilterBar';
 import DataTable from '../components/ui/DataTable';
 import StatusBadge from '../components/ui/StatusBadge';
 import EmptyState from '../components/ui/EmptyState';
+import ViewTabs from '../components/ui/ViewTabs';
+import ExportButton from '../components/ExportButton';
 import InvestorForm from '../components/InvestorForm';
 import ImportInvestorsDialog from '../components/ImportInvestorsDialog';
 import { LEAD_SOURCES, ORGANISATION_TYPES, DEFAULT_ORGANISATION_TYPE } from '../constants/investorFields';
-import { SECTOR_VALUES } from '../constants/sectors';
+import { SECTOR_VALUES, NOT_RECORDED } from '../constants/sectors';
 import apiClient from '../api/api';
+import useListQuery from '../hooks/useListQuery';
+import useListData from '../hooks/useListData';
+import { OFFICER_PATTERN, resultCountLabel } from '../utils/listQuery';
+import { formatDate, todayLagos } from '../utils/dates';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
+import { tokens } from '../theme';
+import { INVESTOR_SPEC as INVESTOR_FILTERS, MAX_COUNTRY } from '../constants/listSpecs';
 
 // DG/Admin only: deletes the investor, its projects and interactions (reason required).
 const DeleteInvestorDialog = ({ investor, onClose, onDeleted }) => {
@@ -82,154 +89,167 @@ const DeleteInvestorDialog = ({ investor, onClose, onDeleted }) => {
     );
 };
 
-const SEARCH_DEBOUNCE_MS = 300;
+// URL filters (story 11.15; see GET /api/investors). Values not on a list are
+// ignored (not sent, no chip); the server ignores them too.
+const FIRST_YEAR = 2015;
+
+const facetPillSx = (active) => ({
+  font: 'inherit', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 0.5, px: 1.5, py: 0.75, borderRadius: '999px',
+  border: `1px solid ${active ? tokens.maroon : tokens.border}`, bgcolor: active ? tokens.maroonTint : '#fff',
+  color: active ? tokens.maroonDark : 'text.primary', maxWidth: '100%', whiteSpace: 'nowrap', '&:hover': { borderColor: tokens.maroon },
+});
+
+// Country is free text on the investor, so the filter takes typed countries
+// (matched like the analytics grouping: case and spaces ignored) plus "Not recorded".
+const CountryFilter = ({ selected, onChange }) => {
+  const [anchor, setAnchor] = useState(null);
+  const [text, setText] = useState('');
+  const options = [...new Set([NOT_RECORDED, ...selected])];
+  const add = () => {
+    // A comma would split the value in the URL.
+    const v = text.replace(/,/g, ' ').replace(/\s+/g, ' ').trim();
+    if (v && v.length <= MAX_COUNTRY && !selected.some((c) => c.toLowerCase() === v.toLowerCase())) onChange([...selected, v]);
+    setText('');
+  };
+  const active = selected.length > 0;
+  return (
+    <>
+      <ButtonBase
+        aria-haspopup="dialog"
+        aria-expanded={anchor ? 'true' : 'false'}
+        aria-label={active ? `Country: ${selected.join(', ')}` : 'Country'}
+        onClick={(e) => setAnchor(e.currentTarget)}
+        sx={facetPillSx(active)}
+      >
+        {active ? `Country · ${selected.length}` : 'Country'}
+        <ArrowDropDownIcon aria-hidden="true" sx={{ fontSize: 18, mr: -0.5 }} />
+      </ButtonBase>
+      <Popover
+        open={!!anchor}
+        anchorEl={anchor}
+        onClose={() => setAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        slotProps={{ paper: { role: 'dialog', 'aria-label': 'Country', sx: { p: 2, maxWidth: 'calc(100vw - 32px)' } } }}
+      >
+        <Stack spacing={1} sx={{ minWidth: { xs: 0, sm: 260 } }}>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              label="Type a country"
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, MAX_COUNTRY))}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+            />
+            <Button size="small" variant="contained" onClick={add} disabled={!text.trim()}>Add</Button>
+          </Stack>
+          {options.map((c) => (
+            <FormControlLabel
+              key={c}
+              control={(
+                <Checkbox
+                  size="small"
+                  checked={selected.includes(c)}
+                  onChange={() => onChange(selected.includes(c) ? selected.filter((v) => v !== c) : [...selected, c])}
+                />
+              )}
+              label={c}
+            />
+          ))}
+        </Stack>
+      </Popover>
+    </>
+  );
+};
+
+// Lifecycle status names (the "Stage" facet) and, for DG/Admin, the officers.
+const useInvestorFacetOptions = (canSeeStaff) => {
+  const [stages, setStages] = useState([]);
+  const [staff, setStaff] = useState([]);
+  useEffect(() => {
+    let active = true;
+    apiClient.get('/api/lifecycle-statuses')
+      .then(({ data }) => {
+        if (active && Array.isArray(data)) setStages(data.filter((s) => s && typeof s.name === 'string').map((s) => s.name));
+      })
+      .catch(() => {});
+    if (canSeeStaff) {
+      apiClient.get('/api/users/staff')
+        .then(({ data }) => {
+          if (active && Array.isArray(data)) setStaff(data.filter((u) => u && u._id && typeof u.name === 'string'));
+        })
+        .catch(() => {});
+    }
+    return () => { active = false; };
+  }, [canSeeStaff]);
+  return { stages, staff };
+};
+
+const yearOptions = () => {
+  const current = Number(todayLagos().slice(0, 4));
+  const out = [];
+  for (let y = current; y >= FIRST_YEAR; y -= 1) out.push({ value: String(y), label: String(y) });
+  out.push({ value: 'none', label: 'No date' });
+  return out;
+};
 
 const InvestorDirectoryPage = () => {
-    const [investors, setInvestors] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [deleting, setDeleting] = useState(null);
     const [success, setSuccess] = useState('');
     const [isImportOpen, setIsImportOpen] = useState(false);
-    // Search: the box updates at once; the request (and ?q= in the URL) follows
-    // after a 300 ms pause in typing.
-    const [searchParams, setSearchParams] = useSearchParams();
-    // Filters live in the URL (story 11.14 click-through from the dashboard):
-    // ?leadSource= &organisationType= &sector= &country=
-    // A value the server would refuse (not on its list, or a country over 100
-    // characters) is ignored: not sent and no chip.
-    const fromList = (name, list) => (list.includes(searchParams.get(name)) ? searchParams.get(name) : '');
-    const leadSource = fromList('leadSource', LEAD_SOURCES);
-    const organisationType = fromList('organisationType', ORGANISATION_TYPES);
-    const sector = fromList('sector', SECTOR_VALUES);
-    const rawCountry = (searchParams.get('country') || '').trim();
-    const country = rawCountry.length <= 100 ? rawCountry : '';
-    const [searchInput, setSearchInput] = useState(() => searchParams.get('q') || '');
-    const [q, setQ] = useState(() => (searchParams.get('q') || '').trim());
-    const [total, setTotal] = useState(null);
-    const [loaded, setLoaded] = useState(false);
-    const [fetchError, setFetchError] = useState('');
-    const urlQ = (searchParams.get('q') || '').trim();
-    // The q last written to (or read from) the URL: tells our own URL writes
-    // apart from back/forward or a link.
-    const lastUrlQ = useRef(urlQ);
-    const setParamsRef = useRef(setSearchParams);
-    setParamsRef.current = setSearchParams;
-    // Only the newest request may set the list (an older, slower one is dropped).
-    const requestId = useRef(0);
     const canDelete = isAdminRole(getCurrentUser()?.role);
     const canImport = canDelete; // DG/Portal-Admin only (server-enforced too)
 
-    // Sets (or with '' removes) URL filter params, keeping the others.
-    const setFilters = useCallback((changes) => {
-        setParamsRef.current((prev) => {
-            const nextParams = new URLSearchParams(prev);
-            Object.entries(changes).forEach(([k, v]) => {
-                if (v) nextParams.set(k, v); else nextParams.delete(k);
-            });
-            return nextParams;
-        }, { replace: true });
-    }, []);
-    const setLeadSource = (v) => setFilters({ leadSource: v });
-    const setOrganisationType = (v) => setFilters({ organisationType: v });
-    const setSector = (v) => setFilters({ sector: v });
-    const setCountry = (v) => setFilters({ country: v });
+    const lq = useListQuery(INVESTOR_FILTERS);
+    const { values } = lq;
+    const list = useListData('/api/investors', lq.apiParams, {
+        errorMessage: 'Could not load investors. Check your connection and try again.',
+    });
+    const investors = Array.isArray(list.data) ? list.data : [];
+    const { loaded, error: fetchError } = list;
+    const filtered = Object.keys(lq.apiParams).length > 0;
+    // Without the header (older server) an unfiltered list is its own total.
+    const total = list.total ?? (loaded && !filtered ? investors.length : null);
+    const { stages, staff } = useInvestorFacetOptions(canDelete);
 
-    const fetchInvestors = useCallback(async () => {
-        requestId.current += 1;
-        const id = requestId.current;
-        try {
-            const params = {
-                ...(leadSource && { leadSource }),
-                ...(organisationType && { organisationType }),
-                ...(sector && { sector }),
-                ...(country && { country }),
-                ...(q && { q }),
-            };
-            const response = Object.keys(params).length
-                ? await apiClient.get('/api/investors', { params })
-                : await apiClient.get('/api/investors');
-            if (id !== requestId.current) return;
-            setInvestors(response.data);
-            // Unfiltered total from the server; without the header (older
-            // server) an unfiltered list is its own total.
-            const header = response.headers?.['x-total-count'];
-            if (header !== undefined && Number.isFinite(Number(header))) setTotal(Number(header));
-            else if (Object.keys(params).length === 0) setTotal(response.data.length);
-            setLoaded(true);
-            setFetchError('');
-        } catch (error) {
-            console.error("Fetch error:", error);
-            if (id !== requestId.current) return;
-            const serverMessage = error?.response?.status === 400 && error.response.data?.message;
-            setFetchError(serverMessage || 'Could not load investors. Check your connection and try again.');
-        }
-    }, [leadSource, organisationType, sector, country, q]);
-
-    useEffect(() => {
-        const next = searchInput.trim();
-        if (next === q) return undefined;
-        const t = setTimeout(() => setQ(next), SEARCH_DEBOUNCE_MS);
-        return () => clearTimeout(t);
-    }, [searchInput, q]);
-
-    // q → URL (replace, so typing does not fill the history).
-    useEffect(() => {
-        if (lastUrlQ.current === q) return;
-        lastUrlQ.current = q;
-        setParamsRef.current((prev) => {
-            const nextParams = new URLSearchParams(prev);
-            if (q) nextParams.set('q', q); else nextParams.delete('q');
-            return nextParams;
-        }, { replace: true });
-    }, [q]);
-
-    // URL → q, when the URL changes from outside (back/forward, a link).
-    useEffect(() => {
-        if (urlQ === lastUrlQ.current) return;
-        lastUrlQ.current = urlQ;
-        setSearchInput(urlQ);
-        setQ(urlQ);
-    }, [urlQ]);
-
-    const clearSearch = () => {
-        setSearchInput('');
-        setQ('');
-    };
-
-    useEffect(() => {
-        fetchInvestors();
-    }, [fetchInvestors]);
+    const officerOptions = [
+        { value: 'me', label: 'Me' },
+        { value: 'unassigned', label: 'Unassigned' },
+        ...staff.map((u) => ({ value: u._id, label: u.name })),
+    ];
+    const officerLabel = (v) => (officerOptions.find((o) => o.value === v) || { label: 'another officer' }).label;
+    const years = useMemo(yearOptions, []);
 
     const handleSave = () => {
       setIsFormOpen(false);
-      fetchInvestors(); // Re-fetch investors to update the list
+      list.reload(); // Re-fetch investors to update the list
     };
 
     const handleDeleted = (investor, counts = {}) => {
         setDeleting(null);
         setSuccess(`Deleted ${investor.investorName}: ${counts.investors ?? 1} investor, ${counts.projects ?? 0} project(s), ${counts.interactions ?? 0} interaction(s).`);
-        fetchInvestors();
-    };
-
-    const clearAllFilters = () => {
-        setFilters({
-            leadSource: '', organisationType: '', sector: '', country: '',
-        });
-        clearSearch();
+        list.reload();
     };
 
     // Active filters as removable chips under the search box.
-    const chips = [
-        q && { key: 'q', label: `Search: "${q}"`, onRemove: clearSearch },
-        leadSource && { key: 'leadSource', label: `Lead source: ${leadSource}`, onRemove: () => setLeadSource('') },
-        organisationType && { key: 'organisationType', label: `Type: ${organisationType}`, onRemove: () => setOrganisationType('') },
-        sector && { key: 'sector', label: `Sector: ${sector}`, onRemove: () => setSector('') },
-        country && { key: 'country', label: `Country: ${country}`, onRemove: () => setCountry('') },
-    ].filter(Boolean);
+    const chips = lq.chips({
+        q: 'Search',
+        leadSource: 'Lead source',
+        organisationType: 'Type',
+        sector: 'Sector',
+        country: 'Country',
+        stage: 'Stage',
+        officer: { label: 'Officer', format: (v) => `Officer: ${officerLabel(v)}` },
+        firstContactYear: { label: 'First contact', format: (v) => (v === 'none' ? 'No first-contact date' : `First contact ${v}`) },
+        hasValue: { label: 'With a project value', format: () => 'With a project value' },
+        noContactDays: { label: 'No contact', format: (v) => `No contact in ${v}+ days` },
+        incomplete: { label: 'Incomplete records', format: () => 'Incomplete records' },
+    });
 
     const columns = [
         {
             key: 'investorName',
+            sortKey: 'name',
             label: 'Name',
             sortable: true,
             render: (investor) => {
@@ -251,7 +271,15 @@ const InvestorDirectoryPage = () => {
             },
         },
         { key: 'sector', label: 'Sector', sortable: true, hideOnPhone: true },
-        { key: 'countryOfOrigin', label: 'Country', sortable: true, hideOnPhone: true },
+        { key: 'countryOfOrigin', sortKey: 'country', label: 'Country', sortable: true, hideOnPhone: true },
+        {
+            key: 'firstContactDate',
+            sortKey: 'firstContact',
+            label: 'First contact',
+            sortable: true,
+            hideOnPhone: true,
+            render: (investor) => (investor.firstContactDate ? formatDate(investor.firstContactDate) : '—'),
+        },
         ...(canDelete ? [{
             key: 'actions',
             label: 'Actions',
@@ -265,22 +293,23 @@ const InvestorDirectoryPage = () => {
     ];
 
     const retry = (
-        <Button variant="outlined" onClick={() => fetchInvestors()}>Retry</Button>
+        <Button variant="outlined" onClick={() => list.reload()}>Retry</Button>
     );
 
     let emptyState;
     if (fetchError) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="Could not load investors" text={fetchError} action={retry} />;
-    else if (q) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title={`No investors match "${q}"`} text="Try another name, sector, place or contact." />;
-    else if (leadSource || organisationType || sector || country) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors match these filters" />;
+    else if (values.q) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title={`No investors match "${values.q}"`} text="Try another name, sector, place or contact." />;
+    else if (lq.activeCount > 0) emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors match these filters" />;
     else emptyState = <EmptyState icon={<ApartmentOutlinedIcon />} title="No investors yet" text="Register the first investor to start the directory." />;
 
     return (
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
             <PageHeader
                 eyebrow="Pipeline"
                 title="Investors"
                 actions={(
                     <>
+                        <ExportButton list="investors" params={lq.apiParams} />
                         {canImport && (
                             <Button variant="outlined" onClick={() => setIsImportOpen(true)}>
                                 Import investors
@@ -292,58 +321,42 @@ const InvestorDirectoryPage = () => {
                     </>
                 )}
             />
+            <ViewTabs
+                list="investors"
+                current={lq.filterKey}
+                canonical={lq.canonical}
+                saveQuery={lq.queryString}
+                onApply={lq.applyQuery}
+            />
             <FilterBar
                 search={(
-                    <TextField
-                        size="small"
+                    <SearchField
                         label="Search investors"
                         placeholder="Name, sector, place, contact..."
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        slotProps={{
-                            input: {
-                                endAdornment: searchInput ? (
-                                    <InputAdornment position="end">
-                                        <IconButton size="small" aria-label="Clear search" onClick={clearSearch} edge="end">
-                                            <ClearIcon fontSize="small" />
-                                        </IconButton>
-                                    </InputAdornment>
-                                ) : null,
-                            },
-                        }}
+                        value={lq.searchInput}
+                        onChange={lq.setSearchInput}
+                        onClear={lq.clearSearch}
                     />
                 )}
                 filters={(
                     <>
-                        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 0 240px' } }}>
-                            <InputLabel id="filter-leadSource-label">Lead source</InputLabel>
-                            <Select labelId="filter-leadSource-label" label="Lead source" value={leadSource} onChange={(e) => setLeadSource(e.target.value)}>
-                                <MenuItem value="">All lead sources</MenuItem>
-                                {LEAD_SOURCES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-                            </Select>
-                        </FormControl>
-                        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 0 200px' } }}>
-                            <InputLabel id="filter-organisationType-label">Organisation type</InputLabel>
-                            <Select labelId="filter-organisationType-label" label="Organisation type" value={organisationType} onChange={(e) => setOrganisationType(e.target.value)}>
-                                <MenuItem value="">All types</MenuItem>
-                                {ORGANISATION_TYPES.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                            </Select>
-                        </FormControl>
-                        <FormControl size="small" sx={{ flex: { xs: '1 1 100%', sm: '0 0 220px' } }}>
-                            <InputLabel id="filter-sector-label">Sector</InputLabel>
-                            <Select labelId="filter-sector-label" label="Sector" value={SECTOR_VALUES.includes(sector) ? sector : ''} onChange={(e) => setSector(e.target.value)}>
-                                <MenuItem value="">All sectors</MenuItem>
-                                {SECTOR_VALUES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-                            </Select>
-                        </FormControl>
+                        <FacetFilter label="Sector" options={SECTOR_VALUES} selected={values.sector} onChange={(v) => lq.set({ sector: v })} />
+                        <FacetFilter label="Stage" options={stages} selected={values.stage} onChange={(v) => lq.set({ stage: v })} emptyText="No stages" />
+                        <CountryFilter selected={values.country} onChange={(v) => lq.set({ country: v })} />
+                        <FacetFilter label="Lead source" options={LEAD_SOURCES} selected={values.leadSource} onChange={(v) => lq.set({ leadSource: v })} />
+                        <FacetFilter label="Type" options={ORGANISATION_TYPES} selected={values.organisationType} onChange={(v) => lq.set({ organisationType: v })} />
+                        <FacetFilter label="Officer" options={officerOptions} selected={values.officer} onChange={(v) => lq.set({ officer: v })} />
+                        <FacetFilter label="First contact" options={years} selected={values.firstContactYear} onChange={(v) => lq.set({ firstContactYear: v })} />
+                        <ToggleFilter label="With a project value" active={values.hasValue} onChange={(v) => lq.set({ hasValue: v })} />
+                        <ToggleFilter label="Incomplete records" active={values.incomplete} onChange={(v) => lq.set({ incomplete: v })} />
                     </>
                 )}
-                resultCount={loaded ? `${investors.length} of ${total ?? investors.length} investors` : null}
+                resultCount={loaded ? resultCountLabel(investors.length, total, 'investor') : null}
                 chips={chips}
-                onClearAll={clearAllFilters}
+                onClearAll={() => lq.clearAll()}
             />
             {fetchError && investors.length > 0 && (
-                <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => fetchInvestors()}>Retry</Button>}>
+                <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => list.reload()}>Retry</Button>}>
                     {fetchError}
                 </Alert>
             )}
@@ -357,7 +370,7 @@ const InvestorDirectoryPage = () => {
                 <ImportInvestorsDialog
                     open={isImportOpen}
                     onClose={() => setIsImportOpen(false)}
-                    onImported={() => fetchInvestors()}
+                    onImported={() => list.reload()}
                 />
             )}
             <DataTable
@@ -368,7 +381,10 @@ const InvestorDirectoryPage = () => {
                 loading={!loaded && !fetchError}
                 emptyState={emptyState}
                 pageSize={50}
-                resetKey={`${q}|${leadSource}|${organisationType}|${sector}|${country}`}
+                sort={lq.sort}
+                onSortChange={lq.setSort}
+                manualSort
+                resetKey={lq.filterKey}
             />
             {deleting && (
                 <DeleteInvestorDialog investor={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />

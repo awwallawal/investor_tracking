@@ -125,8 +125,9 @@ describe('Directory filters', () => {
     expect(await names('')).toHaveLength(4);
   });
 
-  it('bad filter value → 400', async () => {
-    await request(app).get('/api/investors?organisationType=Alien').set('Authorization', bearer(staffToken)).expect(400);
+  it('a filter value not on the list is ignored (11.15)', async () => {
+    expect(await names('?organisationType=Alien')).toHaveLength(4);
+    expect(await names('?organisationType=Alien,Intermediary')).toEqual(['Inter A']);
   });
 });
 

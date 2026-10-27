@@ -19,6 +19,9 @@ const changeLogRoutes = require('./api/changelog');
 const analyticsRoutes = require('./api/analytics');
 const fxRateRoutes = require('./api/fxRates');
 const sectorRoutes = require('./api/sectors');
+const viewRoutes = require('./api/views');
+const exportRoutes = require('./api/export');
+const searchRoutes = require('./api/search');
 
 const app = express();
 
@@ -31,8 +34,9 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: allowedOrigins,
-  // The directory reads the unfiltered investor total from this header.
-  exposedHeaders: ['X-Total-Count'],
+  // Lists read the unfiltered total from X-Total-Count; exports name their
+  // file in Content-Disposition (story 11.15).
+  exposedHeaders: ['X-Total-Count', 'Content-Disposition', 'X-Row-Count'],
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 app.use(cors(corsOptions));
@@ -94,6 +98,10 @@ app.use('/api/changelog', changeLogRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/fx-rates', fxRateRoutes);
 app.use('/api/sectors', sectorRoutes);
+// Story 11.15: saved views, CSV export of a list view, global search.
+app.use('/api/views', viewRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/search', searchRoutes);
 
 const PORT = process.env.PORT || 3001;
 

@@ -4,12 +4,14 @@ const mongoose = require('mongoose');
 // inserted; the hooks below refuse the Mongoose model/query/document update and
 // delete paths (and bulkWrite ops other than insertOne). Raw driver calls
 // (ChangeLog.collection.*) are NOT covered. There is no API to change it either.
-const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog', 'EvidenceFolder', 'EvidenceFile', 'InvestorIssue', 'InvestmentAnnouncement', 'Setting', 'LifecycleStatus'];
+const ENTITIES = ['Investor', 'InvestmentProject', 'InteractionLog', 'EvidenceFolder', 'EvidenceFile', 'InvestorIssue', 'InvestmentAnnouncement', 'Setting', 'LifecycleStatus', 'ChangeLog'];
+// 'ChangeLog' (story 11.15): only for `export` rows of the change log viewer.
 // upload: a file added in the Evidence library screen; link/unlink: a library
 // file linked to (or unlinked from) an investor / interaction.
 // create/update (story 11.10): written by the audit plugin (utils/auditPlugin.js)
 // and by migrations, with field-level `changes`.
-const ACTIONS = ['delete', 'import', 'upload', 'link', 'unlink', 'create', 'update'];
+// export (story 11.15): a CSV export of a list view (snapshot: list, filters, rowCount).
+const ACTIONS = ['delete', 'import', 'upload', 'link', 'unlink', 'create', 'update', 'export'];
 
 // byName of a row written with no user in the request context (e.g. a write
 // from a script that did not call runAs). Only these rows may have a null `by`.

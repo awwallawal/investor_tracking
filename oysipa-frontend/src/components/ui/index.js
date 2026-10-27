@@ -5,3 +5,7 @@ export { default as FilterBar } from './FilterBar';
 export { default as DataTable } from './DataTable';
 export { default as StatusBadge } from './StatusBadge';
 export { default as EmptyState } from './EmptyState';
+export { default as ViewTabs } from './ViewTabs';
+export {
+  FacetFilter, ToggleFilter, DateRangeFilter, SortMenu, SearchField,
+} from './FilterBar';

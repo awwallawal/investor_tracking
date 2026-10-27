@@ -3,7 +3,7 @@ import {
   fireEvent, render, screen, waitFor, within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { vi } from 'vitest';
 import ChangeLogPage from './ChangeLogPage';
 import apiClient from '../api/api';
@@ -29,7 +29,25 @@ const page = (rows, total = rows.length, p = 1) => ({
   },
 });
 
-const renderPage = () => render(<MemoryRouter><ChangeLogPage /></MemoryRouter>);
+let location;
+const LocationProbe = () => {
+  location = useLocation();
+  return null;
+};
+const renderPage = (start = '/changelog') => render(<MemoryRouter initialEntries={[start]}><LocationProbe /><ChangeLogPage /></MemoryRouter>);
+
+// Story 11.15: the filters are pill menus (single choice) and a date-range popover.
+const pick = async (facet, option) => {
+  await userEvent.click(screen.getByRole('button', { name: facet }));
+  await userEvent.click(await screen.findByRole('menuitemradio', { name: option }));
+};
+const setDates = async (from, to) => {
+  await userEvent.click(screen.getByRole('button', { name: /^Date/ }));
+  const dialog = await screen.findByRole('dialog', { name: 'Date' });
+  fireEvent.change(within(dialog).getByLabelText('From'), { target: { value: from } });
+  fireEvent.change(within(dialog).getByLabelText('To'), { target: { value: to } });
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
+};
 
 const USERS = [
   { _id: 'u-dg', name: 'DG User', role: 'Director-General' },
@@ -42,6 +60,7 @@ const HEALTHY = {
 const mockGet = (changelog, { health = HEALTHY } = {}) => vi.spyOn(apiClient, 'get').mockImplementation((url, config) => {
   if (url === '/api/users') return Promise.resolve({ data: USERS });
   if (url === '/api/changelog/health') return Promise.resolve({ data: health });
+  if (url === '/api/views') return Promise.resolve({ data: [] });
   return changelog(url, config);
 });
 
@@ -69,21 +88,46 @@ describe('ChangeLogPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { page: 2 } }));
 
-    await userEvent.click(screen.getByRole('combobox', { name: /record type/i }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Issue' }));
+    await pick('Record type', 'Issue');
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { entity: 'InvestorIssue', page: 1 } }));
 
-    await userEvent.click(screen.getByRole('combobox', { name: /action/i }));
-    await userEvent.click(await screen.findByRole('option', { name: 'update' }));
+    await pick('Action', 'update');
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { entity: 'InvestorIssue', action: 'update', page: 1 } }));
 
-    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-10-01' } });
-    fireEvent.change(screen.getByLabelText('To'), { target: { value: '2026-10-24' } });
+    await setDates('2026-10-01', '2026-10-24');
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', {
       params: {
         entity: 'InvestorIssue', action: 'update', from: '2026-10-01', to: '2026-10-24', page: 1,
       },
     }));
+    // Story 11.15: the filters live in the URL, with chips.
+    expect(location.search).toBe('?entity=InvestorIssue&action=update&from=2026-10-01&to=2026-10-24');
+    expect(screen.getByText('Record type: Issue')).toBeInTheDocument();
+    expect(screen.getByText('From 1 Oct 2026')).toBeInTheDocument();
+  });
+
+  it('filters in the URL on load are sent; unknown values are ignored; "export" is an action', async () => {
+    const get = mockGet(() => Promise.resolve(page([row(1, { action: 'export' })], 3)));
+    renderPage('/changelog?entity=Investor&action=export&by=u-staff&from=2026-10-01&to=bad');
+    await screen.findByTestId('changelog-row');
+    expect(get).toHaveBeenLastCalledWith('/api/changelog', {
+      params: {
+        entity: 'Investor', action: 'export', by: 'u-staff', from: '2026-10-01', page: 1,
+      },
+    });
+    expect(screen.getByText('3 changes')).toBeInTheDocument();
+    expect(await screen.findByText('Who: Desk Officer')).toBeInTheDocument();
+  });
+
+  it('Export this view sends the current filters (no page) to /api/export/changelog', async () => {
+    const get = mockGet(() => Promise.resolve(page([row(1)], 120)));
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() });
+    renderPage('/changelog?entity=InvestorIssue');
+    await screen.findByTestId('changelog-row');
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+    get.mockImplementationOnce(async () => ({ data: new Blob(['x']), headers: {} }));
+    await userEvent.click(screen.getByRole('button', { name: 'Export this view (CSV)' }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/api/export/changelog', { params: { entity: 'InvestorIssue' }, responseType: 'blob' }));
   });
 
   it('paging: "1–50 of 120", Previous disabled on page 1, Next disabled on the last page', async () => {
@@ -136,8 +180,7 @@ describe('ChangeLogPage', () => {
     const tr = await screen.findByTestId('changelog-row');
     expect(within(tr).getByText('Investor · create')).toBeInTheDocument();
     answer = page([]);
-    await userEvent.click(screen.getByRole('combobox', { name: /action/i }));
-    await userEvent.click(await screen.findByRole('option', { name: 'delete' }));
+    await pick('Action', 'delete');
     expect(await screen.findByText('No changes recorded for these filters.')).toBeInTheDocument();
   });
 
@@ -157,8 +200,7 @@ describe('ChangeLogPage review follow-ups', () => {
     renderPage();
     await screen.findByTestId('changelog-row');
     fail = true;
-    await userEvent.click(screen.getByRole('combobox', { name: /action/i }));
-    await userEvent.click(await screen.findByRole('option', { name: 'delete' }));
+    await pick('Action', 'delete');
     expect(await screen.findByText('Server Error')).toBeInTheDocument();
     expect(screen.queryByTestId('changelog-row')).not.toBeInTheDocument();
   });
@@ -168,8 +210,7 @@ describe('ChangeLogPage review follow-ups', () => {
     renderPage();
     await screen.findByTestId('changelog-row');
     expect(get).toHaveBeenCalledWith('/api/users');
-    await userEvent.click(screen.getByRole('combobox', { name: /who/i }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Desk Officer' }));
+    await pick('Who', 'Desk Officer');
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { by: 'u-staff', page: 1 } }));
     fireEvent.change(screen.getByLabelText('Batch id'), { target: { value: ' batch-7 ' } });
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { by: 'u-staff', batchId: 'batch-7', page: 1 } }));
@@ -182,7 +223,7 @@ describe('ChangeLogPage review follow-ups', () => {
     await userEvent.click(screen.getByRole('button', { name: '660000000000000000000001' }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { entityId: '660000000000000000000001', page: 1 } }));
     expect(screen.getByText('Record 660000000000000000000001')).toBeInTheDocument();
-    await userEvent.click(screen.getByTestId('CancelIcon'));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Record 660000000000000000000001' }));
     await waitFor(() => expect(get).toHaveBeenLastCalledWith('/api/changelog', { params: { page: 1 } }));
   });
 

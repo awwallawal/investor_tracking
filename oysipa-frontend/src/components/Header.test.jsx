@@ -1,9 +1,12 @@
 import React from 'react';
-import { render, screen, within, fireEvent } from '@testing-library/react';
+import {
+  render, screen, within, fireEvent, waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { vi } from 'vitest';
 import Header from './Header';
+import apiClient from '../api/api';
 
 // Unsigned JWT-shaped token; jwtDecode only reads the payload.
 const b64url = (obj) => btoa(JSON.stringify(obj)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -21,42 +24,56 @@ const renderHeader = (path = '/dashboard') => render(
   </MemoryRouter>
 );
 
-describe('Header — global search (placeholder until 11.15)', () => {
+describe('Header — global search (11.15)', () => {
   beforeEach(() => {
     localStorage.setItem('token', tokenWith({ id: 'u1', role: 'Director-General', name: 'Adeola Ade' }));
   });
-  afterEach(() => localStorage.removeItem('token'));
+  afterEach(() => {
+    localStorage.removeItem('token');
+    vi.restoreAllMocks();
+  });
 
-  it('has the placeholder and the Ctrl K hint', () => {
+  const searchDialog = () => screen.queryByRole('dialog', { name: 'Search everything' });
+
+  it('has the search trigger with its placeholder and the Ctrl K hint', () => {
     renderHeader();
-    expect(screen.getByLabelText('Search investors…')).toHaveAttribute('placeholder', 'Search investors…');
+    const trigger = screen.getByRole('button', { name: 'Search everything' });
+    expect(trigger).toHaveTextContent('Search investors, projects, issues, announcements, files…');
     expect(screen.getByText('Ctrl K')).toBeInTheDocument();
+    expect(searchDialog()).not.toBeInTheDocument();
   });
 
-  it('typing "agro" + Enter goes to /investors?q=agro', async () => {
+  it('clicking the box opens the search dialog with the input focused', async () => {
     renderHeader();
-    await userEvent.type(screen.getByLabelText('Search investors…'), 'agro{Enter}');
-    expect(screen.getByTestId('location')).toHaveTextContent('/investors?q=agro');
+    await userEvent.click(screen.getByRole('button', { name: 'Search everything' }));
+    expect(searchDialog()).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Search everything' })).toHaveFocus());
   });
 
-  it('text with spaces and symbols is encoded and trimmed', async () => {
+  it.each([['Ctrl K', { ctrlKey: true }], ['⌘K', { metaKey: true }]])('%s opens the search dialog', (label, mods) => {
     renderHeader();
-    await userEvent.type(screen.getByLabelText('Search investors…'), '  Lakeside & Co {Enter}');
-    expect(screen.getByTestId('location')).toHaveTextContent('/investors?q=Lakeside+%26+Co');
+    fireEvent.keyDown(window, { key: 'k', ...mods });
+    expect(searchDialog()).toBeInTheDocument();
   });
 
-  it('empty (or spaces only) + Enter → no navigation', async () => {
-    renderHeader();
-    const box = screen.getByLabelText('Search investors…');
-    await userEvent.type(box, '{Enter}');
-    await userEvent.type(box, '   {Enter}');
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/dashboard$/);
-  });
-
-  it('Ctrl K focuses the search box', () => {
+  it('typing in the dialog searches every record type and Enter opens the record', async () => {
+    const get = vi.spyOn(apiClient, 'get').mockResolvedValue({
+      data: {
+        q: 'iss-04',
+        groups: [{
+          type: 'issues', label: 'Issues', count: 1, seeAll: '/issues?q=iss-04',
+          items: [{ _id: 's1', title: 'ISS-04 · Synthetic Co', subtitle: 'Open', to: '/issues/s1' }],
+        }],
+      },
+    });
     renderHeader();
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    expect(screen.getByLabelText('Search investors…')).toHaveFocus();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search everything' }), { target: { value: 'iss-04' } });
+    expect(await screen.findByText('ISS-04 · Synthetic Co')).toBeInTheDocument();
+    expect(get).toHaveBeenCalledWith('/api/search', { params: { q: 'iss-04' } });
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Search everything' }), { key: 'Enter' });
+    expect(screen.getByTestId('location')).toHaveTextContent('/issues/s1');
+    await waitFor(() => expect(searchDialog()).not.toBeInTheDocument());
   });
 
   it('Ctrl K is ignored while another input has focus', () => {
@@ -70,6 +87,7 @@ describe('Header — global search (placeholder until 11.15)', () => {
     other.focus();
     fireEvent.keyDown(other, { key: 'k', ctrlKey: true });
     expect(other).toHaveFocus();
+    expect(searchDialog()).not.toBeInTheDocument();
   });
 
   it('Ctrl K is ignored while a dialog is open', () => {
@@ -80,7 +98,7 @@ describe('Header — global search (placeholder until 11.15)', () => {
       </MemoryRouter>
     );
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    expect(screen.getByLabelText('Search investors…')).not.toHaveFocus();
+    expect(searchDialog()).not.toBeInTheDocument();
   });
 
   it('shows "⌘K" on a Mac', () => {
@@ -88,17 +106,6 @@ describe('Header — global search (placeholder until 11.15)', () => {
     renderHeader();
     expect(screen.getByText('⌘K')).toBeInTheDocument();
     expect(screen.queryByText('Ctrl K')).not.toBeInTheDocument();
-    vi.restoreAllMocks();
-  });
-
-  it('Enter while an IME composition is open does not search', () => {
-    renderHeader();
-    const box = screen.getByLabelText('Search investors…');
-    fireEvent.change(box, { target: { value: 'agro' } });
-    fireEvent.keyDown(box, { key: 'Enter', keyCode: 229, isComposing: true });
-    expect(screen.getByTestId('location')).toHaveTextContent(/^\/dashboard$/);
-    fireEvent.keyDown(box, { key: 'Enter' });
-    expect(screen.getByTestId('location')).toHaveTextContent('/investors?q=agro');
   });
 
   it('has the compact OYSIPA mark (shown below md)', () => {
@@ -139,7 +146,7 @@ describe('Header — user chip', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     renderHeader();
     expect(screen.queryByRole('button', { name: /Account/ })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Search investors…')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Search everything' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Log out' }));
     expect(localStorage.getItem('token')).toBeNull();
     expect(screen.getByTestId('location')).toHaveTextContent('/login');
@@ -148,7 +155,7 @@ describe('Header — user chip', () => {
 
   it('no token → no search box and no user chip', () => {
     renderHeader();
-    expect(screen.queryByLabelText('Search investors…')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Search everything' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Account/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
   });

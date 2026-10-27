@@ -34,6 +34,7 @@ const PA = 'PA';
 const STAFF = 'Staff';
 const ALL = [DG, PA, STAFF];
 const ADMINS = [DG, PA];
+const NO_SUCH_ID = '0123456789abcdef01234567';
 
 let f; // fixtures, rebuilt before every test (jest.setup.js wipes the DB)
 let inviteSeq = 0;
@@ -252,6 +253,17 @@ const ROUTES = [
   { name: 'GET /api/fx-rates', method: 'get', path: () => '/api/fx-rates', allow: ALL },
   { name: 'POST /api/fx-rates', method: 'post', path: () => '/api/fx-rates', body: () => ({ currency: 'USD', rate: 1361.84, asOf: '2026-10-23', source: 'Matrix' }), allow: ADMINS },
   { name: 'GET /api/sectors', method: 'get', path: () => '/api/sectors', allow: ALL },
+  // Story 11.15: library-wide evidence files, saved views (ownership and
+  // sharing are checked in the controller: see views.test.js; a nonexistent id
+  // here → 404 for every role), CSV export (change log: DG/Admin) and search.
+  { name: 'GET /api/evidence/files', method: 'get', path: () => '/api/evidence/files?untagged=1', allow: ALL },
+  { name: 'GET /api/views', method: 'get', path: () => '/api/views?list=investors', allow: ALL },
+  { name: 'POST /api/views', method: 'post', path: () => '/api/views', body: () => ({ list: 'investors', name: 'Matrix view', query: 'sector=Agribusiness' }), allow: ALL },
+  { name: 'PUT /api/views/:id', method: 'put', path: () => `/api/views/${NO_SUCH_ID}`, body: () => ({ name: 'Renamed' }), allow: ALL },
+  { name: 'DELETE /api/views/:id', method: 'delete', path: () => `/api/views/${NO_SUCH_ID}`, allow: ALL },
+  { name: 'GET /api/export/:list (investors)', method: 'get', path: () => '/api/export/investors?sector=Agribusiness', allow: ALL },
+  { name: 'GET /api/export/:list (changelog)', method: 'get', path: () => '/api/export/changelog?entity=Investor', allow: ADMINS },
+  { name: 'GET /api/search', method: 'get', path: () => '/api/search?q=matrix', allow: ALL },
 ];
 
 const send = (route, ctx, token) => {
@@ -444,8 +456,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 74 unique entries', () => {
-    expect(ROUTES.length).toBe(74);
+  it('ROUTES list has 82 unique entries', () => {
+    expect(ROUTES.length).toBe(82);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

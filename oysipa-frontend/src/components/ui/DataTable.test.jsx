@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Routes, Route, useParams } from 'react-router-dom';
+import { vi } from 'vitest';
 import DataTable from './DataTable';
 import EmptyState from './EmptyState';
 
@@ -146,5 +147,29 @@ describe('DataTable', () => {
     window.getSelection().removeAllRanges();
     fireEvent.click(cell);
     expect(screen.getByText('detail 2')).toBeInTheDocument();
+  });
+});
+
+describe('DataTable controlled server sort (story 11.15)', () => {
+  it('shows rows in the given order, marks the URL sort, and reports the next sort', async () => {
+    const onSortChange = vi.fn();
+    const cols = [{ key: 'name', label: 'Name', sortable: true, sortKey: 'title' }, { key: 'jobs', label: 'Jobs', sortable: true }];
+    const { rerender } = render(
+      <MemoryRouter>
+        <DataTable columns={cols} rows={rows} manualSort sort={{ key: 'title', direction: 'desc' }} onSortChange={onSortChange} />
+      </MemoryRouter>
+    );
+    expect(names()).toEqual(['Bravo', 'alpha', 'Charlie']);
+    expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute('aria-sort', 'descending');
+    await userEvent.click(screen.getByRole('button', { name: /Name/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith(null);
+    await userEvent.click(screen.getByRole('button', { name: /Jobs/ }));
+    expect(onSortChange).toHaveBeenLastCalledWith({ key: 'jobs', direction: 'asc' });
+    rerender(
+      <MemoryRouter>
+        <DataTable columns={cols} rows={rows} manualSort sort={null} onSortChange={onSortChange} />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('columnheader', { name: /Name/ })).toHaveAttribute('aria-sort', 'none');
   });
 });
