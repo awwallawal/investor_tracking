@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Box,
   Card,
   Table,
   TableBody,
@@ -13,6 +14,7 @@ import {
   Typography,
 } from '@mui/material';
 import EmptyState from './EmptyState';
+import { tokens } from '../../theme';
 
 const hideOnPhoneSx = { display: { xs: 'none', sm: 'table-cell' } };
 
@@ -30,9 +32,10 @@ const defaultCompare = (a, b) => {
 // state, and an optional row link. It scrolls sideways inside its own box so
 // the page never does.
 //
-// columns: [{ key, label, render(row), sortable, sortKey, sortValue(row), align, hideOnPhone, width }]
+// columns: [{ key, label, render(row), sortable, sortKey, sortValue(row), align, hideOnPhone, width, cellSx }]
 // (sortKey: the sort's name when it differs from key, e.g. the server's sort key)
 // rowLink(row) → path: clicking the row (outside links and buttons) opens it.
+// embedded: inside a SectionCard (story 11.16), drawn without a card of its own.
 //
 // Controlled sort (story 11.15, the sort lives in the URL): pass `sort`
 // ({ key, direction } or null) and `onSortChange(next)`. With `manualSort` the
@@ -52,6 +55,10 @@ const DataTable = ({
   sort: controlledSort,
   onSortChange,
   manualSort = false,
+  embedded = false, // inside a SectionCard: no card of its own
+  rowProps, // row → extra props for its <tr> (e.g. a data-testid)
+  dense = false,
+  rowSx,
 }) => {
   const navigate = useNavigate();
   const [ownSort, setOwnSort] = useState(initialSort);
@@ -143,14 +150,15 @@ const DataTable = ({
         hover
         key={getRowKey(row)}
         onClick={rowLink ? (e) => handleRowClick(e, row) : undefined}
-        sx={rowLink ? { cursor: 'pointer' } : undefined}
+        sx={rowLink || rowSx ? { ...(rowLink && { cursor: 'pointer' }), ...rowSx } : undefined}
+        {...(rowProps ? rowProps(row) : {})}
       >
         {columns.map((col) => (
           <TableCell
             key={col.key}
             align={col.align}
             className={col.align === 'right' ? 'tabular-nums' : undefined}
-            sx={col.hideOnPhone ? hideOnPhoneSx : undefined}
+            sx={col.hideOnPhone || col.cellSx ? { ...(col.hideOnPhone ? hideOnPhoneSx : {}), ...col.cellSx } : undefined}
           >
             {col.render ? col.render(row) : row[col.key]}
           </TableCell>
@@ -159,10 +167,11 @@ const DataTable = ({
     ));
   }
 
+  const Wrapper = embedded ? Box : Card;
   return (
-    <Card sx={{ minWidth: 0 }}>
+    <Wrapper sx={{ minWidth: 0, ...(embedded && { borderTop: `1px solid ${tokens.rowDivider}` }) }}>
       <TableContainer sx={{ overflowX: 'auto', '&.MuiPaper-root, &': { border: 0, boxShadow: 'none' } }}>
-        <Table aria-label={ariaLabel} sx={minWidth ? { minWidth } : undefined}>
+        <Table aria-label={ariaLabel} size={dense ? 'small' : 'medium'} sx={minWidth ? { minWidth } : undefined}>
           <TableHead>
             <TableRow>
               {columns.map((col) => {
@@ -204,7 +213,7 @@ const DataTable = ({
           labelDisplayedRows={({ from, to, count }) => `Rows ${from}–${to} of ${count}`}
         />
       )}
-    </Card>
+    </Wrapper>
   );
 };
 

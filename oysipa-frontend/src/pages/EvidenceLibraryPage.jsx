@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
   Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel,
-  Link as MuiLink, MenuItem, Paper, Select, Stack, TextField, Typography,
+  Card, Link as MuiLink, MenuItem, Select, Stack, TextField, Typography,
 } from '@mui/material';
+import PageHeader from '../components/ui/PageHeader';
 import CreateNewFolderOutlined from '@mui/icons-material/CreateNewFolderOutlined';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
 import {
@@ -178,23 +179,22 @@ const EvidenceLibraryPage = () => {
   }), { files: 0, untagged: 0, folders: 0 });
 
   return (
-    <Box sx={{ maxWidth: 1200 }}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-end' } }}>
-        <Box>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>Evidence Library</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 560 }}>
-            Private files kept once, then tagged to investors, interactions and issues. Files open through a short-lived secure link.
-          </Typography>
-        </Box>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexShrink: 0 }}>
-          <ExportButton list="evidence" params={lq.apiParams} />
-          {isAdmin && (
-            <Button variant="contained" startIcon={<CreateNewFolderOutlined />} onClick={() => setCreating(true)}>
-              New folder
-            </Button>
-          )}
-        </Stack>
-      </Stack>
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader
+        eyebrow="SABER evidence"
+        title="Evidence Library"
+        subtitle="Private files kept once, then tagged to investors, interactions and issues. Files open through a short-lived secure link."
+        actions={(
+          <>
+            <ExportButton list="evidence" params={lq.apiParams} />
+            {isAdmin && (
+              <Button variant="contained" startIcon={<CreateNewFolderOutlined />} onClick={() => setCreating(true)}>
+                New folder
+              </Button>
+            )}
+          </>
+        )}
+      />
 
       <ViewTabs list="evidence" current={lq.filterKey} canonical={lq.canonical} saveQuery={lq.queryString} onApply={lq.applyQuery} />
       <FilterBar
@@ -224,11 +224,11 @@ const EvidenceLibraryPage = () => {
 
       <Stack spacing={{ xs: 2, sm: 3 }}>
         {folders.map((top) => (
-          <Paper key={top._id} component="section" variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3 }}>
+          <Card key={top._id} component="section" aria-label={top.name} sx={{ p: { xs: 2, sm: 3 } }}>
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: top.description ? 1 : 2 }}>
               <IconTile icon={FolderOutlined} />
               <Box sx={{ minWidth: 0 }}>
-                <Typography variant="h5" component="h2" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                <Typography variant="h6" component="h2" sx={{ fontSize: 18, overflowWrap: 'anywhere' }}>
                   <MuiLink component={RouterLink} to={`/evidence/${top._id}`} color="inherit" underline="hover">{top.name}</MuiLink>
                 </Typography>
                 <Typography variant="body2" color="text.secondary">{countLine(top.totalFiles, top.totalUntagged)}</Typography>
@@ -242,7 +242,7 @@ const EvidenceLibraryPage = () => {
             ) : (
               <Typography variant="body2" color="text.secondary">No subfolders. Open the folder to see its files.</Typography>
             )}
-          </Paper>
+          </Card>
         ))}
       </Stack>
       </>

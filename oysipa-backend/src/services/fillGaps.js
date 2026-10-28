@@ -6,6 +6,7 @@
 // computed here a second way. Saving never goes through this module: the page
 // uses the existing audited routes (PUT /api/projects/:id, PUT /api/investors/:id,
 // PATCH /api/interactions/:id).
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const {
   completenessFor, FIELDS, isCoded, yearEndOf, newestFirst,
@@ -36,6 +37,19 @@ const officerScope = (raw, user) => {
   const parsed = officerCondition(values, user);
   if (!parsed) return { investorFilter: NOTHING, officer: 'none' };
   return { investorFilter: parsed.condition, officer: parsed.applied.join(',') };
+};
+
+// `investor=<id>` (story 11.16, the investor page's completeness panel): one
+// investor's projects only, inside the officer scope. A bad id → nothing.
+// → { investorFilter, investor }
+const investorScope = (raw, investorFilter) => {
+  const value = firstParam(raw);
+  if (value === undefined || value === null || value === '') return { investorFilter, investor: null };
+  if (typeof value !== 'string' || !/^[0-9a-f]{24}$/i.test(value)) {
+    return { investorFilter: NOTHING, investor: null };
+  }
+  const own = { _id: new mongoose.Types.ObjectId(value) };
+  return { investorFilter: investorFilter ? { $and: [investorFilter, own] } : own, investor: value };
 };
 
 // Summary of the scope: the SABER report's completeness figures.
@@ -97,11 +111,13 @@ const fixableKeys = (missing, inv, access) => {
   });
 };
 
-// query: { officer, missing, q, count }; year resolved (number | null).
-// → { year, officer, missing, q, summary, total, groups } or, with count,
+// query: { officer, investor, missing, q, count }; year resolved (number | null).
+// → { year, officer, investor, missing, q, summary, total, groups } or, with count,
 //   { year, officer, count } (projects with something the user can fix).
 const buildFillGaps = async ({ year, query = {}, user }) => {
-  const { investorFilter, officer } = officerScope(query.officer, user);
+  const officerPart = officerScope(query.officer, user);
+  const { investorFilter, investor } = investorScope(query.investor, officerPart.investorFilter);
+  const { officer } = officerPart;
   const missing = [...new Set(listParam(query.missing, FIXABLE)
     .map((v) => FIXABLE.find((k) => k.toLowerCase() === v.toLowerCase()))
     .filter(Boolean))];
@@ -198,6 +214,7 @@ const buildFillGaps = async ({ year, query = {}, user }) => {
   return {
     year,
     officer,
+    investor,
     missing,
     q,
     summary: summaryOf(c),
@@ -207,5 +224,5 @@ const buildFillGaps = async ({ year, query = {}, user }) => {
 };
 
 module.exports = {
-  buildFillGaps, officerScope, FIXABLE, INVESTOR_KEYS, UNTAGGED_PER_ROW, FIELDS,
+  buildFillGaps, officerScope, investorScope, FIXABLE, INVESTOR_KEYS, UNTAGGED_PER_ROW, FIELDS,
 };

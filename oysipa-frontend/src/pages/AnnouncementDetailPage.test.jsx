@@ -44,12 +44,12 @@ describe('AnnouncementDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Synthetic Gazette' })).toBeInTheDocument();
     expect(screen.getByText('Synthetic Tower')).toBeInTheDocument();
     expect(screen.getByText('Synthetic Investor')).toBeInTheDocument();
-    expect(screen.getByText('Published: 23 Apr 2026 · recorded 24 Oct 2026')).toBeInTheDocument();
+    expect(screen.getByText('Published', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^23 Apr 2026 · recorded 24 Oct 2026$/);
     const link = screen.getByRole('link', { name: 'https://news.example.test/a' });
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(screen.getByRole('link', { name: 'https://archive.example.test/a' })).toHaveAttribute('target', '_blank');
-    expect(screen.getByText('What it says OYSIPA did: Facilitated approvals')).toBeInTheDocument();
+    expect(screen.getByText('What it says OYSIPA did', { selector: 'dt' }).nextElementSibling).toHaveTextContent(/^Facilitated approvals$/);
     expect(screen.getByText('Site visit with investor')).toBeInTheDocument();
     expect(screen.getByText('1 Mar 2026 · Synthetic Tower')).toBeInTheDocument();
     expect(screen.getByText('copy.pdf')).toBeInTheDocument();

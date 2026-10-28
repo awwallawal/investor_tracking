@@ -70,7 +70,7 @@ const pillSx = (active) => ({
   py: 0.75,
   borderRadius: '999px',
   border: `1px solid ${active ? tokens.maroon : tokens.border}`,
-  bgcolor: active ? tokens.maroonTint : '#fff',
+  bgcolor: active ? tokens.maroonTint : tokens.paper,
   color: active ? tokens.maroonDark : 'text.primary',
   maxWidth: '100%',
   whiteSpace: 'nowrap',

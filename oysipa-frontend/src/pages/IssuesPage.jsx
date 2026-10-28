@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
-  Alert, Box, Button, Chip, Link as MuiLink, Typography,
+  Alert, Box, Button, Link as MuiLink, Typography,
 } from '@mui/material';
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import IssueForm from '../components/IssueForm';
@@ -10,13 +10,14 @@ import PageHeader from '../components/ui/PageHeader';
 import FilterBar, { FacetFilter, SearchField, ToggleFilter } from '../components/ui/FilterBar';
 import DataTable from '../components/ui/DataTable';
 import EmptyState from '../components/ui/EmptyState';
+import StatusBadge from '../components/ui/StatusBadge';
 import ViewTabs from '../components/ui/ViewTabs';
 import ExportButton from '../components/ExportButton';
 import useListQuery from '../hooks/useListQuery';
 import useListData from '../hooks/useListData';
 import { OBJECT_ID, OFFICER_PATTERN, resultCountLabel } from '../utils/listQuery';
 import {
-  ISSUE_CATEGORIES, ISSUE_STATUSES, STATUS_COLORS, issueReference, issueYears,
+  ISSUE_CATEGORIES, ISSUE_STATUSES, issueReference, issueYears,
 } from '../constants/issueFields';
 import { dateLine } from '../utils/dates';
 import { useMdas } from '../api/mdas';
@@ -96,7 +97,7 @@ const IssuesPage = () => {
     },
     { key: 'category', label: 'Category', hideOnPhone: true },
     {
-      key: 'status', label: 'Status', render: (issue) => <Chip size="small" label={issue.status} color={STATUS_COLORS[issue.status] || 'default'} />,
+      key: 'status', label: 'Status', render: (issue) => <StatusBadge label={issue.status} />,
     },
   ];
 

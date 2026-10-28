@@ -143,7 +143,7 @@ const CompactMark = () => (
     title="OYSIPA Investor Tracker"
     sx={{
       display: { xs: 'grid', md: 'none' }, placeItems: 'center', flexShrink: 0, width: 32, height: 32,
-      borderRadius: '9px', bgcolor: tokens.maroon, color: '#fff', fontWeight: 700, fontSize: 15,
+      borderRadius: '9px', bgcolor: tokens.maroon, color: tokens.paper, fontWeight: 700, fontSize: 15,
     }}
   >
     <span aria-hidden="true">O</span>

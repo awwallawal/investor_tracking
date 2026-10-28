@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import apiClient from '../api/api';
 import { useNavigate } from 'react-router-dom';
-import { Container, Box, TextField, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material';
+import { Box, Card, TextField, Button, Typography, Alert, InputAdornment, IconButton } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { tokens } from '../theme';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -28,23 +29,38 @@ const LoginPage = () => {
     }
   };
 
+  // A centred card with the OYSIPA mark on the light background (story 11.16).
   return (
-    <Container component="main" maxWidth="xs">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Typography component="h1" variant="h2">
-          OYSIPA Portal
-        </Typography>
-        <Typography component="h2" variant="h5" sx={{ mt: 2 }}>
+    <Box
+      component="main"
+      sx={{
+        minHeight: '100vh', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2, py: 4, boxSizing: 'border-box',
+      }}
+    >
+      <Card sx={{ width: '100%', maxWidth: 420, p: { xs: 3, sm: 4 }, boxSizing: 'border-box' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+          <Box
+            aria-hidden="true"
+            sx={{
+              width: 44, height: 44, borderRadius: '12px', bgcolor: tokens.maroon, color: tokens.paper, display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: 20, flexShrink: 0,
+            }}
+          >
+            O
+          </Box>
+          <Box>
+            <Typography component="h1" sx={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}>
+              OYSIPA Portal
+            </Typography>
+            <Typography variant="body2" color="text.secondary">Investor Tracker</Typography>
+          </Box>
+        </Box>
+        <Typography component="h2" variant="h5" sx={{ fontSize: 22 }}>
           Sign In
         </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3, width: '100%' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          Use the email and password from your invitation.
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2, width: '100%' }}>
           <TextField
             margin="normal"
             required
@@ -93,8 +109,8 @@ const LoginPage = () => {
           </Button>
           {error && <Alert severity="error">{error}</Alert>}
         </Box>
-      </Box>
-    </Container>
+      </Card>
+    </Box>
   );
 };
 

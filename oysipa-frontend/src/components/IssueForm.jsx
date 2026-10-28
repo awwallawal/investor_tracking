@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, InputLabel,
+  Alert, Button, FormControl, InputLabel,
   MenuItem, Select, TextField,
 } from '@mui/material';
+import FormDialog, { FormSection } from './ui/FormDialog';
 import HappenedDateField from './HappenedDateField';
 import MdaPicker from './MdaPicker';
 import { useMdas } from '../api/mdas';
@@ -85,66 +86,79 @@ const IssueForm = ({ open, onClose, onSaved, investorId }) => {
   };
 
   return (
-    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Register issue</DialogTitle>
-      <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {!investorId && (
-          <FormControl fullWidth margin="dense" variant="standard" required>
-            <InputLabel id="issue-investor-label">Investor</InputLabel>
-            <Select labelId="issue-investor-label" value={form.investor} onChange={(e) => set('investor')(e.target.value)} disabled={saving}>
-              {investors.map((i) => <MenuItem key={i._id} value={i._id}>{i.investorName}</MenuItem>)}
-            </Select>
-          </FormControl>
-        )}
-        <FormControl fullWidth margin="dense" variant="standard" disabled={saving || !form.investor || projects.length === 0}>
-          <InputLabel id="issue-project-label">Project (optional)</InputLabel>
-          <Select labelId="issue-project-label" value={form.project} onChange={(e) => set('project')(e.target.value)}>
-            <MenuItem value="">No project</MenuItem>
-            {projects.map((p) => <MenuItem key={p._id} value={p._id}>{p.projectTitle}</MenuItem>)}
-          </Select>
-        </FormControl>
+    <FormDialog
+      open={open}
+      onClose={saving ? undefined : onClose}
+      title="Register issue"
+      help="An investor's complaint or blocker. Fields marked * are required."
+      maxWidth="sm"
+      actions={(
+        <>
+          <Button onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="contained" onClick={handleSave} disabled={!canSave}>{saving ? 'Saving...' : 'Register'}</Button>
+        </>
+      )}
+    >
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      <FormSection title={investorId ? 'Project' : 'Investor and project'} first>
+      {!investorId && (
         <FormControl fullWidth margin="dense" variant="standard" required>
-          <InputLabel id="issue-category-label">Category</InputLabel>
-          <Select labelId="issue-category-label" value={form.category} onChange={(e) => set('category')(e.target.value)} disabled={saving}>
-            {ISSUE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+          <InputLabel id="issue-investor-label">Investor</InputLabel>
+          <Select labelId="issue-investor-label" value={form.investor} onChange={(e) => set('investor')(e.target.value)} disabled={saving}>
+            {investors.map((i) => <MenuItem key={i._id} value={i._id}>{i.investorName}</MenuItem>)}
           </Select>
         </FormControl>
-        <TextField
-          label="Description"
-          required
-          fullWidth
-          multiline
-          minRows={3}
-          margin="dense"
-          variant="standard"
-          value={form.description}
-          onChange={(e) => set('description')(e.target.value)}
-          disabled={saving}
-        />
-        <HappenedDateField label="Date reported" value={form.dateReported} onChange={set('dateReported')} disabled={saving} />
-        <FormControl fullWidth margin="dense" variant="standard">
-          <InputLabel id="issue-via-label">Reported via</InputLabel>
-          <Select labelId="issue-via-label" value={form.reportedVia} onChange={(e) => set('reportedVia')(e.target.value)} disabled={saving}>
-            <MenuItem value="">Not recorded</MenuItem>
-            {REPORTED_VIA.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
-          </Select>
-        </FormControl>
-        {mdaError && <Alert severity="warning" sx={{ mt: 1 }}>Could not load the MDA list.</Alert>}
-        <MdaPicker
-          id="issue-mda"
-          mdas={mdas}
-          value={form.mdaResponsible}
-          onChange={set('mdaResponsible')}
-          disabled={saving}
-          placeholder="Search by name or abbreviation"
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={!canSave}>{saving ? 'Saving...' : 'Register'}</Button>
-      </DialogActions>
-    </Dialog>
+      )}
+      <FormControl fullWidth margin="dense" variant="standard" disabled={saving || !form.investor || projects.length === 0}>
+        <InputLabel id="issue-project-label">Project (optional)</InputLabel>
+        <Select labelId="issue-project-label" value={form.project} onChange={(e) => set('project')(e.target.value)}>
+          <MenuItem value="">No project</MenuItem>
+          {projects.map((p) => <MenuItem key={p._id} value={p._id}>{p.projectTitle}</MenuItem>)}
+        </Select>
+      </FormControl>
+      </FormSection>
+      <FormSection title="The issue">
+      <FormControl fullWidth margin="dense" variant="standard" required>
+        <InputLabel id="issue-category-label">Category</InputLabel>
+        <Select labelId="issue-category-label" value={form.category} onChange={(e) => set('category')(e.target.value)} disabled={saving}>
+          {ISSUE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+        </Select>
+      </FormControl>
+      <TextField
+        label="Description"
+        required
+        fullWidth
+        multiline
+        minRows={3}
+        margin="dense"
+        variant="standard"
+        value={form.description}
+        onChange={(e) => set('description')(e.target.value)}
+        disabled={saving}
+      />
+      </FormSection>
+      <FormSection title="Reported">
+      <HappenedDateField label="Date reported" value={form.dateReported} onChange={set('dateReported')} disabled={saving} />
+      <FormControl fullWidth margin="dense" variant="standard">
+        <InputLabel id="issue-via-label">Reported via</InputLabel>
+        <Select labelId="issue-via-label" value={form.reportedVia} onChange={(e) => set('reportedVia')(e.target.value)} disabled={saving}>
+          <MenuItem value="">Not recorded</MenuItem>
+          {REPORTED_VIA.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
+        </Select>
+      </FormControl>
+      </FormSection>
+      <FormSection title="Who acts">
+      {mdaError && <Alert severity="warning" sx={{ mt: 1 }}>Could not load the MDA list.</Alert>}
+      <MdaPicker
+        id="issue-mda"
+        mdas={mdas}
+        value={form.mdaResponsible}
+        onChange={set('mdaResponsible')}
+        disabled={saving}
+        placeholder="Search by name or abbreviation"
+      />
+      </FormSection>
+    </FormDialog>
   );
 };
 

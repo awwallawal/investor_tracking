@@ -193,6 +193,40 @@ describe('GET /api/fill-gaps: rows', () => {
     expect(titles((await get('?year=2025&q=%21%21')).body)).toEqual([]);
   });
 
+  it('investor=<id> (11.16): one investor\'s projects only; summary = the report restricted to them', async () => {
+    const alphaIds = [String(f.a1._id), String(f.a2._id)];
+    const [res, report] = await Promise.all([get(`?year=all&investor=${f.alpha._id}`, f.staffToken), buildSaberReport({ year: null })]);
+    expect(res.status).toBe(200);
+    expect(res.body.investor).toBe(String(f.alpha._id));
+    expect(titles(res.body)).toEqual(['Alpha Depot', 'Alpha Plant']);
+    expect(res.body.groups.map((g) => g.investor.id)).toEqual([String(f.alpha._id)]);
+    const expected = reportSummary(report, alphaIds);
+    expect({ checked: res.body.summary.checked, complete: res.body.summary.complete, missing: res.body.summary.missing }).toEqual(expected);
+    // A complete investor: checked, nothing missing.
+    const gamma = (await get(`?year=all&investor=${f.gamma._id}`)).body;
+    expect(gamma.summary).toMatchObject({ checked: 1, complete: 1 });
+    expect(gamma.groups).toEqual([]);
+    // Inside the officer scope: another officer's investor with officer=me → nothing.
+    expect((await get(`?year=all&officer=me&investor=${f.gamma._id}`, f.staffToken)).body.summary.checked).toBe(0);
+    // A bad id or an unknown id → nothing, never a wider scope.
+    const bad = (await get('?year=all&investor=not-an-id')).body;
+    expect(bad.summary.checked).toBe(0);
+    expect(bad.groups).toEqual([]);
+    expect((await get('?year=all&investor=0123456789abcdef01234567')).body.summary.checked).toBe(0);
+    // Without the filter, unchanged.
+    expect((await get('?year=all')).body.investor).toBeNull();
+  });
+
+  it('count=1&investor=<id>: the count is that investor only; the count shape is unchanged', async () => {
+    const alpha = await get(`?year=all&count=1&investor=${f.alpha._id}`);
+    expect(alpha.status).toBe(200);
+    expect(alpha.body).toEqual({ year: null, officer: 'all', count: 2, currentYear: expect.any(Number) });
+    expect((await get(`?year=all&count=1&investor=${f.gamma._id}`)).body.count).toBe(0);
+    expect((await get('?year=all&count=1&investor=not-an-id')).body.count).toBe(0);
+    const all = (await get('?year=all&count=1')).body.count;
+    expect(all).toBeGreaterThan(2);
+  });
+
   it('untagged interactions: dated up to year end, uncoded, officer logs, newest first, at most 5; investor-level once on the investor', async () => {
     const res = await get('?year=2025');
     const beta = rowOf(res.body, 'Beta Line');

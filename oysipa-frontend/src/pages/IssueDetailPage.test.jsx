@@ -49,7 +49,8 @@ describe('IssueDetailPage', () => {
     renderPage();
     expect(await screen.findByText('Synthetic Investor')).toBeInTheDocument();
     // 11.7c: names from GET /api/mdas, "(MoU)" when set, an unknown code as itself.
-    expect(await screen.findByText('MDA responsible: Ministry of Lands and Housing (MoU), Oyo State Housing Corporation, GONE')).toBeInTheDocument();
+    expect(await screen.findByText('Ministry of Lands and Housing (MoU), Oyo State Housing Corporation, GONE')).toBeInTheDocument();
+    expect(screen.getByText('Ministry of Lands and Housing (MoU), Oyo State Housing Corporation, GONE').previousElementSibling).toHaveTextContent(/^MDA responsible$/);
     expect(screen.getByText('Letter to Lands')).toBeInTheDocument();
     expect(screen.getByText(/3 Mar 2026 · Lands desk · recorded by Officer One on 3 Mar 2026/)).toBeInTheDocument();
     expect(screen.getByText('scan.pdf')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Alert, Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField,
+  Alert, Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography,
 } from '@mui/material';
 import { issueErrorMessage, updateIssue } from '../api/issues';
 import { ISSUE_STATUSES, NOTE_REQUIRED_MSG, NOTE_REQUIRED_STATUSES } from '../constants/issueFields';
@@ -31,8 +31,11 @@ const IssueStatusForm = ({ issue, onSaved }) => {
   return (
     <Box>
       {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'flex-start' } }}>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Resolved, Closed unresolved and Withdrawn need a note.
+      </Typography>
+      <Stack direction="column" spacing={1.5}>
+        <FormControl size="small" fullWidth>
           <InputLabel id="issue-status-label">Status</InputLabel>
           <Select labelId="issue-status-label" label="Status" value={status} onChange={(e) => setStatus(e.target.value)} disabled={saving}>
             {ISSUE_STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
@@ -50,7 +53,7 @@ const IssueStatusForm = ({ issue, onSaved }) => {
           error={needsNote}
           helperText={needsNote ? NOTE_REQUIRED_MSG : ' '}
         />
-        <Button variant="contained" onClick={save} disabled={saving || needsNote || !changed}>
+        <Button variant="contained" onClick={save} disabled={saving || needsNote || !changed} sx={{ alignSelf: 'flex-end' }}>
           {saving ? 'Saving...' : 'Save status'}
         </Button>
       </Stack>

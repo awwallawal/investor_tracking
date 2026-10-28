@@ -103,8 +103,13 @@ describe('DGDashboard (11.14 analytics)', () => {
     const lead = screen.getByRole('img', { name: /^Investors by lead source:/ });
     expect(lead).toHaveAttribute('aria-label', expect.stringContaining('Unknown (pre-T11) 85'));
 
-    const services = screen.getByRole('img', { name: /^Services by SABER code:/ });
-    expect(services).toHaveAttribute('aria-label', 'Services by SABER code: M1 0, M4 5, A7 8, V1 4');
+    // 11.16: each code tile opens its interactions list.
+    const services = screen.getByRole('list', { name: 'Services by SABER code' });
+    const tiles = within(services).getAllByRole('link');
+    // A 0-count code is not a link (its list would be empty); its tile still names it.
+    expect(tiles.map((a) => a.getAttribute('aria-label'))).toEqual(['M4: 5 interactions', 'A7: 8 interactions', 'V1: 4 interactions']);
+    expect(within(services).getByRole('link', { name: 'M4: 5 interactions' })).toHaveAttribute('href', '/interactions?officerLogs=1&dated=1&year=2026&serviceCode=M4');
+    expect(within(services).getByText('M1: 0 interactions')).toBeInTheDocument();
   });
 
   it('pipeline value and jobs cards open the projects behind them (11.15)', async () => {
@@ -231,5 +236,17 @@ describe('DGDashboard (11.14 analytics)', () => {
     renderPage();
     expect(await screen.findByText('Welcome Director-General')).toBeInTheDocument();
     expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+  });
+
+  it('services tiles: one interaction is singular (11.16 review)', async () => {
+    apiClient.get.mockImplementation((url) => {
+      if (url !== '/api/analytics/overview') return Promise.reject(new Error(`unexpected ${url}`));
+      const o = makeOverview();
+      o.yearOnYear.services.codes = [{ code: 'M2', count: 1, to: '/interactions?officerLogs=1&dated=1&year=2026&serviceCode=M2' }];
+      return Promise.resolve({ data: o });
+    });
+    renderPage();
+    const services = await screen.findByRole('list', { name: 'Services by SABER code' });
+    expect(within(services).getByRole('link', { name: 'M2: 1 interaction' })).toHaveAttribute('href', '/interactions?officerLogs=1&dated=1&year=2026&serviceCode=M2');
   });
 });

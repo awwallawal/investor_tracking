@@ -8,6 +8,7 @@ import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
 import { jwtDecode } from 'jwt-decode';
 import ProjectSummaryCard from '../components/ProjectSummaryCard';
 import PageHeader from '../components/ui/PageHeader';
+import ChartCard from '../components/ui/ChartCard';
 import StatCard from '../components/ui/StatCard';
 import EmptyState from '../components/ui/EmptyState';
 import { BarList } from '../components/analytics/Charts';
@@ -172,11 +173,7 @@ const StaffDashboard = () => {
 
       {mine && (
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', md: '1.6fr 1fr' }, mb: 4, alignItems: 'start' }}>
-          <Card component="section" aria-label="Needs your attention" sx={{ p: { xs: 2, sm: 3 } }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-              <Typography variant="h6" component="h2" sx={{ fontSize: 18 }}>Needs your attention</Typography>
-              <Typography variant="caption" color="text.secondary">worked out from your records</Typography>
-            </Box>
+          <ChartCard title="Needs your attention" legend={<Typography variant="caption" color="text.secondary">worked out from your records</Typography>}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {ATTENTION.map((row) => {
                 const a = mine.attention[row.key] || { count: 0 };
@@ -206,15 +203,13 @@ const StaffDashboard = () => {
                 );
               })}
             </Box>
-          </Card>
+          </ChartCard>
 
           <Box component="aside" sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <Card component="section" aria-label="My pipeline by stage" sx={{ p: { xs: 2, sm: 3 } }}>
-              <Typography variant="h6" component="h2" sx={{ fontSize: 18, mb: 2 }}>My pipeline by stage</Typography>
+            <ChartCard title="My pipeline by stage">
               <BarList title="My pipeline by stage" items={stageItems} emptyText="No projects on your investors yet." />
-            </Card>
-            <Card component="section" aria-label="Recent on my investors" sx={{ p: { xs: 2, sm: 3 } }}>
-              <Typography variant="h6" component="h2" sx={{ fontSize: 18, mb: 1.5 }}>Recent on my investors</Typography>
+            </ChartCard>
+            <ChartCard title="Recent on my investors">
               {mine.recent.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">No interactions logged yet.</Typography>
               ) : (
@@ -235,22 +230,22 @@ const StaffDashboard = () => {
                   ))}
                 </Box>
               )}
-            </Card>
+            </ChartCard>
             {glance && (
-              <Card component="section" aria-label="Oyo State at a glance" sx={{ p: { xs: 2, sm: 3 } }}>
-                <Typography variant="h6" component="h2" sx={{ fontSize: 18, mb: 1 }}>Oyo State at a glance</Typography>
+              <ChartCard title="Oyo State at a glance">
                 <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                   {`${formatCount(glance.investors)} investors · ${formatCount(glance.projects)} projects`}
                   <br />
                   {`${glanceValue.value} pipeline${glanceValue.equivalent ? ' (₦ equivalent)' : ''} · ${formatCount(glance.jobs.sum)} jobs pledged`}
                 </Typography>
-              </Card>
+              </ChartCard>
             )}
           </Box>
         </Box>
       )}
 
-      <Typography variant="h5" component="h2" gutterBottom>
+      <Box component="section" aria-labelledby="assigned-projects-title">
+      <Typography id="assigned-projects-title" variant="h6" component="h2" sx={{ fontSize: 18, mb: 1.5 }}>
         Your Assigned Projects
       </Typography>
       {projects.length === 0 ? (
@@ -268,6 +263,7 @@ const StaffDashboard = () => {
           ))}
         </Box>
       )}
+      </Box>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 3 }}>
         Staff see every investor but can change only the ones assigned to them; the counts here are theirs.
       </Typography>

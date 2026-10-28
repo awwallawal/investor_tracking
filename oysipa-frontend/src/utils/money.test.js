@@ -1,4 +1,4 @@
-import { formatMoney, formatMoneyCompact } from './money';
+import { formatMoney, formatMoneyCompact, ngnEquivalentOf } from './money';
 
 describe('formatMoney', () => {
   it('shows the currency with the value', () => {
@@ -40,5 +40,19 @@ describe('formatMoneyCompact', () => {
   it('shows a dash for a missing value', () => {
     expect(formatMoneyCompact(null)).toBe('—');
     expect(formatMoneyCompact(undefined, 'USD')).toBe('—');
+  });
+});
+
+describe('ngnEquivalentOf (11.16, as the dashboard)', () => {
+  const fx = { latest: { USD: { rate: 1500 } } };
+  it('adds other currencies at the latest rate; values of 0 and no currency (NGN) handled', () => {
+    const r = ngnEquivalentOf([
+      { estimatedValue: 1000 }, { estimatedValue: 10, currency: 'USD' }, { estimatedValue: 0, currency: 'USD' },
+    ], fx);
+    expect(r).toMatchObject({ value: 16000, ngnSum: 1000, count: 2, missing: [], excluded: [] });
+  });
+  it('a missing rate → value null and the currency listed; Other is left out', () => {
+    const r = ngnEquivalentOf([{ estimatedValue: 5, currency: 'EUR' }, { estimatedValue: 7, currency: 'Other' }, { estimatedValue: 3 }], fx);
+    expect(r).toMatchObject({ value: null, ngnSum: 3, missing: ['EUR'], excluded: ['Other'], excludedCount: 1 });
   });
 });

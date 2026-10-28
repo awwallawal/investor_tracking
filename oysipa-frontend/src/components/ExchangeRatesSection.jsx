@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Box, Button, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
+  Alert, Box, Button, MenuItem, TextField, Typography,
 } from '@mui/material';
+import SectionCard from './ui/SectionCard';
+import DataTable from './ui/DataTable';
 import { addFxRate, fetchFxRates, FX_CURRENCIES } from '../api/fxRates';
 import { formatDate, todayLagos } from '../utils/dates';
 import { formatMoney } from '../utils/money';
@@ -73,11 +75,7 @@ const ExchangeRatesSection = () => {
 
   const latest = state ? state.latest : {};
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="h6" component="h2">Exchange rates</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        Naira per unit, used for the dashboard&apos;s ₦ equivalent. The latest date for each currency is used.
-      </Typography>
+    <SectionCard title="Exchange rates" subtitle="Naira per unit, used for the dashboard's ₦ equivalent. The latest date for each currency is used.">
       {loadError && <Alert severity="error" sx={{ my: 1 }}>{loadError}</Alert>}
       {state && state.stale.length > 0 && (
         <Alert severity="warning" sx={{ my: 1 }}>
@@ -92,7 +90,7 @@ const ExchangeRatesSection = () => {
       {state && (
         <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', my: 2 }}>
           {FX_CURRENCIES.map((c) => (
-            <Box key={c} data-testid={`fx-latest-${c}`} sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+            <Box key={c} data-testid={`fx-latest-${c}`} sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', bgcolor: 'background.default', p: 1.5 }}>
               <Typography variant="overline" component="div">{c}</Typography>
               {latest[c] ? (
                 <>
@@ -127,30 +125,24 @@ const ExchangeRatesSection = () => {
       {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
       {saved && <Alert severity="success" sx={{ mt: 1 }}>Rate added.</Alert>}
       {state && state.history.length > 0 && (
-        <TableContainer sx={{ mt: 2 }}>
-          <Table size="small" aria-label="Exchange rate history">
-            <TableHead>
-              <TableRow>
-                <TableCell>Currency</TableCell>
-                <TableCell align="right">₦ per unit</TableCell>
-                <TableCell>Date</TableCell>
-                <TableCell>Source</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {state.history.map((h, i) => (
-                <TableRow key={`${h.currency}-${h.asOf}-${i}`}>
-                  <TableCell>{h.currency}</TableCell>
-                  <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatMoney(h.rate, 'NGN')}</TableCell>
-                  <TableCell>{formatDate(h.asOf)}</TableCell>
-                  <TableCell>{h.source}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Box sx={{ mt: 2, mx: { xs: -2, sm: -3 }, mb: { xs: -2, sm: -2.5 } }}>
+          <DataTable
+            ariaLabel="Exchange rate history"
+            embedded
+            dense
+            pageSize={null}
+            rows={state.history.map((h, i) => ({ ...h, rowKey: h._id || `${h.currency}-${h.asOf}-${i}` }))}
+            getRowKey={(h) => h.rowKey}
+            columns={[
+              { key: 'currency', label: 'Currency' },
+              { key: 'rate', label: '₦ per unit', align: 'right', render: (h) => formatMoney(h.rate, 'NGN') },
+              { key: 'asOf', label: 'Date', render: (h) => formatDate(h.asOf) },
+              { key: 'source', label: 'Source' },
+            ]}
+          />
+        </Box>
       )}
-    </Paper>
+    </SectionCard>
   );
 };
 

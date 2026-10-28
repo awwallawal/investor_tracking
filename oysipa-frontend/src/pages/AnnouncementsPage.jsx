@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
-  Alert, Autocomplete, Box, Button, Chip, Link as MuiLink, TextField, Typography,
+  Alert, Autocomplete, Box, Button, Link as MuiLink, TextField, Typography,
 } from '@mui/material';
 import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import AnnouncementForm from '../components/AnnouncementForm';
@@ -10,6 +10,7 @@ import PageHeader from '../components/ui/PageHeader';
 import FilterBar, { DateRangeFilter, FacetFilter, SearchField } from '../components/ui/FilterBar';
 import DataTable from '../components/ui/DataTable';
 import EmptyState from '../components/ui/EmptyState';
+import StatusBadge from '../components/ui/StatusBadge';
 import ViewTabs from '../components/ui/ViewTabs';
 import ExportButton from '../components/ExportButton';
 import useListQuery from '../hooks/useListQuery';
@@ -75,7 +76,7 @@ const AnnouncementsPage = () => {
       render: (a) => (
         <Box sx={{ minWidth: 0 }}>
           <MuiLink component={RouterLink} to={`/announcements/${a._id}`} sx={{ overflowWrap: 'anywhere' }}>{a.outlet}</MuiLink>
-          {a.oysipaNamed && <Chip size="small" color="success" label="OYSIPA named" sx={{ ml: 1 }} />}
+          {a.oysipaNamed && <Box component="span" sx={{ ml: 1 }}><StatusBadge label="OYSIPA named" /></Box>}
           {/* Phones: project and investor under the outlet. */}
           <Typography variant="body2" color="text.secondary" sx={{ display: { sm: 'none' }, overflowWrap: 'anywhere' }}>
             {[a.project?.projectTitle, a.project?.investor?.investorName].filter(Boolean).join(' · ')}

@@ -20,6 +20,11 @@ import { ANNOUNCEMENT_TARGET, ANNOUNCEMENT_BAND_LABELS } from '../constants/anno
 import { issueYears } from '../constants/issueFields';
 import { tokens } from '../theme';
 
+// Text for screen readers only.
+const visuallyHidden = {
+  border: 0, clip: 'rect(0 0 0 0)', height: '1px', margin: '-1px', overflow: 'hidden', padding: 0, position: 'absolute', whiteSpace: 'nowrap', width: '1px',
+};
+
 const TYPE_ONE = { Investor: 'investor', Intermediary: 'intermediary', 'Promotion agent': 'promotion agent', Contact: 'contact' };
 const TYPE_MANY = { Investor: 'investors', Intermediary: 'intermediaries', 'Promotion agent': 'promotion agents', Contact: 'contacts' };
 const ALL = ALL_YEARS;
@@ -350,22 +355,45 @@ const DGDashboard = () => {
             </>
           )}
         >
+          {/* Each tile opens the interactions behind its count (11.16). */}
           <Box
-            role="img"
-            aria-label={`Services by SABER code: ${services.codes.map((c) => `${c.code} ${c.count}`).join(', ')}`}
-            sx={{ display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' }}
+            component="ul"
+            aria-label="Services by SABER code"
+            sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 1, gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))' }}
           >
-            {services.codes.map((c) => (
-              <Box
-                key={c.code}
-                sx={{
-                  border: 1, borderColor: c.count ? tokens.primaryBorder : 'divider', bgcolor: c.count ? tokens.maroonTint : 'transparent', borderRadius: 2, p: 1, textAlign: 'center',
-                }}
-              >
-                <Box sx={{ fontSize: 12, color: 'text.secondary' }}>{c.code}</Box>
-                <Box sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: c.count ? tokens.maroon : 'text.secondary' }}>{c.count}</Box>
-              </Box>
-            ))}
+            {services.codes.map((c) => {
+              const tileSx = {
+                display: 'block', border: 1, borderColor: c.count ? tokens.primaryBorder : 'divider', bgcolor: c.count ? tokens.maroonTint : 'transparent', borderRadius: 2, p: 1, textAlign: 'center', textDecoration: 'none',
+              };
+              const name = `${c.code}: ${c.count} ${c.count === 1 ? 'interaction' : 'interactions'}`;
+              const body = (
+                <>
+                  <Box component="span" aria-hidden="true" sx={{ display: 'block', fontSize: 12, color: 'text.secondary' }}>{c.code}</Box>
+                  <Box component="span" aria-hidden="true" sx={{ display: 'block', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: c.count ? tokens.maroon : 'text.secondary' }}>{c.count}</Box>
+                </>
+              );
+              // A code with nothing tagged does not link to an empty list.
+              return (
+                <li key={c.code}>
+                  {c.to && c.count > 0 ? (
+                    <Link
+                      component={RouterLink}
+                      to={c.to}
+                      aria-label={name}
+                      underline="none"
+                      sx={{ ...tileSx, '&:hover': { borderColor: tokens.maroon } }}
+                    >
+                      {body}
+                    </Link>
+                  ) : (
+                    <Box sx={tileSx}>
+                      {body}
+                      <Box component="span" sx={visuallyHidden}>{name}</Box>
+                    </Box>
+                  )}
+                </li>
+              );
+            })}
           </Box>
         </ChartCard>
 

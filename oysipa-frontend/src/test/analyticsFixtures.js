@@ -6,7 +6,7 @@ const SECTORS = [
   ['Agribusiness', true, 27], ['Renewable energy', true, 5], ['Culture and tourism', true, 16],
   ['Manufacturing', false, 5], ['Other', false, 0],
 ];
-const codes = ['M1', 'M4', 'A7', 'V1'].map((code, i) => ({ code, count: [0, 5, 8, 4][i] }));
+const codes = ['M1', 'M4', 'A7', 'V1'].map((code, i) => ({ code, count: [0, 5, 8, 4][i], to: `/interactions?officerLogs=1&dated=1&year=2026&serviceCode=${code}` }));
 const change = (current, previous) => ({
   current, previous, delta: current - previous, pct: previous ? (current - previous) / previous : null, isNew: previous === 0 && current > 0,
 });

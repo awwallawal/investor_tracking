@@ -12,4 +12,11 @@ describe('StatusBadge', () => {
     render(<StatusBadge label="Investor" />);
     expect(screen.getByText('Investor')).toHaveAttribute('data-tone', 'default');
   });
+
+  it.each([
+    ['Open', 'warning'], ['In progress', 'info'], ['Resolved', 'success'], ['Withdrawn', 'default'], ['Active', 'success'], ['Director-General', 'primary'],
+  ])('without a tone, %s takes the shared status tone %s (11.16)', (label, tone) => {
+    render(<StatusBadge label={label} />);
+    expect(screen.getByText(label)).toHaveAttribute('data-tone', tone);
+  });
 });

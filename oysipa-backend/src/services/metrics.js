@@ -308,6 +308,8 @@ const isCreditLinkage = (l) => !!(l && l.creditLinkage);
 // fallback, as the counts). year null = every year, undated included.
 const yearLogParams = (year) => (year === null ? [] : [['dated', '1'], ['year', String(year)]]);
 const servicesLink = (year) => `/interactions?${new URLSearchParams([['officerLogs', '1'], ...yearLogParams(year), ...SERVICE_CODES.map((c) => ['serviceCode', c])]).toString()}`;
+// One SABER code's tile (11.16): the same list, that code only.
+const serviceCodeLink = (year, code) => `/interactions?${new URLSearchParams([['officerLogs', '1'], ...yearLogParams(year), ['serviceCode', code]]).toString()}`;
 const creditLinkageLink = (year) => `/interactions?${new URLSearchParams([['officerLogs', '1'], ['creditLinkage', '1'], ...yearLogParams(year)]).toString()}`;
 
 // Interaction counts per SABER code (each code on an interaction counts once).
@@ -426,7 +428,11 @@ const overview = async ({ year = null, today = todayLagos() } = {}) => {
     newInvestors: { ...newInvestors, coverage: coverage(newInvestors.total - newInvestors.undated, newInvestors.total), to: '/investors?organisationType=Investor' },
     interactions: { ...interactions, coverage: coverage(interactions.total - interactions.undated, interactions.total), to: '/interactions?officerLogs=1' },
     services: {
-      year, ...services, to: servicesLink(year), creditLinkageTo: creditLinkageLink(year),
+      year,
+      ...services,
+      codes: services.codes.map((c) => ({ ...c, to: serviceCodeLink(year, c.code) })),
+      to: servicesLink(year),
+      creditLinkageTo: creditLinkageLink(year),
     },
     change: year === null ? null : {
       year,
@@ -617,6 +623,7 @@ module.exports = {
   servicesByCode,
   isCreditLinkage,
   servicesLink,
+  serviceCodeLink,
   creditLinkageLink,
   resolveYear,
   isInvestorType,

@@ -3,6 +3,7 @@ import {
   Alert, Autocomplete, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField,
   Typography,
 } from '@mui/material';
+import StatusBadge from './ui/StatusBadge';
 import apiClient from '../api/api';
 import { addEvidenceLink, evidenceErrorMessage } from '../api/evidence';
 import ServiceCodePicker from './ServiceCodePicker';
@@ -86,7 +87,7 @@ const EvidenceTagDialog = ({ file, onClose, onSaved }) => {
         <Typography variant="caption" color="text.secondary" component="div">Current tags</Typography>
         <Stack direction="row" spacing={0.5} useFlexGap sx={{ flexWrap: 'wrap', mb: 1 }} aria-label="Current tags">
           {(file.links || []).length === 0
-            ? <Chip size="small" color="warning" label="Untagged" />
+            ? <StatusBadge label="Untagged" />
             : file.links.map((l) => <Chip key={l._id} size="small" label={tagLabel(l)} sx={{ maxWidth: '100%' }} />)}
         </Stack>
         <Autocomplete

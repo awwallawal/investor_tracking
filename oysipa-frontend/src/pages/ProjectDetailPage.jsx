@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Box, Typography, Button, Paper, Divider } from '@mui/material';
+import { Box, Button, Link as MuiLink } from '@mui/material';
 import ProjectForm from '../components/ProjectForm';
 import InteractionLogForm from '../components/InteractionLogForm';
 import InteractionLogList from '../components/InteractionLogList';
@@ -9,6 +9,11 @@ import apiClient from '../api/api';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
 import { dateLine } from '../utils/dates';
 import { formatMoney } from '../utils/money';
+import PageHeader from '../components/ui/PageHeader';
+import SectionCard from '../components/ui/SectionCard';
+import KeyFacts from '../components/ui/KeyFacts';
+import StatusBadge from '../components/ui/StatusBadge';
+import { STAGE_TONE } from '../components/ui/statusTones';
 
 const ProjectDetailPage = () => {
     const [project, setProject] = useState(null);
@@ -62,45 +67,52 @@ const ProjectDetailPage = () => {
         || (currentUser?.role === 'Staff' && !!currentUser?.id
             && String(assignedTo?._id || assignedTo || '') === currentUser.id);
 
+    const investor = project.investor;
+    const stage = project.lifecycleStatus?.name;
+    const facts = [
+        {
+            label: 'Investor',
+            value: investor?._id
+                ? <MuiLink component={Link} to={`/investors/${investor._id}`}>{investor.investorName || 'N/A'}</MuiLink>
+                : 'N/A',
+        },
+        { label: 'Description', value: project.description || 'N/A', multiline: true },
+        { label: 'Estimated value', value: formatMoney(project.estimatedValue, project.currency) },
+        { label: 'Estimated jobs', value: project.estimatedNumberOfJobs?.toLocaleString() || '0' },
+        { label: 'Location', value: project.location || 'N/A' },
+        project.sector ? { label: 'Sector', value: project.sector } : null,
+        { label: 'Lifecycle status', value: stage ? <StatusBadge label={stage} tone={STAGE_TONE} /> : 'N/A' },
+        { label: 'Date registered', value: dateLine(project, 'dateRegistered') || '—' },
+    ];
+
     return (
-        <Box sx={{ p: { xs: 0, sm: 3 } }}>
-            <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 } }}>
-                <Typography variant="h4" component="h1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>
-                    {project.projectTitle}
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Typography variant="h6">Investor:</Typography>
-                <Typography component={Link} to={`/investors/${project.investor?._id}`} sx={{ mb: 2 }}>
-                    {project.investor?.investorName || 'N/A'}
-                </Typography>
+        <Box sx={{ minWidth: 0 }}>
+            <PageHeader
+                breadcrumbs={[
+                    { label: 'Projects', to: '/projects' },
+                    ...(investor?._id ? [{ label: investor.investorName || 'Investor', to: `/investors/${investor._id}` }] : []),
+                    { label: project.projectTitle || 'Project' },
+                ]}
+                eyebrow="Project"
+                title={project.projectTitle}
+                meta={stage ? <StatusBadge label={stage} tone={STAGE_TONE} /> : null}
+                actions={(
+                    <>
+                        <Button variant="outlined" onClick={handleEditFormOpen}>Edit Project</Button>
+                        <Button variant="contained" onClick={handleLogFormOpen}>Log Interaction</Button>
+                    </>
+                )}
+            />
 
-                <Typography variant="h6" sx={{ mt: 2 }}>Description:</Typography>
-                <Typography sx={{ mb: 2 }}>{project.description || 'N/A'}</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <SectionCard title="Key facts">
+                    <KeyFacts items={facts} ariaLabel="Project facts" />
+                </SectionCard>
 
-                <Typography variant="h6">Estimated Value:</Typography>
-                <Typography sx={{ mb: 2 }}>{formatMoney(project.estimatedValue, project.currency)}</Typography>
+                <ProjectAnnouncements projectId={project._id} canWrite={canWrite} />
 
-                <Typography variant="h6">Estimated Number of Jobs:</Typography>
-                <Typography sx={{ mb: 2 }}>{project.estimatedNumberOfJobs?.toLocaleString() || '0'}</Typography>
-
-                <Typography variant="h6">Location:</Typography>
-                <Typography sx={{ mb: 2 }}>{project.location || 'N/A'}</Typography>
-
-                <Typography variant="h6">Lifecycle Status:</Typography>
-                <Typography sx={{ mb: 2 }}>{project.lifecycleStatus?.name || 'N/A'}</Typography>
-
-                <Typography variant="h6">Date Registered:</Typography>
-                <Typography sx={{ mb: 2 }}>{dateLine(project, 'dateRegistered')}</Typography>
-
-                <Box sx={{ mt: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                    <Button variant="contained" onClick={handleEditFormOpen}>Edit Project</Button>
-                    <Button variant="contained" color="secondary" onClick={handleLogFormOpen}>Log Interaction</Button>
-                </Box>
-            </Paper>
-
-            <ProjectAnnouncements projectId={project._id} canWrite={canWrite} />
-
-            <InteractionLogList projectId={project._id} canWrite={canWrite} canDelete={canDelete} key={logRefreshKey} />
+                <InteractionLogList projectId={project._id} canWrite={canWrite} canDelete={canDelete} key={logRefreshKey} />
+            </Box>
 
             <ProjectForm
                 open={isEditFormOpen}

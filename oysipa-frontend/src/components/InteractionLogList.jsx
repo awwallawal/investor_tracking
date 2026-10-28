@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Box, Typography, List, ListItem, ListItemText, Divider, Paper, Chip, Tooltip, Button,
+    Box, Typography, Chip, Tooltip, Button,
     Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, Alert, TextField, Stack,
 } from '@mui/material';
 import apiClient from '../api/api';
@@ -9,6 +9,8 @@ import { serviceWording } from '../constants/serviceCodes';
 import HappenedDateField from './HappenedDateField';
 import InteractionDocuments from './InteractionDocuments';
 import { dateLine, lagosDay } from '../utils/dates';
+import SectionCard from './ui/SectionCard';
+import { tokens } from '../theme';
 
 // "Tag services": edits only serviceCodes, creditLinkage and the happened date of one log.
 const TagServicesDialog = ({ log, onClose, onSaved }) => {
@@ -131,15 +133,31 @@ export const ServiceChips = ({ log }) => {
 
 // Lists the interactions of a project (projectId) or the timeline of an
 // investor (investorId: investor-level logs plus logs of its projects).
-const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete = false }) => {
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+// Controlled (story 11.16, the investor page loads the logs once): pass `logs`
+// (with `loading` / `error`) and `onLogsChange(update)`, where update(prevRows)
+// → next rows; nothing is fetched here.
+const InteractionLogList = ({
+    projectId, investorId, canWrite = false, canDelete = false,
+    logs: givenLogs, loading: givenLoading = false, error: givenError = null, onLogsChange,
+    title = 'Support Interaction History', actions,
+}) => {
+    const controlled = Array.isArray(givenLogs);
+    const [ownLogs, setOwnLogs] = useState([]);
+    const [ownLoading, setLoading] = useState(true);
+    const [ownError, setError] = useState(null);
     const [tagging, setTagging] = useState(null);
     const [deleting, setDeleting] = useState(null);
+    const logs = controlled ? givenLogs : ownLogs;
+    const loading = controlled ? givenLoading : ownLoading;
+    const error = controlled ? givenError : ownError;
+    // Controlled: the updater goes up so the page applies it to its newest rows.
+    const setLogs = (update) => {
+        if (controlled) onLogsChange?.((prev) => update(prev));
+        else setOwnLogs(update);
+    };
 
     useEffect(() => {
-        if (!projectId && !investorId) return;
+        if (controlled || (!projectId && !investorId)) return;
         const url = projectId
             ? `/api/projects/${projectId}/interactions`
             : `/api/interactions/investors/${investorId}`;
@@ -148,7 +166,7 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
             try {
                 setLoading(true);
                 const response = await apiClient.get(url);
-                setLogs(response.data);
+                setOwnLogs(response.data);
                 setError(null);
             } catch (err) {
                 setError('Failed to fetch interaction logs.');
@@ -159,7 +177,7 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
         };
 
         fetchLogs();
-    }, [projectId, investorId]);
+    }, [controlled, projectId, investorId]);
 
     const handleTagged = (updated) => {
         setLogs((prev) => prev.map((l) => (l._id === updated._id
@@ -192,60 +210,52 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
     }
 
     return (
-        <Paper sx={{ p: { xs: 2, sm: 3 }, mt: { xs: 2, sm: 4 } }}>
-            <Typography variant="h5" component="h2" gutterBottom>
-                Support Interaction History
-            </Typography>
+        <SectionCard title={title} actions={actions}>
             {logs.length === 0 ? (
                 <Typography>
                     {projectId ? 'No interaction logs found for this project.' : 'No interactions logged for this investor yet.'}
                 </Typography>
             ) : (
-                <List disablePadding>
+                <Box component="ul" aria-label="Interactions" sx={{ listStyle: 'none', m: 0, p: 0 }}>
                     {logs.map((log, index) => (
-                        <React.Fragment key={log._id}>
-                            {/* Actions sit on their own row under the text so they never cover it on phones. */}
-                            <ListItem alignItems="flex-start" disableGutters sx={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                                <ListItemText
-                                    sx={{ m: 0, overflowWrap: 'anywhere' }}
-                                    primary={log.description}
-                                    slotProps={{ secondary: { component: 'div' } }}
-                                    secondary={
-                                        <React.Fragment>
-                                            {log.project?.projectTitle && (
-                                                <Typography component="span" variant="body2" sx={{ display: 'block' }}>
-                                                    {`Project: ${log.project.projectTitle}`}
-                                                </Typography>
-                                            )}
-                                            <Typography
-                                                sx={{ display: 'block' }}
-                                                component="span"
-                                                variant="body2"
-                                                color="text.primary"
-                                            >
-                                                {`Category: ${log.category} | By: ${log.loggedBy?.name || 'Unknown User'} on ${dateLine(log, 'interactionDate')}`}
-                                            </Typography>
-                                            <ServiceChips log={log} />
-                                            <InteractionDocuments
-                                                log={log}
-                                                canWrite={canWrite}
-                                                canDelete={canDelete}
-                                                onDocumentsChange={(docs) => handleDocumentsChange(log._id, docs)}
-                                            />
-                                        </React.Fragment>
-                                    }
-                                />
-                                {(canWrite || canDelete) && (
-                                    <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
-                                        {canWrite && <Button size="small" variant="outlined" onClick={() => setTagging(log)}>Tag services</Button>}
-                                        {canDelete && <Button size="small" variant="outlined" color="error" onClick={() => setDeleting(log)}>Delete</Button>}
-                                    </Stack>
+                        /* Actions sit on their own row under the text so they never cover it on phones. */
+                        <Box
+                            component="li"
+                            key={log._id}
+                            sx={{ py: 1.75, borderTop: index ? `1px solid ${tokens.rowDivider}` : 0 }}
+                        >
+                            <Typography variant="body1" sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{log.description}</Typography>
+                            <Box sx={{ overflowWrap: 'anywhere', color: 'text.secondary' }}>
+                                {log.project?.projectTitle && (
+                                    <Typography component="span" variant="body2" sx={{ display: 'block' }}>
+                                        {`Project: ${log.project.projectTitle}`}
+                                    </Typography>
                                 )}
-                            </ListItem>
-                            {index < logs.length - 1 && <Divider component="li" />}
-                        </React.Fragment>
+                                <Typography
+                                    sx={{ display: 'block' }}
+                                    component="span"
+                                    variant="body2"
+                                    color="text.primary"
+                                >
+                                    {`Category: ${log.category} | By: ${log.loggedBy?.name || 'Unknown User'} on ${dateLine(log, 'interactionDate')}`}
+                                </Typography>
+                                <ServiceChips log={log} />
+                                <InteractionDocuments
+                                    log={log}
+                                    canWrite={canWrite}
+                                    canDelete={canDelete}
+                                    onDocumentsChange={(docs) => handleDocumentsChange(log._id, docs)}
+                                />
+                            </Box>
+                            {(canWrite || canDelete) && (
+                                <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }}>
+                                    {canWrite && <Button size="small" variant="outlined" onClick={() => setTagging(log)}>Tag services</Button>}
+                                    {canDelete && <Button size="small" variant="outlined" color="error" onClick={() => setDeleting(log)}>Delete</Button>}
+                                </Stack>
+                            )}
+                        </Box>
                     ))}
-                </List>
+                </Box>
             )}
             {tagging && (
                 <TagServicesDialog log={tagging} onClose={() => setTagging(null)} onSaved={handleTagged} />
@@ -253,7 +263,7 @@ const InteractionLogList = ({ projectId, investorId, canWrite = false, canDelete
             {deleting && (
                 <DeleteInteractionDialog log={deleting} onClose={() => setDeleting(null)} onDeleted={handleDeleted} />
             )}
-        </Paper>
+        </SectionCard>
     );
 };
 

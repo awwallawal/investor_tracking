@@ -42,4 +42,41 @@ export const formatMoneyCompact = (value, currency) => {
   return symbol ? `${symbol}${text}` : `${text} (${code})`;
 };
 
+// ₦ equivalent of some projects' values, as the dashboard works it out
+// (backend services/metrics.js ngnEquivalent): NGN plus every other currency at
+// its latest rate (fx.latest[c].rate, ₦ per unit). Only values > 0 count; a
+// project with no currency is NGN; "Other" is never converted (listed in
+// `excluded`). value is null when a rate is missing.
+// → { value, ngnSum, count, excludedCount (projects in `excluded`), missing, excluded, ratesUsed }
+export const ngnEquivalentOf = (projects, fx) => {
+  const latest = (fx && fx.latest) || {};
+  const sums = {};
+  const counts = {};
+  let count = 0;
+  (projects || []).forEach((p) => {
+    const v = Number(p?.estimatedValue);
+    if (!Number.isFinite(v) || v <= 0) return;
+    const c = p.currency || 'NGN';
+    sums[c] = (sums[c] || 0) + v;
+    counts[c] = (counts[c] || 0) + 1;
+    count += 1;
+  });
+  const missing = [];
+  const excluded = [];
+  const ratesUsed = [];
+  let total = sums.NGN || 0;
+  Object.entries(sums).forEach(([c, sum]) => {
+    if (c === 'NGN') return;
+    if (c === 'Other') { excluded.push(c); return; }
+    const r = latest[c];
+    if (!r || !Number.isFinite(Number(r.rate))) { missing.push(c); return; }
+    ratesUsed.push({ currency: c, rate: Number(r.rate), asOf: r.asOf });
+    total += sum * Number(r.rate);
+  });
+  const excludedCount = excluded.reduce((n, c) => n + counts[c], 0);
+  return {
+    value: missing.length ? null : total, ngnSum: sums.NGN || 0, count, excludedCount, missing, excluded, ratesUsed,
+  };
+};
+
 export default formatMoney;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
-  Box, Card, CardActionArea, CardContent, Chip, Paper, Stack, Typography,
+  Box, Card, CardActionArea, CardContent, Stack, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
@@ -11,6 +11,9 @@ import { EVIDENCE_TYPES } from '../api/evidence';
 import {
   DateRangeFilter, FacetFilter, SearchField, ToggleFilter,
 } from './ui/FilterBar';
+import StatCard from './ui/StatCard';
+import StatusBadge from './ui/StatusBadge';
+import { tokens } from '../theme';
 
 // Shared look for the Evidence library screens.
 
@@ -37,32 +40,17 @@ export const IconTile = ({ icon, color = 'primary', size = 40 }) => (
   </Box>
 );
 
-// One number with a label, for the summary strip.
+// One number with a label, for the summary strip (a compact StatCard).
 export const StatTile = ({ label, value, tone: toneName }) => (
-  <Paper
-    variant="outlined"
-    sx={(theme) => ({
-      p: { xs: 1.5, sm: 2 },
-      borderRadius: 3,
-      ...(toneName && {
-        borderColor: alpha(tone(theme, toneName), 0.5),
-        bgcolor: alpha(tone(theme, toneName), 0.06),
-      }),
-    })}
-  >
-    <Typography variant="body2" color="text.secondary">{label}</Typography>
-    <Typography component="p" sx={{ fontSize: { xs: 22, sm: 28 }, fontWeight: 700, lineHeight: 1.2 }}>{value}</Typography>
-  </Paper>
+  <StatCard compact label={label} value={value} tone={toneName === 'warning' ? 'warning' : 'default'} />
 );
 
 // Card for a folder (library page and subfolders of a folder page). The whole
 // card is one link; `ariaLabel` overrides its accessible name when given.
 export const FolderCard = ({ folder, ariaLabel }) => (
   <Card
-    variant="outlined"
     sx={(theme) => ({
       height: '100%',
-      borderRadius: 3,
       transition: 'border-color 150ms, box-shadow 150ms, transform 150ms',
       '&:hover': {
         borderColor: theme.palette.primary.main,
@@ -104,8 +92,8 @@ export const FolderCard = ({ folder, ariaLabel }) => (
           </Typography>
         )}
         <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 'auto', pt: 0.5, flexWrap: 'wrap' }}>
-          <Chip size="small" variant="outlined" label={plural(folder.fileCount, 'file')} />
-          {folder.untaggedCount > 0 && <Chip size="small" color="warning" label={`${folder.untaggedCount} untagged`} />}
+          <StatusBadge label={plural(folder.fileCount, 'file')} />
+          {folder.untaggedCount > 0 && <StatusBadge label={`${folder.untaggedCount} untagged`} tone="warning" />}
         </Stack>
       </CardContent>
     </CardActionArea>
@@ -121,15 +109,15 @@ export const FolderGrid = ({ children }) => (
 
 // Dashed empty state.
 export const EmptyState = ({ icon, children }) => (
-  <Paper
-    variant="outlined"
+  <Box
+    role="status"
     sx={{
-      p: { xs: 3, sm: 4 }, borderRadius: 3, borderStyle: 'dashed', textAlign: 'center', color: 'text.secondary',
+      p: { xs: 3, sm: 4 }, borderRadius: '16px', border: `1px dashed ${tokens.border}`, bgcolor: tokens.paper, textAlign: 'center', color: 'text.secondary',
     }}
   >
     {icon && <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}><IconTile icon={icon} color="accent" /></Box>}
     <Typography>{children}</Typography>
-  </Paper>
+  </Box>
 );
 
 // The evidence filter controls, shared by the folder page and the library.

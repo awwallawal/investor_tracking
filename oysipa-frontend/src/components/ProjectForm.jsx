@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Box, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import { Alert, Box, TextField, Button, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
+import FormDialog, { FormSection } from './ui/FormDialog';
 import apiClient from '../api/api';
 import HappenedDateField from './HappenedDateField';
 import { lagosDay } from '../utils/dates';
@@ -96,12 +97,24 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
     const statusChanged = !!projectData && !!formData.lifecycleStatus && formData.lifecycleStatus !== originalStatusId;
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-            <DialogTitle>{projectData ? 'Edit Project' : 'Add New Project'}</DialogTitle>
-            <DialogContent>
+        <FormDialog
+            open={open}
+            onClose={onClose}
+            title={projectData ? 'Edit Project' : 'Add New Project'}
+            help={projectData ? 'Changes are recorded in the change log. A status change also logs a System Update.' : 'Value, location and jobs count for SABER T5–T7.'}
+            actions={(
+                <>
+                    <Button onClick={onClose}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSave}>Save</Button>
+                </>
+            )}
+        >
                 {saveError && <Alert severity="error" sx={{ mb: 1 }}>{saveError}</Alert>}
+                <FormSection title="Project" first>
                 <TextField autoFocus margin="dense" name="projectTitle" label="Project Title" type="text" fullWidth variant="standard" value={formData.projectTitle || ''} onChange={handleChange} />
                 <TextField margin="dense" name="description" label="Description" type="text" fullWidth multiline rows={4} variant="standard" value={formData.description || ''} onChange={handleChange} />
+                </FormSection>
+                <FormSection title="Value and jobs">
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <FormControl margin="dense" variant="standard" sx={{ minWidth: 100 }}>
                         <InputLabel id="currency-label">Currency</InputLabel>
@@ -112,6 +125,8 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                     <TextField margin="dense" name="estimatedValue" label="Estimated Value" type="number" fullWidth variant="standard" value={formData.estimatedValue || 0} onChange={handleChange} />
                 </Box>
                 <TextField margin="dense" name="estimatedNumberOfJobs" label="Estimated Number of Jobs" type="number" fullWidth variant="standard" value={formData.estimatedNumberOfJobs || 0} onChange={handleChange} />
+                </FormSection>
+                <FormSection title="Sector and location">
                 <SectorFields
                     values={formData}
                     onChange={(name, value) => setFormData(prev => ({ ...prev, [name]: value }))}
@@ -119,6 +134,8 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                     helperText={projectData ? undefined : "Leave as is to use the investor's sector."}
                 />
                 <TextField margin="dense" name="location" label="Location" type="text" fullWidth variant="standard" value={formData.location || ''} onChange={handleChange} />
+                </FormSection>
+                <FormSection title="Status and dates">
                 <FormControl fullWidth margin="dense" variant="standard">
                     <InputLabel id="lifecycleStatus-label">Lifecycle Status</InputLabel>
                     <Select labelId="lifecycleStatus-label" name="lifecycleStatus" value={formData.lifecycleStatus || ''} onChange={handleChange}>
@@ -142,12 +159,8 @@ const ProjectForm = ({ open, onClose, onSave, projectData, investorId }) => {
                     onChange={setDateRegistered}
                     helperText={projectData && originalDateRegistered ? 'Correct it if the paper record shows another date' : 'Leave empty for today'}
                 />
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSave}>Save</Button>
-            </DialogActions>
-        </Dialog>
+                </FormSection>
+        </FormDialog>
     );
 };
 

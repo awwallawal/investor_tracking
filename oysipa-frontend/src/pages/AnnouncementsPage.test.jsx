@@ -51,7 +51,7 @@ describe('AnnouncementsPage', () => {
     expect(screen.getByText('23 Apr 2026')).toBeInTheDocument();
     expect(screen.getAllByText('Synthetic Tower').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Synthetic Investor').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('OYSIPA named', { selector: '.MuiChip-label' })).toHaveLength(1);
+    expect(screen.getAllByText('OYSIPA named', { selector: '[data-tone="success"]' })).toHaveLength(1);
     expect(get).toHaveBeenCalledWith('/api/announcements');
 
     await userEvent.click(screen.getByRole('button', { name: 'OYSIPA named' }));

@@ -1,9 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import {
-  Alert, Box, Breadcrumbs, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  FormControlLabel, Link as MuiLink, List, ListItem, ListItemText, Paper, Stack, TextField, Typography,
+  Alert, Box, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
+  FormControlLabel, Link as MuiLink, Stack, TextField, Typography,
 } from '@mui/material';
+import PageHeader from '../components/ui/PageHeader';
+import SectionCard from '../components/ui/SectionCard';
+import KeyFacts from '../components/ui/KeyFacts';
+import RowList from '../components/ui/RowList';
+import StatusBadge from '../components/ui/StatusBadge';
 import HappenedDateField from '../components/HappenedDateField';
 import AnnouncementForm from '../components/AnnouncementForm';
 import apiClient from '../api/api';
@@ -15,13 +20,6 @@ import { DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile } from '../api/
 import { notifyUntaggedChanged } from '../api/evidence';
 import { dateLine, formatDate } from '../utils/dates';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
-
-const Section = ({ title, children }) => (
-  <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-    <Typography variant="h6" component="h2" sx={{ mb: 1 }}>{title}</Typography>
-    {children}
-  </Paper>
-);
 
 const idOf = (v) => (v && typeof v === 'object' ? v._id : v);
 
@@ -218,93 +216,87 @@ const AnnouncementDetailPage = () => {
   const { project } = announcement;
   const supporting = announcement.supportingInteractions || [];
 
+  const facts = [
+    {
+      label: 'Project',
+      value: project ? <MuiLink component={RouterLink} to={`/projects/${project._id}`}>{project.projectTitle}</MuiLink> : 'Unknown',
+    },
+    investor ? {
+      label: 'Investor',
+      value: <MuiLink component={RouterLink} to={`/investors/${investor._id}`}>{investor.investorName}</MuiLink>,
+    } : null,
+    { label: 'Published', value: dateLine(announcement, 'announcementDate') },
+    { label: 'Outlet', value: announcement.outlet },
+    { label: 'Link', value: announcement.url ? <ExternalLink href={announcement.url} /> : 'None' },
+    { label: 'Archived copy', value: announcement.archivedCopyUrl ? <ExternalLink href={announcement.archivedCopyUrl} /> : 'None' },
+    { label: 'OYSIPA named', value: announcement.oysipaNamed ? 'Yes' : 'No' },
+    announcement.oysipaRoleText ? { label: 'What it says OYSIPA did', value: announcement.oysipaRoleText, multiline: true } : null,
+  ];
+
   return (
-    <Box>
-      <Breadcrumbs sx={{ mb: 1 }}>
-        <MuiLink component={RouterLink} to="/announcements">Investment announcements</MuiLink>
-        <Typography color="text.primary">Announcement</Typography>
-      </Breadcrumbs>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
-        <Box>
-          <Typography variant="h4" component="h1" sx={{ overflowWrap: 'anywhere' }}>{announcement.outlet}</Typography>
-          <Typography color="text.secondary">{dateLine(announcement, 'announcementDate')}</Typography>
-          <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} useFlexGap>
-            {announcement.oysipaNamed
-              ? <Chip color="success" label="OYSIPA named" />
-              : <Chip variant="outlined" label="OYSIPA not named" />}
-          </Stack>
-        </Box>
-        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }} useFlexGap>
-          {canWrite && <Button variant="outlined" onClick={() => setEditing(true)}>Edit</Button>}
-          {isAdmin && <Button color="error" onClick={() => setDeleting(true)}>Delete</Button>}
-        </Stack>
-      </Stack>
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader
+        breadcrumbs={[{ label: 'Investment announcements', to: '/announcements' }, { label: 'Announcement' }]}
+        eyebrow="Announcement"
+        title={announcement.outlet}
+        subtitle={dateLine(announcement, 'announcementDate')}
+        meta={<StatusBadge label={announcement.oysipaNamed ? 'OYSIPA named' : 'OYSIPA not named'} />}
+        actions={(canWrite || isAdmin) ? (
+          <>
+            {canWrite && <Button variant="outlined" onClick={() => setEditing(true)}>Edit</Button>}
+            {isAdmin && <Button variant="outlined" color="error" onClick={() => setDeleting(true)}>Delete</Button>}
+          </>
+        ) : null}
+      />
 
       {actionError && <Alert severity="error" sx={{ mb: 2 }}>{actionError}</Alert>}
       {notice && <Alert severity="info" sx={{ mb: 2 }} onClose={() => setNotice('')}>{notice}</Alert>}
 
-      <Section title="Announcement">
-        <Typography variant="body2">
-          {'Project: '}
-          {project ? <MuiLink component={RouterLink} to={`/projects/${project._id}`}>{project.projectTitle}</MuiLink> : 'Unknown'}
-        </Typography>
-        {investor && (
-          <Typography variant="body2">
-            {'Investor: '}
-            <MuiLink component={RouterLink} to={`/investors/${investor._id}`}>{investor.investorName}</MuiLink>
-          </Typography>
-        )}
-        <Typography variant="body2">{`Published: ${dateLine(announcement, 'announcementDate')}`}</Typography>
-        <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{`Outlet: ${announcement.outlet}`}</Typography>
-        <Typography variant="body2" component="div">
-          {'Link: '}
-          {announcement.url ? <ExternalLink href={announcement.url} /> : 'None'}
-        </Typography>
-        <Typography variant="body2" component="div">
-          {'Archived copy: '}
-          {announcement.archivedCopyUrl ? <ExternalLink href={announcement.archivedCopyUrl} /> : 'None'}
-        </Typography>
-        <Typography variant="body2">{`OYSIPA named: ${announcement.oysipaNamed ? 'Yes' : 'No'}`}</Typography>
-        {announcement.oysipaRoleText && (
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mt: 1 }}>{`What it says OYSIPA did: ${announcement.oysipaRoleText}`}</Typography>
-        )}
-        {announcement.createdBy?.name && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`Recorded by ${announcement.createdBy.name} on ${formatDate(announcement.createdAt)}`}</Typography>
-        )}
-        {announcement.importNote && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`Import note: ${announcement.importNote}`}</Typography>}
-      </Section>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, alignItems: 'flex-start' }}>
+        <Box sx={{ flex: '999 1 480px', minWidth: 0 }}>
+          <SectionCard title="Announcement">
+            <KeyFacts items={facts} ariaLabel="Announcement facts" />
+            {announcement.createdBy?.name && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>{`Recorded by ${announcement.createdBy.name} on ${formatDate(announcement.createdAt)}`}</Typography>
+            )}
+            {announcement.importNote && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`Import note: ${announcement.importNote}`}</Typography>}
+          </SectionCard>
+        </Box>
 
-      <Section title="Supporting interactions">
-        {supporting.length === 0 && <Typography color="text.secondary">No interactions linked.</Typography>}
-        <List dense disablePadding>
-          {supporting.map((l) => (
-            <ListItem
-              key={l._id}
-              disableGutters
-              secondaryAction={canWrite ? <Button size="small" onClick={() => handleUnlink(l)}>Unlink</Button> : null}
-            >
-              <ListItemText
-                primary={l.description || l.category || 'Interaction'}
-                secondary={[formatDate(l.interactionDate || l.createdAt), l.project?.projectTitle].filter(Boolean).join(' · ')}
-                slotProps={{ primary: { sx: { overflowWrap: 'anywhere', pr: canWrite ? 8 : 0 } } }}
-              />
-            </ListItem>
-          ))}
-        </List>
-        {canWrite && <Button variant="outlined" onClick={() => setLinking(true)} sx={{ mt: 1 }}>Link interactions</Button>}
-      </Section>
+        <Box sx={{ flex: '1 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <SectionCard
+            title="Supporting interactions"
+            actions={canWrite ? <Button variant="outlined" size="small" onClick={() => setLinking(true)}>Link interactions</Button> : null}
+          >
+            <RowList
+              ariaLabel="Supporting interactions"
+              empty="No interactions linked."
+              rows={supporting.map((l) => ({
+                key: l._id,
+                primary: l.description || l.category || 'Interaction',
+                secondary: [formatDate(l.interactionDate || l.createdAt), l.project?.projectTitle].filter(Boolean).join(' · '),
+                actions: canWrite ? <Button size="small" onClick={() => handleUnlink(l)}>Unlink</Button> : null,
+              }))}
+            />
+          </SectionCard>
 
-      <Section title="Files">
-        {(announcement.files || []).length === 0 && <Typography color="text.secondary">No files.</Typography>}
-        <List dense disablePadding>
-          {(announcement.files || []).map((f) => (
-            <ListItem key={f._id} disableGutters secondaryAction={<Button size="small" onClick={() => handleOpen(f)}>Open</Button>}>
-              <ListItemText primary={f.fileName} secondary={formatDate(f.documentDate || f.uploadedAt)} slotProps={{ primary: { sx: { overflowWrap: 'anywhere', pr: 6 } } }} />
-            </ListItem>
-          ))}
-        </List>
-        {canWrite && <Button variant="outlined" onClick={() => setUploading(true)} sx={{ mt: 1 }}>Attach file</Button>}
-      </Section>
+          <SectionCard
+            title="Files"
+            actions={canWrite ? <Button variant="outlined" size="small" onClick={() => setUploading(true)}>Attach file</Button> : null}
+          >
+            <RowList
+              ariaLabel="Announcement files"
+              empty="No files."
+              rows={(announcement.files || []).map((f) => ({
+                key: f._id,
+                primary: f.fileName,
+                secondary: formatDate(f.documentDate || f.uploadedAt),
+                actions: <Button size="small" onClick={() => handleOpen(f)}>Open</Button>,
+              }))}
+            />
+          </SectionCard>
+        </Box>
+      </Box>
 
       <AnnouncementForm
         open={editing}

@@ -1300,68 +1300,97 @@ exports[`DGDashboard (11.14 analytics) > matches snapshot after successful rende
           <div
             class="MuiBox-root css-1cwznr"
           >
-            <div
-              aria-label="Services by SABER code: M1 0, M4 5, A7 8, V1 4"
-              class="MuiBox-root css-fmo6j7"
-              role="img"
+            <ul
+              aria-label="Services by SABER code"
+              class="MuiBox-root css-1xb1k8w"
             >
-              <div
-                class="MuiBox-root css-g2sxat"
-              >
+              <li>
                 <div
-                  class="MuiBox-root css-1rbyfv8"
+                  class="MuiBox-root css-1181he1"
                 >
-                  M1
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-13wzttx"
+                  >
+                    M1
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-lo30q3"
+                  >
+                    0
+                  </span>
+                  <span
+                    class="MuiBox-root css-ty8jgw"
+                  >
+                    M1: 0 interactions
+                  </span>
                 </div>
-                <div
-                  class="MuiBox-root css-vglet3"
+              </li>
+              <li>
+                <a
+                  aria-label="M4: 5 interactions"
+                  class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineNone css-xe1dwk-MuiTypography-root-MuiLink-root"
+                  data-discover="true"
+                  href="/interactions?officerLogs=1&dated=1&year=2026&serviceCode=M4"
                 >
-                  0
-                </div>
-              </div>
-              <div
-                class="MuiBox-root css-s6hbar"
-              >
-                <div
-                  class="MuiBox-root css-1rbyfv8"
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-13wzttx"
+                  >
+                    M4
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-7xmjs"
+                  >
+                    5
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a
+                  aria-label="A7: 8 interactions"
+                  class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineNone css-xe1dwk-MuiTypography-root-MuiLink-root"
+                  data-discover="true"
+                  href="/interactions?officerLogs=1&dated=1&year=2026&serviceCode=A7"
                 >
-                  M4
-                </div>
-                <div
-                  class="MuiBox-root css-13ujwj1"
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-13wzttx"
+                  >
+                    A7
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-7xmjs"
+                  >
+                    8
+                  </span>
+                </a>
+              </li>
+              <li>
+                <a
+                  aria-label="V1: 4 interactions"
+                  class="MuiTypography-root MuiTypography-inherit MuiLink-root MuiLink-underlineNone css-xe1dwk-MuiTypography-root-MuiLink-root"
+                  data-discover="true"
+                  href="/interactions?officerLogs=1&dated=1&year=2026&serviceCode=V1"
                 >
-                  5
-                </div>
-              </div>
-              <div
-                class="MuiBox-root css-s6hbar"
-              >
-                <div
-                  class="MuiBox-root css-1rbyfv8"
-                >
-                  A7
-                </div>
-                <div
-                  class="MuiBox-root css-13ujwj1"
-                >
-                  8
-                </div>
-              </div>
-              <div
-                class="MuiBox-root css-s6hbar"
-              >
-                <div
-                  class="MuiBox-root css-1rbyfv8"
-                >
-                  V1
-                </div>
-                <div
-                  class="MuiBox-root css-13ujwj1"
-                >
-                  4
-                </div>
-              </div>
-            </div>
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-13wzttx"
+                  >
+                    V1
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    class="MuiBox-root css-7xmjs"
+                  >
+                    4
+                  </span>
+                </a>
+              </li>
+            </ul>
           </div>
           <p
             class="MuiTypography-root MuiTypography-caption css-5fih1d-MuiTypography-root"

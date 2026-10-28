@@ -129,7 +129,7 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1 }}>
         <Box
           aria-hidden="true"
-          sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: tokens.maroon, color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700, flexShrink: 0 }}
+          sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: tokens.maroon, color: tokens.paper, display: 'grid', placeItems: 'center', fontWeight: 700, flexShrink: 0 }}
         >
           O
         </Box>

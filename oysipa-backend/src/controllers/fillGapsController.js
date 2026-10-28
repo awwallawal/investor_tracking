@@ -1,5 +1,6 @@
 // Fill the gaps (story 11.17). All roles may read.
-// GET /api/fill-gaps?year=YYYY|all&officer=me|all|<id>&missing=T5,T7&q=  → { year, currentYear, summary, total, rows }
+// GET /api/fill-gaps?year=YYYY|all&officer=me|all|<id>&investor=<id>&missing=T5,T7&q=  → { year, currentYear, summary, total, rows }
+// (investor: one investor's projects only, story 11.16; a bad id → nothing)
 // GET /api/fill-gaps?count=1&officer=me                                   → { year, currentYear, count } (sidebar badge)
 // year: as the SABER report (2000 to the current Lagos year, or all; default
 // the current year); anything else → 400. Unknown officer / missing values are

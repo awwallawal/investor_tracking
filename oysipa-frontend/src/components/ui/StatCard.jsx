@@ -15,19 +15,22 @@ const STAT_TONES = {
 
 // One headline number. With `to`, the whole card links there. `secondaryLink`
 // ({ to, label }) adds a second link under it (outside the card link).
+// `compact`: the small tile of a detail page header (story 11.16).
 const StatCard = ({
-  label, value, hint, tone = 'default', to, secondaryLink,
+  label, value, hint, tone = 'default', to, secondaryLink, compact = false,
 }) => {
-  const c = STAT_TONES[tone] || STAT_TONES.default;
+  const c = compact && tone === 'default'
+    ? { ...STAT_TONES.default, bg: tokens.inputBg, border: tokens.rowDivider }
+    : (STAT_TONES[tone] || STAT_TONES.default);
   const body = (
-    <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1, height: '100%', boxSizing: 'border-box' }}>
+    <Box sx={{ p: compact ? 1.75 : 2.5, display: 'flex', flexDirection: 'column', gap: compact ? 0.5 : 1, height: '100%', boxSizing: 'border-box' }}>
       <Typography variant="overline" component="div" sx={{ color: c.label, lineHeight: 1.4 }}>
         {label}
       </Typography>
       <Typography
         component="p"
         className="tabular-nums"
-        sx={{ fontSize: { xs: 28, sm: 34 }, fontWeight: 700, lineHeight: 1.1, color: c.value, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}
+        sx={{ fontSize: compact ? 22 : { xs: 28, sm: 34 }, fontWeight: 700, lineHeight: 1.1, color: c.value, fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}
       >
         {value}
       </Typography>
@@ -46,7 +49,7 @@ const StatCard = ({
   ) : body;
 
   return (
-    <Card data-tone={tone} sx={{ height: '100%', bgcolor: c.bg, borderColor: c.border, ...(secondaryLink && { display: 'flex', flexDirection: 'column' }) }}>
+    <Card data-tone={tone} sx={{ height: '100%', bgcolor: c.bg, borderColor: c.border, ...(compact && { borderRadius: '12px', boxShadow: 'none' }), ...(secondaryLink && { display: 'flex', flexDirection: 'column' }) }}>
       {main}
       {secondaryLink && (
         <Box sx={{ px: 2.5, pb: 2, pt: 0 }}>

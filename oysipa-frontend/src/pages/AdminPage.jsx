@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Box, Button, Container, Paper, Typography,
+  Alert, Box, Button,
 } from '@mui/material';
+import PageHeader from '../components/ui/PageHeader';
+import SectionCard from '../components/ui/SectionCard';
 import LifecycleStatusManager from '../components/LifecycleStatusManager';
 import MdaPicker from '../components/MdaPicker';
 import ExchangeRatesSection from '../components/ExchangeRatesSection';
@@ -42,11 +44,7 @@ const MouMdasSection = () => {
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
-      <Typography variant="h6" component="h2">MoU MDAs</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        These MDAs are marked &quot;(MoU)&quot; on the issues register.
-      </Typography>
+    <SectionCard title="MoU MDAs" subtitle='These MDAs are marked "(MoU)" on the issues register.'>
       {(loadError || error) && <Alert severity="error" sx={{ my: 1 }}>{error || loadError}</Alert>}
       {saved && <Alert severity="success" sx={{ my: 1 }}>MoU MDAs saved.</Alert>}
       <MdaPicker
@@ -68,7 +66,7 @@ const MouMdasSection = () => {
         </Button>
         {ready && codes.length === 0 && <Alert severity="warning" sx={{ py: 0 }}>No MDA will be marked MoU</Alert>}
       </Box>
-    </Paper>
+    </SectionCard>
   );
 };
 
@@ -76,18 +74,16 @@ const AdminPage = () => {
   const role = getCurrentUser()?.role;
   const canManageStatuses = role === 'Director-General' || role === 'Portal-Admin';
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Admin Settings
-        </Typography>
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader eyebrow="Admin" title="Admin Settings" subtitle="Settings used across the tracker. Every change is recorded in the change log." />
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
         <MouMdasSection />
         {/* Exchange rates (story 11.14): DG and Portal-Admin. */}
         {canManageStatuses && <ExchangeRatesSection />}
         {/* Lifecycle statuses: DG and Portal-Admin (owner decision 24 Oct 2026). */}
         {canManageStatuses && <LifecycleStatusManager />}
       </Box>
-    </Container>
+    </Box>
   );
 };
 

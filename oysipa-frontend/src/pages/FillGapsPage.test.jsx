@@ -150,6 +150,28 @@ describe('FillGapsPage', () => {
     await waitFor(() => expect(lastParams(getSpy)).toMatchObject({ year: 'all', officer: 'me' }));
   });
 
+  it('investor=<id> (the investor page link, 11.16): sent to the API, shown as a removable chip', async () => {
+    localStorage.setItem('token', tokenFor('Director-General'));
+    renderPage('/fill-gaps?year=all&officer=all&investor=0123456789abcdef01234567');
+    await screen.findByText('Synthetic Plant');
+    expect(lastParams(getSpy)).toEqual({ year: 'all', officer: 'all', investor: '0123456789abcdef01234567' });
+    // The chip names the investor of the first group.
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Synthetic Foods' }));
+    await waitFor(() => expect(new URLSearchParams(Location.search).get('investor')).toBeNull());
+    await waitFor(() => expect(lastParams(getSpy)).not.toHaveProperty('investor'));
+  });
+
+  it('investor=<id> with no rows: the chip says "This investor"; a bad id is ignored', async () => {
+    data = response([]);
+    localStorage.setItem('token', tokenFor('Director-General'));
+    const { unmount } = renderPage('/fill-gaps?year=all&investor=0123456789abcdef01234567');
+    expect(await screen.findByRole('button', { name: 'Remove This investor' })).toBeInTheDocument();
+    unmount();
+    renderPage('/fill-gaps?year=all&investor=not-an-id');
+    await screen.findByText(/Every project in scope/);
+    expect(lastParams(getSpy)).not.toHaveProperty('investor');
+  });
+
   it.each([
     ['officer=unassigned', { officer: 'unassigned' }],
     ['officer=0123456789abcdef01234567', { officer: '0123456789abcdef01234567' }],

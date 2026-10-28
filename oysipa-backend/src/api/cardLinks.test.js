@@ -197,3 +197,30 @@ describe('DG dashboard figures = their lists', () => {
     expect(lead.count).toBe(1);
   });
 });
+
+describe('Services by code tiles = their lists (11.16)', () => {
+  it.each([['this year', () => year], ['last year', () => year - 1], ['all years', () => 'all']])('each code tile links to its list and the count is that list\'s length (%s)', async (_label, yearOf) => {
+    const y = yearOf();
+    const staff = await User.findOne({ email: 'card.staff@example.com' });
+    const inv = await Investor.findOne({ investorName: 'Card Mine One' });
+    const p = await InvestmentProject.findOne({ projectTitle: 'Card Mill' });
+    const log = (fields) => InteractionLog.create({ loggedBy: staff._id, description: 'Coded support', category: 'Meeting', ...fields });
+    await log({ investor: inv._id, interactionDate: day(`${year}-03-05`), serviceCodes: ['M2'] });
+    await log({ project: p._id, interactionDate: day(`${year}-04-05`), serviceCodes: ['M2', 'A1', 'M2'] });
+    await log({ investor: inv._id, interactionDate: day(`${year - 1}-06-05`), serviceCodes: ['A1'] });
+    // Not counted for a year: a System Update row with a code; an undated coded log (M4, above).
+    await log({ project: p._id, category: 'System Update', interactionDate: day(`${year}-04-06`), serviceCodes: ['M2'] });
+    const token = global.dgToken;
+    const o = (await get(`/api/analytics/overview?year=${y}`, token).expect(200)).body;
+    const { codes } = o.yearOnYear.services;
+    expect(codes.length).toBeGreaterThan(0);
+    const yearPart = y === 'all' ? '' : `&dated=1&year=${y}`;
+    for (const c of codes) {
+      expect(c.to).toBe(`/interactions?officerLogs=1${yearPart}&serviceCode=${c.code}`);
+      // eslint-disable-next-line no-await-in-loop
+      await expectLink(c.count, c.to, token, `services ${c.code} ${y}`);
+    }
+    if (y === year) expect(codes.find((c) => c.code === 'M2').count).toBe(2);
+    if (y === year - 1) expect(codes.find((c) => c.code === 'A1').count).toBe(1);
+  });
+});

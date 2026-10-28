@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, Autocomplete, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel,
+  Alert, Autocomplete, Button, FormControlLabel,
   Switch, TextField,
 } from '@mui/material';
+import FormDialog, { FormSection } from './ui/FormDialog';
 import HappenedDateField from './HappenedDateField';
 import apiClient from '../api/api';
 import { announcementErrorMessage, createAnnouncement, updateAnnouncement } from '../api/announcements';
@@ -143,94 +144,105 @@ const AnnouncementForm = ({
   };
 
   return (
-    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{editing ? 'Edit announcement' : 'Register announcement'}</DialogTitle>
-      <DialogContent>
-        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        {optionsError && <Alert severity="warning" sx={{ mb: 1 }}>{optionsError}</Alert>}
-        {noProjects && <Alert severity="info" sx={{ mb: 1 }}>You have no assigned investors&apos; projects to register on.</Alert>}
-        {projectMissing && <Alert severity="warning" sx={{ mb: 1 }}>This announcement&apos;s project could not be loaded.</Alert>}
-        {!(projectId && !editing) && (
-          <Autocomplete
-            options={options}
-            value={selected}
-            onChange={(e, value) => set('project')(value ? value._id : '')}
-            getOptionLabel={(o) => (o.investorName ? `${o.projectTitle} — ${o.investorName}` : o.projectTitle || '')}
-            isOptionEqualToValue={(o, v) => String(o._id) === String(v._id)}
-            disabled={saving}
-            renderInput={(params) => (
-              <TextField {...params} label="Project" required margin="dense" variant="standard" placeholder="Search by project or investor" />
-            )}
-          />
-        )}
-        <HappenedDateField
-          label="Announcement date"
-          required
-          value={form.announcementDate}
-          onChange={set('announcementDate')}
+    <FormDialog
+      open={open}
+      onClose={saving ? undefined : onClose}
+      title={editing ? 'Edit announcement' : 'Register announcement'}
+      help="A public announcement of an investment. It counts for DLR 4.4 when it names OYSIPA."
+      maxWidth="sm"
+      actions={(
+        <>
+          <Button onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="contained" onClick={handleSave} disabled={!canSave}>
+            {saving ? 'Saving...' : (editing ? 'Save' : 'Register')}
+          </Button>
+        </>
+      )}
+    >
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {optionsError && <Alert severity="warning" sx={{ mb: 1 }}>{optionsError}</Alert>}
+      {noProjects && <Alert severity="info" sx={{ mb: 1 }}>You have no assigned investors&apos; projects to register on.</Alert>}
+      {projectMissing && <Alert severity="warning" sx={{ mb: 1 }}>This announcement&apos;s project could not be loaded.</Alert>}
+      {!(projectId && !editing) && (
+        <FormSection title="Project" first>
+        <Autocomplete
+          options={options}
+          value={selected}
+          onChange={(e, value) => set('project')(value ? value._id : '')}
+          getOptionLabel={(o) => (o.investorName ? `${o.projectTitle} — ${o.investorName}` : o.projectTitle || '')}
+          isOptionEqualToValue={(o, v) => String(o._id) === String(v._id)}
           disabled={saving}
-          helperText="When it was published"
+          renderInput={(params) => (
+            <TextField {...params} label="Project" required margin="dense" variant="standard" placeholder="Search by project or investor" />
+          )}
         />
-        <TextField
-          label="Outlet"
-          required
-          fullWidth
-          margin="dense"
-          variant="standard"
-          value={form.outlet}
-          onChange={(e) => set('outlet')(e.target.value)}
-          disabled={saving}
-          helperText="Who published it, e.g. a newspaper or the State website"
-        />
-        <TextField
-          label="Link"
-          fullWidth
-          margin="dense"
-          variant="standard"
-          value={form.url}
-          onChange={(e) => set('url')(e.target.value)}
-          disabled={saving}
-          error={!!urlError}
-          helperText={urlError ? 'Use a link starting with http:// or https://' : ' '}
-        />
-        <TextField
-          label="Archived copy link"
-          fullWidth
-          margin="dense"
-          variant="standard"
-          value={form.archivedCopyUrl}
-          onChange={(e) => set('archivedCopyUrl')(e.target.value)}
-          disabled={saving}
-          error={!!archivedError}
-          helperText={archivedError ? 'Use a link starting with http:// or https://' : 'e.g. a web archive link'}
-        />
-        <FormControlLabel
-          sx={{ mt: 1 }}
-          control={<Switch checked={form.oysipaNamed} onChange={(e) => set('oysipaNamed')(e.target.checked)} disabled={saving} />}
-          label="OYSIPA named"
-        />
-        <TextField
-          label="What it says OYSIPA did"
-          required={form.oysipaNamed}
-          fullWidth
-          multiline
-          minRows={2}
-          margin="dense"
-          variant="standard"
-          value={form.oysipaRoleText}
-          onChange={(e) => set('oysipaRoleText')(e.target.value)}
-          disabled={saving}
-          error={roleMissing}
-          helperText={roleMissing ? 'Required when OYSIPA is named' : ' '}
-        />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={!canSave}>
-          {saving ? 'Saving...' : (editing ? 'Save' : 'Register')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </FormSection>
+      )}
+      <FormSection title="Publication">
+      <HappenedDateField
+        label="Announcement date"
+        required
+        value={form.announcementDate}
+        onChange={set('announcementDate')}
+        disabled={saving}
+        helperText="When it was published"
+      />
+      <TextField
+        label="Outlet"
+        required
+        fullWidth
+        margin="dense"
+        variant="standard"
+        value={form.outlet}
+        onChange={(e) => set('outlet')(e.target.value)}
+        disabled={saving}
+        helperText="Who published it, e.g. a newspaper or the State website"
+      />
+      <TextField
+        label="Link"
+        fullWidth
+        margin="dense"
+        variant="standard"
+        value={form.url}
+        onChange={(e) => set('url')(e.target.value)}
+        disabled={saving}
+        error={!!urlError}
+        helperText={urlError ? 'Use a link starting with http:// or https://' : ' '}
+      />
+      <TextField
+        label="Archived copy link"
+        fullWidth
+        margin="dense"
+        variant="standard"
+        value={form.archivedCopyUrl}
+        onChange={(e) => set('archivedCopyUrl')(e.target.value)}
+        disabled={saving}
+        error={!!archivedError}
+        helperText={archivedError ? 'Use a link starting with http:// or https://' : 'e.g. a web archive link'}
+      />
+      </FormSection>
+      <FormSection title="OYSIPA's role">
+      <FormControlLabel
+        sx={{ mt: 1 }}
+        control={<Switch checked={form.oysipaNamed} onChange={(e) => set('oysipaNamed')(e.target.checked)} disabled={saving} />}
+        label="OYSIPA named"
+      />
+      <TextField
+        label="What it says OYSIPA did"
+        required={form.oysipaNamed}
+        fullWidth
+        multiline
+        minRows={2}
+        margin="dense"
+        variant="standard"
+        value={form.oysipaRoleText}
+        onChange={(e) => set('oysipaRoleText')(e.target.value)}
+        disabled={saving}
+        error={roleMissing}
+        helperText={roleMissing ? 'Required when OYSIPA is named' : ' '}
+      />
+      </FormSection>
+    </FormDialog>
   );
 };
 

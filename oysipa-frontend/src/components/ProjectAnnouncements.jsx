@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import {
-  Alert, Box, Button, Chip, Link as MuiLink, List, ListItem, ListItemText, Paper, Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Link as MuiLink } from '@mui/material';
+import SectionCard from './ui/SectionCard';
+import RowList from './ui/RowList';
+import StatusBadge from './ui/StatusBadge';
 import AnnouncementForm from './AnnouncementForm';
 import { announcementErrorMessage, fetchAnnouncements } from '../api/announcements';
 import { dateLine } from '../utils/dates';
@@ -28,37 +29,32 @@ const ProjectAnnouncements = ({ projectId, canWrite }) => {
   useEffect(() => { load(); }, [load]);
 
   return (
-    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 4 } }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-        <Typography variant="h6" component="h2">Announcements</Typography>
-        {canWrite && <Button variant="outlined" onClick={() => setRegistering(true)}>Register announcement</Button>}
-      </Box>
+    <SectionCard
+      title="Announcements"
+      actions={canWrite ? <Button variant="outlined" size="small" onClick={() => setRegistering(true)}>Register announcement</Button> : null}
+    >
       {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-      {announcements && announcements.length === 0 && !error && (
-        <Typography color="text.secondary">No announcements for this project.</Typography>
-      )}
-      <List dense disablePadding>
-        {(announcements || []).map((a) => (
-          <ListItem key={a._id} disableGutters>
-            <ListItemText
-              primary={(
-                <>
-                  <MuiLink component={RouterLink} to={`/announcements/${a._id}`} sx={{ overflowWrap: 'anywhere' }}>{a.outlet}</MuiLink>
-                  {a.oysipaNamed && <Chip size="small" color="success" label="OYSIPA named" sx={{ ml: 1 }} />}
-                </>
-              )}
-              secondary={dateLine(a, 'announcementDate')}
-            />
-          </ListItem>
-        ))}
-      </List>
+      <RowList
+        ariaLabel="Project announcements"
+        empty={announcements && !error ? 'No announcements for this project.' : null}
+        rows={(announcements || []).map((a) => ({
+          key: a._id,
+          primary: (
+            <Box component="span" sx={{ display: 'inline-flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+              <MuiLink component={RouterLink} to={`/announcements/${a._id}`} sx={{ overflowWrap: 'anywhere' }}>{a.outlet}</MuiLink>
+              {a.oysipaNamed && <StatusBadge label="OYSIPA named" />}
+            </Box>
+          ),
+          secondary: dateLine(a, 'announcementDate'),
+        }))}
+      />
       <AnnouncementForm
         open={registering}
         projectId={projectId}
         onClose={() => setRegistering(false)}
         onSaved={(a) => { setRegistering(false); navigate(`/announcements/${a._id}`); }}
       />
-    </Paper>
+    </SectionCard>
   );
 };
 

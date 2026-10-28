@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Dialog, DialogActions, DialogContent, DialogTitle, TextField, Button, Select, MenuItem, InputLabel, FormControl, Alert } from '@mui/material';
+import { TextField, Button, Select, MenuItem, InputLabel, FormControl, Alert } from '@mui/material';
+import FormDialog, { FormSection } from './ui/FormDialog';
 import apiClient from '../api/api';
 import ServiceCodePicker from './ServiceCodePicker';
 import HappenedDateField from './HappenedDateField';
@@ -129,82 +130,93 @@ const InteractionLogForm = ({
   };
 
   return (
-    <Dialog open={open} onClose={uploading ? undefined : handleClose} fullWidth maxWidth="sm">
-      <DialogTitle>Log New Support Interaction</DialogTitle>
-      <DialogContent>
-        {error && <Alert severity={savedLogId ? 'warning' : 'error'} sx={{ mb: 2 }}>{error}</Alert>}
-        <TextField
-          autoFocus
-          margin="dense"
-          label="Interaction Description"
-          type="text"
-          fullWidth
-          multiline
-          rows={4}
-          variant="standard"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+    <FormDialog
+      open={open}
+      onClose={uploading ? undefined : handleClose}
+      title="Log New Support Interaction"
+      help="Record the support given. Tag the SABER service codes so it counts for T10."
+      maxWidth="sm"
+      actions={(
+        <>
+          {savedLogId ? (
+            <>
+              <Button onClick={finish} disabled={uploading}>Close without document</Button>
+              <Button variant="contained" onClick={handleRetry} disabled={uploading || !selectedFile}>
+                {uploading ? 'Uploading...' : 'Retry'}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button onClick={onClose} disabled={uploading}>Cancel</Button>
+              <Button variant="contained" onClick={handleSave} disabled={uploading}>
+                {uploading ? 'Saving...' : 'Save Log'}
+              </Button>
+            </>
+          )}
+        </>
+      )}
+    >
+      {error && <Alert severity={savedLogId ? 'warning' : 'error'} sx={{ mb: 2 }}>{error}</Alert>}
+      <FormSection title="What happened" first>
+      <TextField
+        autoFocus
+        margin="dense"
+        label="Interaction Description"
+        type="text"
+        fullWidth
+        multiline
+        rows={4}
+        variant="standard"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        disabled={uploading || !!savedLogId}
+      />
+      <FormControl fullWidth margin="dense" variant="standard">
+        <InputLabel id="service-category-label">Service Category</InputLabel>
+        <Select
+          labelId="service-category-label"
+          id="service-category-select"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          label="Service Category"
           disabled={uploading || !!savedLogId}
-        />
-        <FormControl fullWidth margin="dense" variant="standard">
-          <InputLabel id="service-category-label">Service Category</InputLabel>
-          <Select
-            labelId="service-category-label"
-            id="service-category-select"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            label="Service Category"
-            disabled={uploading || !!savedLogId}
-          >
-            {INTERACTION_CATEGORIES.map((cat) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <HappenedDateField
-          label="Date it happened"
-          value={interactionDate}
-          onChange={setInteractionDate}
-          disabled={uploading || !!savedLogId}
-          {...(dateHelperText && { helperText: dateHelperText })}
-        />
-        <ServiceCodePicker
-          value={serviceCodes}
-          onChange={setServiceCodes}
-          creditLinkage={creditLinkage}
-          onCreditLinkageChange={setCreditLinkage}
-          disabled={uploading || !!savedLogId}
-        />
-        <Button
-          variant="contained"
-          component="label"
-          sx={{ mt: 2 }}
-          disabled={uploading}
         >
-          {selectedFile ? selectedFile.name : 'Attach Document'}
-          <input type="file" hidden accept={DOCUMENT_ACCEPT} onChange={handleFileChange} />
-        </Button>
-      </DialogContent>
-      <DialogActions>
-        {savedLogId ? (
-          <>
-            <Button onClick={finish} disabled={uploading}>Close without document</Button>
-            <Button onClick={handleRetry} disabled={uploading || !selectedFile}>
-              {uploading ? 'Uploading...' : 'Retry'}
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button onClick={onClose} disabled={uploading}>Cancel</Button>
-            <Button onClick={handleSave} disabled={uploading}>
-              {uploading ? 'Saving...' : 'Save Log'}
-            </Button>
-          </>
-        )}
-      </DialogActions>
-    </Dialog>
+          {INTERACTION_CATEGORIES.map((cat) => (
+            <MenuItem key={cat} value={cat}>
+              {cat}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <HappenedDateField
+        label="Date it happened"
+        value={interactionDate}
+        onChange={setInteractionDate}
+        disabled={uploading || !!savedLogId}
+        {...(dateHelperText && { helperText: dateHelperText })}
+      />
+      </FormSection>
+      <FormSection title="SABER services">
+      <ServiceCodePicker
+        value={serviceCodes}
+        onChange={setServiceCodes}
+        creditLinkage={creditLinkage}
+        onCreditLinkageChange={setCreditLinkage}
+        disabled={uploading || !!savedLogId}
+      />
+      </FormSection>
+      <FormSection title="Document">
+      <Button
+        variant="outlined"
+        component="label"
+        sx={{ mt: 2 }}
+        disabled={uploading}
+      >
+        {selectedFile ? selectedFile.name : 'Attach Document'}
+        <input type="file" hidden accept={DOCUMENT_ACCEPT} onChange={handleFileChange} />
+      </Button>
+      </FormSection>
+    </FormDialog>
   );
 };
 

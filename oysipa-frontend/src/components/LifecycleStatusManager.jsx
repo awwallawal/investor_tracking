@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Alert,
-  Box,
   Typography,
   Button,
-  List,
-  ListItem,
-  ListItemText,
   TextField,
   Dialog,
   DialogActions,
@@ -14,6 +10,9 @@ import {
   DialogTitle,
   IconButton,
 } from '@mui/material';
+import SectionCard from './ui/SectionCard';
+import RowList from './ui/RowList';
+import FormDialog from './ui/FormDialog';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
@@ -141,25 +140,37 @@ const LifecycleStatusManager = () => {
   if (loading) return <Typography>Loading...</Typography>;
 
   return (
-    <Box>
-      <Typography variant="h5" gutterBottom>
-        Manage Lifecycle Statuses
-      </Typography>
-
+    <SectionCard
+      title="Manage Lifecycle Statuses"
+      subtitle="The stages a project moves through, in order."
+      actions={(
+        <Button variant="contained" size="small" onClick={handleCreateClick}>
+          Create New Status
+        </Button>
+      )}
+    >
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
-      <Button variant="contained" onClick={handleCreateClick} sx={{ mb: 2 }}>
-        Create New Status
-      </Button>
-
       {/* Edit/Create Dialog */}
-      <Dialog open={editOpen} onClose={handleClose}>
-        <DialogTitle>{currentStatus?._id ? 'Edit' : 'Create'} Lifecycle Status</DialogTitle>
-        <DialogContent>
+      <FormDialog
+        open={editOpen}
+        onClose={handleClose}
+        title={`${currentStatus?._id ? 'Edit' : 'Create'} Lifecycle Status`}
+        help="The name shows on projects and the dashboard."
+        maxWidth="xs"
+        actions={(
+          <>
+            <Button onClick={handleClose} disabled={saving}>Cancel</Button>
+            <Button variant="contained" onClick={handleSave} disabled={!trimmedName || saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </>
+        )}
+      >
           {dialogError && (
             <Alert severity="error" sx={{ mb: 1 }}>
               {dialogError}
@@ -184,14 +195,7 @@ const LifecycleStatusManager = () => {
             value={currentStatus?.description || ''}
             onChange={(e) => setCurrentStatus({ ...currentStatus, description: e.target.value })}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} disabled={saving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!trimmedName || saving}>
-            {saving ? 'Saving...' : 'Save'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      </FormDialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onClose={handleClose}>
@@ -208,30 +212,37 @@ const LifecycleStatusManager = () => {
       </Dialog>
 
       {/* Status List */}
-      <List>
-        {statuses.map((status, index) => (
-          <ListItem key={status._id}>
-            <ListItemText primary={status.name} secondary={status.description} />
-            <IconButton aria-label="move up" onClick={() => handleMove(index, -1)} disabled={index === 0}>
-              <ArrowUpwardIcon />
-            </IconButton>
-            <IconButton
-              aria-label="move down"
-              onClick={() => handleMove(index, 1)}
-              disabled={index === statuses.length - 1}
-            >
-              <ArrowDownwardIcon />
-            </IconButton>
-            <IconButton aria-label="edit" onClick={() => handleEditClick(status)}>
-              <EditIcon />
-            </IconButton>
-            <IconButton aria-label="delete" onClick={() => handleDeleteClick(status)}>
-              <DeleteIcon />
-            </IconButton>
-          </ListItem>
-        ))}
-      </List>
-    </Box>
+      <RowList
+        ariaLabel="Lifecycle statuses"
+        empty={loading ? null : 'No statuses yet.'}
+        rows={statuses.map((status, index) => ({
+          key: status._id,
+          primary: status.name,
+          secondary: status.description,
+          actions: (
+            <>
+              <IconButton size="small" aria-label="move up" onClick={() => handleMove(index, -1)} disabled={index === 0}>
+                <ArrowUpwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                aria-label="move down"
+                onClick={() => handleMove(index, 1)}
+                disabled={index === statuses.length - 1}
+              >
+                <ArrowDownwardIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" aria-label="edit" onClick={() => handleEditClick(status)}>
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" aria-label="delete" onClick={() => handleDeleteClick(status)}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </>
+          ),
+        }))}
+      />
+    </SectionCard>
   );
 };
 

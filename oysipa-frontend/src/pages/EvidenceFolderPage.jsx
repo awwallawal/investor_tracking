@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link as RouterLink, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
-  Alert, Box, Breadcrumbs, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText,
-  DialogTitle, Link as MuiLink, Paper, Stack, TextField, Typography,
+  Alert, Box, Button, Card, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText,
+  DialogTitle, Stack, TextField, Typography,
 } from '@mui/material';
-import FolderOutlined from '@mui/icons-material/FolderOutlined';
+import PageHeader from '../components/ui/PageHeader';
+import StatusBadge from '../components/ui/StatusBadge';
 import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
 import OpenInNewOutlined from '@mui/icons-material/OpenInNewOutlined';
 import LocalOfferOutlined from '@mui/icons-material/LocalOfferOutlined';
@@ -145,12 +146,10 @@ const FileItem = ({
   const { icon, color } = fileIcon(file.mimeType);
   const links = file.links || [];
   return (
-    <Paper
+    <Card
       component="li"
-      variant="outlined"
       sx={{
         listStyle: 'none',
-        borderRadius: 3,
         p: { xs: 1.5, sm: 2 },
         display: 'grid',
         gap: { xs: 1.25, md: 2 },
@@ -171,7 +170,7 @@ const FileItem = ({
         </Box>
       </Stack>
       <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', minWidth: 0 }}>
-        {links.length === 0 && <Chip size="small" color="warning" label="Untagged" />}
+        {links.length === 0 && <StatusBadge label="Untagged" />}
         {links.map((l) => (
           <Chip
             key={l._id}
@@ -190,7 +189,7 @@ const FileItem = ({
           <Button size="small" color="error" onClick={onDelete} aria-label={`Delete ${file.fileName}`}>Delete</Button>
         )}
       </Stack>
-    </Paper>
+    </Card>
   );
 };
 
@@ -251,37 +250,29 @@ const EvidenceFolderPage = () => {
   const untaggedHere = files.filter((f) => !(f.links || []).length).length;
 
   return (
-    <Box sx={{ maxWidth: 1200 }}>
-      <Breadcrumbs sx={{ mb: 2, '& ol': { flexWrap: 'wrap' } }}>
-        <MuiLink component={RouterLink} to="/evidence" underline="hover" color="inherit">Evidence Library</MuiLink>
-        {folder?.parent && (
-          <MuiLink component={RouterLink} to={`/evidence/${folder.parent._id}`} underline="hover" color="inherit">{folder.parent.name}</MuiLink>
-        )}
-        {folder && <Typography color="text.primary" sx={{ overflowWrap: 'anywhere' }}>{folder.name}</Typography>}
-      </Breadcrumbs>
-
-      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, mb: 3 }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'flex-start' } }}>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', minWidth: 0 }}>
-            <IconTile icon={FolderOutlined} size={44} />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 700, overflowWrap: 'anywhere' }}>{folder?.name || 'Folder'}</Typography>
-              {folder?.folderDate && <Typography variant="body2" color="text.secondary">{formatDate(folder.folderDate)}</Typography>}
-              {folder?.description && <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>{folder.description}</Typography>}
-            </Box>
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flexShrink: 0 }}>
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Evidence Library', to: '/evidence' },
+          ...(folder?.parent ? [{ label: folder.parent.name, to: `/evidence/${folder.parent._id}` }] : []),
+          ...(folder ? [{ label: folder.name }] : []),
+        ]}
+        eyebrow={folder?.folderDate ? `Folder · ${formatDate(folder.folderDate)}` : 'Folder'}
+        title={folder?.name || 'Folder'}
+        subtitle={folder?.description}
+        actions={(
+          <>
             <ExportButton list="evidence" params={{ ...lq.apiParams, folder: folderId }} />
             {isAdmin && folder && (
               <Button variant="contained" startIcon={<UploadFileOutlined />} onClick={() => setAdding(true)}>Add files</Button>
             )}
-          </Stack>
-        </Stack>
-      </Paper>
+          </>
+        )}
+      />
 
       {subfolders.length > 0 && (
         <Box component="nav" aria-label="Subfolders" sx={{ mb: 3 }}>
-          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600, mb: 1 }}>Subfolders</Typography>
+          <Typography variant="h6" component="h2" sx={{ fontSize: 17, mb: 1 }}>Subfolders</Typography>
           <FolderGrid>
             {subfolders.map((sub) => (
               <FolderCard
@@ -294,7 +285,7 @@ const EvidenceFolderPage = () => {
         </Box>
       )}
 
-      <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
+      <Typography variant="h6" component="h2" sx={{ fontSize: 17, mb: 1.5 }}>
         {loading ? 'Files' : `${plural(files.length, 'file')}${!untaggedOnly && untaggedHere ? ` · ${untaggedHere} untagged` : ''}`}
       </Typography>
       <ViewTabs list="evidence" current={lq.filterKey} canonical={lq.canonical} saveQuery={lq.queryString} onApply={lq.applyQuery} />

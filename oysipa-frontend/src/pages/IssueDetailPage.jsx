@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import {
-  Alert, Box, Breadcrumbs, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
-  FormControl, InputLabel, Link as MuiLink, List, ListItem, ListItemText, MenuItem, Paper, Select, Stack, TextField, Typography,
+  Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle,
+  FormControl, InputLabel, Link as MuiLink, MenuItem, Select, Stack, TextField, Typography,
 } from '@mui/material';
+import PageHeader from '../components/ui/PageHeader';
+import SectionCard from '../components/ui/SectionCard';
+import FormDialog, { FormSection } from '../components/ui/FormDialog';
+import KeyFacts from '../components/ui/KeyFacts';
+import RowList from '../components/ui/RowList';
+import StatusBadge from '../components/ui/StatusBadge';
 import HappenedDateField from '../components/HappenedDateField';
 import MdaPicker from '../components/MdaPicker';
 import IssueStatusForm from '../components/IssueStatusForm';
@@ -14,18 +20,11 @@ import apiClient from '../api/api';
 import { DOCUMENT_ACCEPT, documentErrorMessage, openEvidenceFile } from '../api/documents';
 import { notifyUntaggedChanged } from '../api/evidence';
 import {
-  ISSUE_CATEGORIES, NOTE_REQUIRED_STATUSES, REPORTED_VIA, RESOLVED, STATUS_COLORS, issueReference,
+  ISSUE_CATEGORIES, NOTE_REQUIRED_STATUSES, REPORTED_VIA, RESOLVED, issueReference,
 } from '../constants/issueFields';
 import { useMdas } from '../api/mdas';
 import { dateLine, formatDate } from '../utils/dates';
 import { getCurrentUser, isAdminRole } from '../utils/currentUser';
-
-const Section = ({ title, children }) => (
-  <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
-    <Typography variant="h6" component="h2" sx={{ mb: 1 }}>{title}</Typography>
-    {children}
-  </Paper>
-);
 
 const ActionForm = ({ issue, onSaved }) => {
   const [date, setDate] = useState('');
@@ -204,10 +203,20 @@ const EditDetailsDialog = ({ issue, onClose, onSaved }) => {
   };
 
   return (
-    <Dialog open onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Edit details</DialogTitle>
-      <DialogContent>
+    <FormDialog
+      open
+      onClose={saving ? undefined : onClose}
+      title="Edit details"
+      help="Status and resolution have their own form. The investor never changes."
+      actions={(
+        <>
+          <Button onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="contained" onClick={save} disabled={saving || !form.category || !form.description.trim()}>{saving ? 'Saving...' : 'Save details'}</Button>
+        </>
+      )}
+    >
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <FormSection title="The issue" first>
         <FormControl fullWidth margin="dense" variant="standard" required>
           <InputLabel id="edit-issue-category-label">Category</InputLabel>
           <Select labelId="edit-issue-category-label" value={form.category} onChange={(e) => set('category')(e.target.value)} disabled={saving}>
@@ -228,6 +237,8 @@ const EditDetailsDialog = ({ issue, onClose, onSaved }) => {
           error={!form.description.trim()}
           helperText={!form.description.trim() ? 'A description is required.' : ' '}
         />
+        </FormSection>
+        <FormSection title="Who acts and when">
         {mdaError && <Alert severity="warning" sx={{ mt: 1 }}>Could not load the MDA list.</Alert>}
         <MdaPicker
           id="edit-issue-mda"
@@ -245,6 +256,8 @@ const EditDetailsDialog = ({ issue, onClose, onSaved }) => {
             {REPORTED_VIA.map((v) => <MenuItem key={v} value={v}>{v}</MenuItem>)}
           </Select>
         </FormControl>
+        </FormSection>
+        <FormSection title="Project">
         {projectsError && <Alert severity="warning" sx={{ mt: 1 }}>{projectsError}</Alert>}
         <FormControl fullWidth margin="dense" variant="standard" disabled={saving}>
           <InputLabel id="edit-issue-project-label">Project</InputLabel>
@@ -263,12 +276,8 @@ const EditDetailsDialog = ({ issue, onClose, onSaved }) => {
           disabled={saving}
           helperText="Free text, e.g. the project as named in a loaded issue"
         />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button variant="contained" onClick={save} disabled={saving || !form.category || !form.description.trim()}>{saving ? 'Saving...' : 'Save details'}</Button>
-      </DialogActions>
-    </Dialog>
+        </FormSection>
+    </FormDialog>
   );
 };
 
@@ -317,89 +326,90 @@ const IssueDetailPage = () => {
   const actions = [...(issue.actions || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
   const reference = issueReference(issue);
 
+  let outcome = null;
+  if (issue.status === RESOLVED) outcome = `Resolved ${formatDate(issue.resolvedDate)}: ${issue.resolution}`;
+  else if (NOTE_REQUIRED_STATUSES.includes(issue.status) && issue.resolution) outcome = `${issue.status}: ${issue.resolution}`;
+  const facts = [
+    { label: 'Reported', value: `${dateLine(issue, 'dateReported')}${issue.reportedVia ? ` · via ${issue.reportedVia}` : ''}` },
+    { label: 'Registered', value: formatDate(issue.dateRegistered) || '—' },
+    (issue.project || issue.projectText) ? {
+      label: 'Project',
+      value: issue.project ? <MuiLink component={RouterLink} to={`/projects/${issue.project._id}`}>{issue.project.projectTitle}</MuiLink> : issue.projectText,
+    } : null,
+    issue.mdaResponsible?.length > 0 ? { label: 'MDA responsible', value: issue.mdaResponsible.map(mdaName).join(', ') } : null,
+    outcome ? { label: 'Outcome', value: outcome, multiline: true } : null,
+  ];
+
   return (
-    <Box>
-      <Breadcrumbs sx={{ mb: 1 }}>
-        <MuiLink component={RouterLink} to="/issues">Investor issues</MuiLink>
-        <Typography color="text.primary">{reference || 'Issue'}</Typography>
-      </Breadcrumbs>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, justifyContent: 'space-between', alignItems: { sm: 'center' } }}>
-        <Box>
-          {reference && <Typography variant="overline" component="p" color="text.secondary">{`Issue ${reference}`}</Typography>}
-          <Typography variant="h4" component="h1" sx={{ overflowWrap: 'anywhere' }}>
-            {issue.investor ? (
-              <MuiLink component={RouterLink} to={`/investors/${issue.investor._id}`} underline="hover">{issue.investor.investorName}</MuiLink>
-            ) : 'Investor issue'}
-          </Typography>
-          <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: 'wrap' }} useFlexGap>
-            <Chip label={issue.status} color={STATUS_COLORS[issue.status] || 'default'} />
-            <Chip label={issue.category} variant="outlined" />
-          </Stack>
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader
+        breadcrumbs={[{ label: 'Investor issues', to: '/issues' }, { label: reference || 'Issue' }]}
+        eyebrow={reference ? `Issue ${reference}` : 'Investor issue'}
+        title={issue.investor ? (
+          <MuiLink component={RouterLink} to={`/investors/${issue.investor._id}`} underline="hover">{issue.investor.investorName}</MuiLink>
+        ) : 'Investor issue'}
+        meta={(
+          <>
+            <StatusBadge label={issue.status} />
+            {issue.category && <StatusBadge label={issue.category} />}
+          </>
+        )}
+        actions={(canWrite || isAdmin) ? (
+          <>
+            {canWrite && <Button variant="outlined" onClick={() => setEditing(true)}>Edit details</Button>}
+            {isAdmin && <Button variant="outlined" color="error" onClick={() => setDeleting(true)}>Delete</Button>}
+          </>
+        ) : null}
+      />
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, alignItems: 'flex-start' }}>
+        <Box sx={{ flex: '999 1 480px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <SectionCard title="Issue">
+            <Typography sx={{ whiteSpace: 'pre-wrap', mb: 2, overflowWrap: 'anywhere' }}>{issue.description}</Typography>
+            <KeyFacts items={facts} ariaLabel="Issue facts" />
+            {issue.importNote && <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>{`Import note: ${issue.importNote}`}</Typography>}
+          </SectionCard>
+
+          <SectionCard title="Actions">
+            <RowList
+              ariaLabel="Issue actions"
+              empty="No actions yet."
+              rows={actions.map((a) => ({
+                key: a._id,
+                primary: a.note,
+                preWrap: true,
+                secondary: `${formatDate(a.date)}${a.by ? ` · ${a.by}` : ''} · recorded by ${a.recordedBy?.name || 'unknown'} on ${formatDate(a.recordedAt)}`,
+              }))}
+            />
+            {canWrite && <ActionForm issue={issue} onSaved={merge} />}
+          </SectionCard>
         </Box>
-        <Stack direction="row" spacing={1}>
-          {canWrite && <Button variant="outlined" onClick={() => setEditing(true)}>Edit details</Button>}
-          {isAdmin && <Button color="error" onClick={() => setDeleting(true)}>Delete</Button>}
-        </Stack>
-      </Stack>
 
-      <Section title="Issue">
-        <Typography sx={{ whiteSpace: 'pre-wrap', mb: 1 }}>{issue.description}</Typography>
-        <Typography variant="body2">{`Reported: ${dateLine(issue, 'dateReported')}${issue.reportedVia ? ` · via ${issue.reportedVia}` : ''}`}</Typography>
-        <Typography variant="body2">{`Registered: ${formatDate(issue.dateRegistered)}`}</Typography>
-        {(issue.project || issue.projectText) && (
-          <Typography variant="body2">
-            {'Project: '}
-            {issue.project ? <MuiLink component={RouterLink} to={`/projects/${issue.project._id}`}>{issue.project.projectTitle}</MuiLink> : issue.projectText}
-          </Typography>
-        )}
-        {issue.mdaResponsible?.length > 0 && (
-          <Typography variant="body2">
-            {`MDA responsible: ${issue.mdaResponsible.map(mdaName).join(', ')}`}
-          </Typography>
-        )}
-        {issue.status === RESOLVED && (
-          <Typography variant="body2" sx={{ mt: 1 }}>{`Resolved ${formatDate(issue.resolvedDate)}: ${issue.resolution}`}</Typography>
-        )}
-        {issue.status !== RESOLVED && NOTE_REQUIRED_STATUSES.includes(issue.status) && issue.resolution && (
-          <Typography variant="body2" sx={{ mt: 1 }}>{`${issue.status}: ${issue.resolution}`}</Typography>
-        )}
-        {issue.importNote && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{`Import note: ${issue.importNote}`}</Typography>}
-      </Section>
+        <Box sx={{ flex: '1 1 320px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          {canWrite && (
+            <SectionCard title="Status">
+              <IssueStatusForm key={`${issue.status}-${issue.resolution || ''}`} issue={issue} onSaved={merge} />
+            </SectionCard>
+          )}
 
-      <Section title="Actions">
-        {actions.length === 0 && <Typography color="text.secondary">No actions yet.</Typography>}
-        <List dense disablePadding>
-          {actions.map((a) => (
-            <ListItem key={a._id} disableGutters alignItems="flex-start">
-              <ListItemText
-                primary={a.note}
-                secondary={`${formatDate(a.date)}${a.by ? ` · ${a.by}` : ''} · recorded by ${a.recordedBy?.name || 'unknown'} on ${formatDate(a.recordedAt)}`}
-                slotProps={{ primary: { sx: { whiteSpace: 'pre-wrap' } } }}
-              />
-            </ListItem>
-          ))}
-        </List>
-        {canWrite && <ActionForm issue={issue} onSaved={merge} />}
-      </Section>
-
-      {canWrite && (
-        <Section title="Status">
-          <IssueStatusForm key={`${issue.status}-${issue.resolution || ''}`} issue={issue} onSaved={merge} />
-        </Section>
-      )}
-
-      <Section title="Files">
-        {fileError && <Alert severity="error" sx={{ mb: 1 }}>{fileError}</Alert>}
-        {(issue.files || []).length === 0 && <Typography color="text.secondary">No files.</Typography>}
-        <List dense disablePadding>
-          {(issue.files || []).map((f) => (
-            <ListItem key={f._id} disableGutters secondaryAction={<Button size="small" onClick={() => handleOpen(f)}>Open</Button>}>
-              <ListItemText primary={f.fileName} secondary={formatDate(f.documentDate || f.uploadedAt)} slotProps={{ primary: { sx: { overflowWrap: 'anywhere', pr: 6 } } }} />
-            </ListItem>
-          ))}
-        </List>
-        {canWrite && <Button variant="outlined" onClick={() => setUploading(true)} sx={{ mt: 1 }}>Attach file</Button>}
-      </Section>
+          <SectionCard
+            title="Files"
+            actions={canWrite ? <Button variant="outlined" size="small" onClick={() => setUploading(true)}>Attach file</Button> : null}
+          >
+            {fileError && <Alert severity="error" sx={{ mb: 1 }}>{fileError}</Alert>}
+            <RowList
+              ariaLabel="Issue files"
+              empty="No files."
+              rows={(issue.files || []).map((f) => ({
+                key: f._id,
+                primary: f.fileName,
+                secondary: formatDate(f.documentDate || f.uploadedAt),
+                actions: <Button size="small" onClick={() => handleOpen(f)}>Open</Button>,
+              }))}
+            />
+          </SectionCard>
+        </Box>
+      </Box>
 
       {uploading && (
         <UploadDialog issue={issue} onClose={() => setUploading(false)} onUploaded={() => { setUploading(false); notifyUntaggedChanged(); load(); }} />

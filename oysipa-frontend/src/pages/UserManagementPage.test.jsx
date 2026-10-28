@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import UserManagementPage from './UserManagementPage';
@@ -91,4 +91,17 @@ describe('UserManagementPage', () => {
         expect(screen.queryByRole('button', { name: /revoke access/i })).not.toBeInTheDocument();
     });
   }, 20000);
+
+  it('shows role and status as badges in the users table (11.16)', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: mockUsers });
+    render(<BrowserRouter><UserManagementPage /></BrowserRouter>);
+    const table = await screen.findByRole('table', { name: 'Current users' });
+    const alice = (await within(table).findByText('Alice')).closest('tr');
+    expect(within(alice).getByText('Staff')).toHaveAttribute('data-tone', 'default');
+    expect(within(alice).getByText('Active')).toHaveAttribute('data-tone', 'success');
+    const bob = within(table).getByText('Bob').closest('tr');
+    expect(within(bob).getByText('Portal-Admin')).toHaveAttribute('data-tone', 'info');
+    expect(within(bob).getByText('Revoked')).toHaveAttribute('data-tone', 'default');
+    expect(screen.getByRole('heading', { level: 1, name: 'User Management' })).toBeInTheDocument();
+  });
 });

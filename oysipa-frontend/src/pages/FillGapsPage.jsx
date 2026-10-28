@@ -431,6 +431,8 @@ const FillGapsPage = () => {
     q: 'Search',
     missing: { label: 'Missing', format: (k) => `Missing ${FIELD_LABELS[k] || k}` },
     ...(['me', 'all'].includes(values.officer) ? {} : { officer: { label: 'Officer', format: (o) => (o === 'unassigned' ? 'Unassigned investors' : 'One officer') } }),
+    // From the investor page: its name once the list has it.
+    investor: { label: 'Investor', format: () => (data && data.groups[0] && data.groups[0].investor.name) || 'This investor' },
   });
   const yearLabel = year === ALL_YEARS ? 'all years' : String(year);
   const missingOptions = FILL_GAPS_FIELDS.map((k) => ({ value: k, label: FIELD_LABELS[k], count: s ? s.missing[k] : undefined }));
@@ -509,7 +511,7 @@ const FillGapsPage = () => {
         )}
         resultCount={data ? `${data.total} incomplete project${data.total === 1 ? '' : 's'}` : null}
         chips={chips}
-        onClearAll={() => lq.set({ q: '', missing: [], ...(['me', 'all'].includes(values.officer) ? {} : { officer: '' }) })}
+        onClearAll={() => lq.set({ q: '', missing: [], investor: '', ...(['me', 'all'].includes(values.officer) ? {} : { officer: '' }) })}
       />
       {list.error && data && (
         <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={() => list.reload()}>Retry</Button>}>{list.error}</Alert>

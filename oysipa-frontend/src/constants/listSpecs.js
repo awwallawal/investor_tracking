@@ -112,6 +112,8 @@ export const FILL_GAPS_SPEC = {
   // Mine (me) / All, or the list values (unassigned, an officer id); anything else → the role default.
   officer: { type: 'single', pattern: /^(me|all|unassigned|[0-9a-fA-F]{24})$/ },
   missing: { type: 'multi', options: FILL_GAPS_FIELDS },
+  // One investor's projects (story 11.16, the investor page's "Fill the gaps" link).
+  investor: { type: 'single', pattern: /^[0-9a-fA-F]{24}$/ },
 };
 
 export const LIST_SPECS = {

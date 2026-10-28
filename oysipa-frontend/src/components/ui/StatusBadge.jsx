@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import { tokens } from '../../theme';
+import { statusTone } from './statusTones';
 
 const BADGE_TONES = {
   default: { bg: tokens.neutralTint, fg: tokens.navText },
@@ -10,13 +11,15 @@ const BADGE_TONES = {
   success: { bg: tokens.successTint, fg: tokens.success },
 };
 
-// A small rounded pill for a status or a type.
-const StatusBadge = ({ label, tone = 'default' }) => {
-  const c = BADGE_TONES[tone] || BADGE_TONES.default;
+// A small rounded pill for a status or a type. Without `tone`, the tone comes
+// from the shared status map (statusTones.js).
+const StatusBadge = ({ label, tone }) => {
+  const resolved = tone || statusTone(label);
+  const c = BADGE_TONES[resolved] || BADGE_TONES.default;
   return (
     <Box
       component="span"
-      data-tone={tone}
+      data-tone={resolved}
       sx={{
         display: 'inline-block',
         fontSize: 12,

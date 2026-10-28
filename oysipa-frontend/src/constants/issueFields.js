@@ -39,13 +39,7 @@ export const BAND_LABELS = {
   stretch: 'Stretch band (over 75%)',
 };
 
-export const STATUS_COLORS = {
-  Open: 'warning',
-  'In progress': 'info',
-  Resolved: 'success',
-  'Closed unresolved': 'default',
-  Withdrawn: 'default',
-};
+// Status badge tones: components/ui/statusTones.js (one map, story 11.16).
 
 // Years offered in the issue filters and the dashboard: this year back to 2023.
 export const issueYears = () => {

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Link, Paper, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TextField, Typography,
+  Alert, Box, Button, Link, TextField, Typography,
 } from '@mui/material';
+import PageHeader from '../components/ui/PageHeader';
+import DataTable from '../components/ui/DataTable';
+import EmptyState from '../components/ui/EmptyState';
 import FilterBar, { DateRangeFilter, FacetFilter } from '../components/ui/FilterBar';
 import ViewTabs from '../components/ui/ViewTabs';
 import ExportButton from '../components/ExportButton';
@@ -13,46 +15,12 @@ import {
   CHANGELOG_ACTIONS, CHANGELOG_ENTITIES, changeLogErrorMessage, entityLabel, fetchChangeLog,
   fetchChangeLogHealth, fetchChangeLogUsers,
 } from '../api/changelog';
-import { formatTime, shortValue } from '../utils/changeLog';
+import { formatTime } from '../utils/changeLog';
+import ChangeList from '../components/ChangeList';
 import { CHANGELOG_SPEC as SPEC } from '../constants/listSpecs';
 
-const hideOnPhone = { display: { xs: 'none', md: 'table-cell' } };
 const EMPTY = {
   rows: [], total: 0, pageSize: 50,
-};
-
-// One value; a long one is shortened and can be expanded.
-const ChangeValue = ({ value }) => {
-  const [open, setOpen] = useState(false);
-  const { text, full, long } = shortValue(value);
-  return (
-    <>
-      <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{open ? full : text}</Box>
-      {long && (
-        <Button size="small" variant="text" sx={{ minWidth: 0, p: 0, ml: 0.5, verticalAlign: 'baseline' }} onClick={() => setOpen((o) => !o)}>
-          {open ? 'Show less' : 'Show more'}
-        </Button>
-      )}
-    </>
-  );
-};
-
-// "field: old → new" per change.
-const ChangeList = ({ changes }) => {
-  if (!changes || changes.length === 0) return <Typography variant="body2" color="text.secondary">—</Typography>;
-  return (
-    <Box component="ul" sx={{ m: 0, pl: 2 }}>
-      {changes.map((c) => (
-        <Typography component="li" variant="body2" key={c.field} data-testid="change">
-          <strong>{c.field}</strong>
-          {': '}
-          <ChangeValue value={c.old} />
-          {' → '}
-          <ChangeValue value={c.new} />
-        </Typography>
-      ))}
-    </Box>
-  );
 };
 
 // Filters in the URL (story 11.15). Newest first only: no sort.
@@ -125,17 +93,65 @@ const ChangeLogPage = () => {
   const filtered = entity || action || by || batchId || entityId || from || to;
   const failures = Number(health && health.failedWrites) || 0;
 
+  const columns = [
+    { key: 'createdAt', label: 'Time', cellSx: { whiteSpace: 'nowrap' }, render: (row) => formatTime(row.createdAt) },
+    {
+      key: 'by',
+      label: 'Who',
+      render: (row) => (
+        <>
+          {row.byName || '—'}
+          {row.role && <Typography variant="body2" color="text.secondary">{row.role}</Typography>}
+        </>
+      ),
+    },
+    {
+      key: 'record',
+      label: 'Record',
+      render: (row) => (
+        <>
+          {`${entityLabel(row.entity)} · ${row.action}`}
+          <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+            <Link
+              component="button"
+              type="button"
+              variant="body2"
+              title="Show only this record"
+              sx={{ textAlign: 'left', overflowWrap: 'anywhere' }}
+              onClick={() => filterRecord(row.entityId)}
+            >
+              {row.entityId}
+            </Link>
+          </Typography>
+        </>
+      ),
+    },
+    {
+      key: 'changes',
+      label: 'Changes',
+      cellSx: { minWidth: 220 },
+      render: (row) => (
+        <>
+          <ChangeList changes={row.changes} />
+          {row.reason && (
+            <Typography variant="body2" color="text.secondary" sx={{ display: { sm: 'none' }, mt: 0.5 }}>{`Reason: ${row.reason}`}</Typography>
+          )}
+        </>
+      ),
+    },
+    {
+      key: 'reason', label: 'Reason', hideOnPhone: true, render: (row) => row.reason || '—',
+    },
+  ];
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-        <Typography variant="h4" component="h1">Change log</Typography>
-        <ExportButton list="changelog" params={lq.apiParams} />
-      </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Who created or edited investors, projects, interactions, issues, announcements and the MoU MDAs setting,
-        with the server time and the old and new values; plus deletes, imports and Evidence library file actions.
-        Read-only. When two people change the same record at the same moment, the old and new values are best-effort.
-      </Typography>
+    <Box sx={{ minWidth: 0 }}>
+      <PageHeader
+        eyebrow="Admin"
+        title="Change log"
+        subtitle="Who created or edited investors, projects, interactions, issues, announcements and the MoU MDAs setting, with the server time and the old and new values; plus deletes, imports and Evidence library file actions. Read-only. When two people change the same record at the same moment, the old and new values are best-effort."
+        actions={<ExportButton list="changelog" params={lq.apiParams} />}
+      />
       {failures > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {`${failures} change${failures === 1 ? '' : 's'} could not be written to the change log`}
@@ -192,56 +208,19 @@ const ChangeLogPage = () => {
         onClearAll={() => { setBatchInput(''); lq.clearAll(); }}
       />
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {!loading && !error && rows.length === 0 && (
-        <Typography color="text.secondary" sx={{ my: 2 }}>{`No changes recorded${filtered ? ' for these filters' : ''}.`}</Typography>
-      )}
-      {rows.length > 0 && (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Time</TableCell>
-                <TableCell>Who</TableCell>
-                <TableCell>Record</TableCell>
-                <TableCell>Changes</TableCell>
-                <TableCell sx={hideOnPhone}>Reason</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row._id} data-testid="changelog-row" sx={{ verticalAlign: 'top' }}>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatTime(row.createdAt)}</TableCell>
-                  <TableCell>
-                    {row.byName || '—'}
-                    {row.role && <Typography variant="body2" color="text.secondary">{row.role}</Typography>}
-                  </TableCell>
-                  <TableCell>
-                    {`${entityLabel(row.entity)} · ${row.action}`}
-                    <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                      <Link
-                        component="button"
-                        type="button"
-                        variant="body2"
-                        title="Show only this record"
-                        sx={{ textAlign: 'left', overflowWrap: 'anywhere' }}
-                        onClick={() => filterRecord(row.entityId)}
-                      >
-                        {row.entityId}
-                      </Link>
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ minWidth: 220 }}>
-                    <ChangeList changes={row.changes} />
-                    {row.reason && (
-                      <Typography variant="body2" color="text.secondary" sx={{ display: { md: 'none' }, mt: 0.5 }}>{`Reason: ${row.reason}`}</Typography>
-                    )}
-                  </TableCell>
-                  <TableCell sx={hideOnPhone}>{row.reason || '—'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {!error && (
+        <DataTable
+          ariaLabel="Change log"
+          dense
+          columns={columns}
+          rows={rows}
+          loading={loading}
+          pageSize={null}
+          manualSort
+          rowProps={() => ({ 'data-testid': 'changelog-row' })}
+          rowSx={{ verticalAlign: 'top' }}
+          emptyState={<EmptyState title={`No changes recorded${filtered ? ' for these filters' : ''}.`} />}
+        />
       )}
       {total > 0 && (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mt: 2, flexWrap: 'wrap' }}>

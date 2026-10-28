@@ -3,13 +3,10 @@ import {
   Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   TextField,
 } from '@mui/material';
 import apiClient from '../api/api';
+import FormDialog, { FormSection } from './ui/FormDialog';
 import HappenedDateField from './HappenedDateField';
 import InvestorT11Fields from './InvestorT11Fields';
 import SectorFields from './SectorFields';
@@ -83,104 +80,117 @@ const InvestorForm = ({ open, onClose, onSave }) => {
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Register New Investor</DialogTitle>
-      <DialogContent>
+    <FormDialog
+      open={open}
+      onClose={onClose}
+      title="Register New Investor"
+      help="Fields marked * are required. The lead source and first contact are SABER T11."
+      maxWidth="md"
+      actions={(
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} variant="contained">Submit</Button>
+        </>
+      )}
+    >
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-          <TextField
-            name="investorName"
-            label="Investor Name"
-            value={formData.investorName}
-            onChange={handleChange}
-            fullWidth
-            required
-            margin="normal"
-          />
-          <TextField
-            name="email"
-            label="Email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="phoneNumber"
-            label="Phone Number"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <SectorFields values={formData} onChange={setField} required />
-          <TextField
-            name="countryOfOrigin"
-            label="Country of Origin"
-            value={formData.countryOfOrigin}
-            onChange={handleChange}
-            fullWidth
-            required
-            margin="normal"
-          />
-          <TextField
-            name="companyRegistrationInfo"
-            label="Company Registration Info"
-            value={formData.companyRegistrationInfo}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="keyContactPerson"
-            label="Key Contact Person"
-            value={formData.keyContactPerson}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <InvestorT11Fields values={formData} onChange={setField} isCreate />
-          <HappenedDateField
-            name="firstContactDate"
-            label="First contact date"
-            value={firstContactDate}
-            onChange={setFirstContactDate}
-            margin="normal"
-          />
-          <TextField
-            name="website"
-            label="Website"
-            value={formData.website}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="headOffice"
-            label="Head office"
-            value={formData.headOffice}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            name="notes"
-            label="Notes"
-            value={formData.notes}
-            onChange={handleChange}
-            fullWidth
-            multiline
-            minRows={2}
-            margin="normal"
-          />
+          <FormSection title="Organisation" first>
+            <TextField
+              name="investorName"
+              label="Investor Name"
+              value={formData.investorName}
+              onChange={handleChange}
+              fullWidth
+              required
+              margin="normal"
+            />
+            <SectorFields values={formData} onChange={setField} required />
+            <TextField
+              name="countryOfOrigin"
+              label="Country of Origin"
+              value={formData.countryOfOrigin}
+              onChange={handleChange}
+              fullWidth
+              required
+              margin="normal"
+            />
+            <TextField
+              name="companyRegistrationInfo"
+              label="Company Registration Info"
+              value={formData.companyRegistrationInfo}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="website"
+              label="Website"
+              value={formData.website}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="headOffice"
+              label="Head office"
+              value={formData.headOffice}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+          </FormSection>
+          <FormSection title="Contact">
+            <TextField
+              name="keyContactPerson"
+              label="Key Contact Person"
+              value={formData.keyContactPerson}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="email"
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              name="phoneNumber"
+              label="Phone Number"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              fullWidth
+              margin="normal"
+            />
+          </FormSection>
+          <FormSection title="Lead source and first contact (T11)">
+            <InvestorT11Fields values={formData} onChange={setField} isCreate />
+            <HappenedDateField
+              name="firstContactDate"
+              label="First contact date"
+              value={firstContactDate}
+              onChange={setFirstContactDate}
+              margin="normal"
+            />
+          </FormSection>
+          <FormSection title="Other details">
+            <TextField
+              name="notes"
+              label="Notes"
+              value={formData.notes}
+              onChange={handleChange}
+              fullWidth
+              multiline
+              minRows={2}
+              margin="normal"
+            />
+          </FormSection>
         </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained">Submit</Button>
-      </DialogActions>
-    </Dialog>
+    </FormDialog>
   );
 };
 
