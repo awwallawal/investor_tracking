@@ -104,6 +104,16 @@ export const CHANGELOG_SPEC = {
   to: 'date',
 };
 
+// Fill the gaps (11.17). Not a saved-view list: year and Mine/All default by role on the page.
+export const FILL_GAPS_FIELDS = ['T5', 'T6', 'T7', 'T8a', 'T8b', 'T8c', 'T10', 'T11'];
+export const FILL_GAPS_SPEC = {
+  q: 'text',
+  year: { type: 'single', pattern: /^(all|\d{4})$/ },
+  // Mine (me) / All, or the list values (unassigned, an officer id); anything else → the role default.
+  officer: { type: 'single', pattern: /^(me|all|unassigned|[0-9a-fA-F]{24})$/ },
+  missing: { type: 'multi', options: FILL_GAPS_FIELDS },
+};
+
 export const LIST_SPECS = {
   investors: INVESTOR_SPEC,
   projects: PROJECT_SPEC,

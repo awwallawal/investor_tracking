@@ -46,10 +46,29 @@ const applyDateRegistered = (body, { isCreate }) => {
   return null;
 };
 
+// Update checks for the numbers (story 11.17): when sent, the value is a number
+// >= 0 and the jobs a whole number >= 0 (the schema has no validators).
+const projectNumberError = (body) => {
+  // '' / null keep their old meaning (the edit form sends '' for a cleared field).
+  const given = (k) => k in body && body[k] !== null && body[k] !== '';
+  const isNum = (v) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '');
+  if (given('estimatedValue')) {
+    const n = Number(body.estimatedValue);
+    if (!isNum(body.estimatedValue) || !Number.isFinite(n) || n < 0) return 'Estimated value must be a number of 0 or more.';
+  }
+  if (given('estimatedNumberOfJobs')) {
+    const n = Number(body.estimatedNumberOfJobs);
+    if (!isNum(body.estimatedNumberOfJobs) || !Number.isInteger(n) || n < 0) return 'Estimated jobs must be a whole number of 0 or more.';
+  }
+  return null;
+};
+
 const systemUpdateLog = async ({ projectId, userId, oldStatusId, newStatusId, happenedAt }) => {
-  const oldStatus = await LifecycleStatus.findById(oldStatusId);
+  const oldStatus = oldStatusId ? await LifecycleStatus.findById(oldStatusId) : null;
   const newStatus = await LifecycleStatus.findById(newStatusId);
-  const logDescription = `Lifecycle status changed from "${oldStatus.name}" to "${newStatus.name}"`;
+  // A project may have no (or a deleted) status: say "none" rather than crash.
+  const nameOf = (st) => (st && st.name) || 'none';
+  const logDescription = `Lifecycle status changed from "${nameOf(oldStatus)}" to "${nameOf(newStatus)}"`;
   const interactionLog = new InteractionLog({
     project: projectId,
     loggedBy: userId,
@@ -206,7 +225,10 @@ exports.updateProject = async (req, res) => {
     const badSector = sectorError(body);
     if (badSector) return res.status(400).json({ message: badSector });
 
-    const oldStatusId = projectToUpdate.lifecycleStatus.toString();
+    const numberError = projectNumberError(body);
+    if (numberError) return res.status(400).json({ message: numberError });
+
+    const oldStatusId = projectToUpdate.lifecycleStatus ? projectToUpdate.lifecycleStatus.toString() : null;
     const newStatusId = body.lifecycleStatus;
 
     // Update the project first
@@ -310,7 +332,7 @@ exports.updateProjectStatus = async (req, res) => {
       return res.status(404).json({ msg: 'Project not found' });
     }
 
-    const oldStatusId = project.lifecycleStatus.toString();
+    const oldStatusId = project.lifecycleStatus ? project.lifecycleStatus.toString() : null;
     project.lifecycleStatus = lifecycleStatus;
     await project.save();
 

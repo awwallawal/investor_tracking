@@ -13,6 +13,8 @@ import { SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_CODES } from '../c
 const ServiceCodePicker = ({
   value, onChange, creditLinkage, onCreditLinkageChange, disabled = false, showCreditLinkage = true,
   helperText = 'Pick every SABER service this interaction delivered (optional).',
+  // Several pickers on one page (Fill the gaps) need their own ids and labels.
+  idPrefix = 'saber-services', label = 'SABER services',
 }) => {
   const selected = value || [];
 
@@ -44,10 +46,10 @@ const ServiceCodePicker = ({
   return (
     <Box>
       <FormControl fullWidth margin="dense" variant="standard" disabled={disabled}>
-        <InputLabel id="saber-services-label">SABER services</InputLabel>
+        <InputLabel id={`${idPrefix}-label`}>{label}</InputLabel>
         <Select
-          labelId="saber-services-label"
-          id="saber-services-select"
+          labelId={`${idPrefix}-label`}
+          id={`${idPrefix}-select`}
           multiple
           value={selected}
           onChange={handleChange}

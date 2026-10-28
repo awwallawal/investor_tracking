@@ -19,10 +19,14 @@ const DOC_NOT_ATTACHED = 'Interaction saved; document not attached';
 // Logs an interaction against a project (projectId) or, with no project,
 // against an investor (investorId). A chosen file is uploaded through the
 // backend (private storage) after the interaction is saved.
-const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) => {
+// `initialDate` / `dateHelperText` (optional): a preset happened date and its
+// note (Fill the gaps presets 31 Dec of a past SABER year).
+const InteractionLogForm = ({
+  open, onClose, onSave, projectId, investorId, initialDate = '', dateHelperText,
+}) => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [interactionDate, setInteractionDate] = useState('');
+  const [interactionDate, setInteractionDate] = useState(initialDate);
   const [serviceCodes, setServiceCodes] = useState([]);
   const [creditLinkage, setCreditLinkage] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -42,7 +46,7 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
   const reset = () => {
     setDescription('');
     setCategory('');
-    setInteractionDate('');
+    setInteractionDate(initialDate);
     setServiceCodes([]);
     setCreditLinkage(false);
     setSelectedFile(null);
@@ -164,6 +168,7 @@ const InteractionLogForm = ({ open, onClose, onSave, projectId, investorId }) =>
           value={interactionDate}
           onChange={setInteractionDate}
           disabled={uploading || !!savedLogId}
+          {...(dateHelperText && { helperText: dateHelperText })}
         />
         <ServiceCodePicker
           value={serviceCodes}

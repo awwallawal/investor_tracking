@@ -267,6 +267,9 @@ const ROUTES = [
   // Story 11.9: SABER report / verifier export (DG / Portal-Admin only).
   { name: 'GET /api/saber-report', method: 'get', path: () => '/api/saber-report?year=2026', allow: ADMINS },
   { name: 'GET /api/saber-report/download', method: 'get', path: () => '/api/saber-report/download?year=2026&part=issues', allow: ADMINS },
+  // Story 11.17: Fill the gaps worklist (read-only, every role; fixes use the routes above).
+  { name: 'GET /api/fill-gaps', method: 'get', path: () => '/api/fill-gaps?year=2026', allow: ALL },
+  { name: 'GET /api/fill-gaps (count)', method: 'get', path: () => '/api/fill-gaps?count=1&officer=me', allow: ALL },
 ];
 
 const send = (route, ctx, token) => {
@@ -459,8 +462,8 @@ describe('Access matrix', () => {
     });
   });
 
-  it('ROUTES list has 84 unique entries', () => {
-    expect(ROUTES.length).toBe(84);
+  it('ROUTES list has 86 unique entries', () => {
+    expect(ROUTES.length).toBe(86);
     expect(new Set(ROUTES.map((r) => r.name)).size).toBe(ROUTES.length);
   });
 });

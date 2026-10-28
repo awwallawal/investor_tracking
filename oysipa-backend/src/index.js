@@ -23,6 +23,7 @@ const viewRoutes = require('./api/views');
 const exportRoutes = require('./api/export');
 const searchRoutes = require('./api/search');
 const saberReportRoutes = require('./api/saberReport');
+const fillGapsRoutes = require('./api/fillGaps');
 
 const app = express();
 
@@ -105,6 +106,8 @@ app.use('/api/export', exportRoutes);
 app.use('/api/search', searchRoutes);
 // Story 11.9: SABER report / verifier export (DG / Portal-Admin).
 app.use('/api/saber-report', saberReportRoutes);
+// Story 11.17: Fill the gaps worklist (all roles, read-only).
+app.use('/api/fill-gaps', fillGapsRoutes);
 
 const PORT = process.env.PORT || 3001;
 

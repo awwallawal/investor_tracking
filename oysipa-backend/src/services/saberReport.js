@@ -162,6 +162,108 @@ const projectChecks = (p, inv, statusIds, t10Latest) => {
   };
 };
 
+// ---------- T1–T11 completeness (SABER report section 1 and Fill the gaps) ----------
+
+// End of `year` (ms), or null for every year.
+const yearEndOf = (year) => (year === null ? null : new Date(`${year + 1}-01-01T00:00:00.000Z`).getTime());
+
+// T10: the latest coded officer log dated on or before the end of the year:
+// a project log for its project, an investor-level log for all its projects.
+const t10Latest = (logs, year) => {
+  const yearEnd = yearEndOf(year);
+  const t10ByProject = new Map();
+  const t10ByInvestor = new Map();
+  const later = (m, k, d) => { if (k && (!m.has(k) || time(m.get(k)) < time(d))) m.set(k, d); };
+  logs.forEach((l) => {
+    if (!l.interactionDate || !isCoded(l)) return;
+    if (yearEnd !== null && time(l.interactionDate) >= yearEnd) return;
+    if (l.project) later(t10ByProject, idOf(l.project), l.interactionDate);
+    else if (l.investor) later(t10ByInvestor, idOf(l.investor), l.interactionDate);
+  });
+  return (p, inv) => [t10ByProject.get(String(p._id)), t10ByInvestor.get(String(inv._id))]
+    .filter(Boolean).sort((x, y) => time(y) - time(x))[0] || null;
+};
+
+// The completeness rows of `year` (null = every year) from loaded records,
+// projects and officer logs, with the totals per field. The ONE T1–T11 rule
+// set: the SABER report and Fill the gaps (11.17) both use it.
+// → { rows, totals, checked, complete, cells, filled }
+const buildCompleteness = ({
+  records, projects, logs, statusIds, year,
+}) => {
+  const investorById = new Map(records.map((r) => [String(r._id), r]));
+  const latestOf = t10Latest(logs, year);
+  const rows = completenessScope({
+    records, projects, logs, year,
+  })
+    .map((p) => {
+      const inv = investorById.get(idOf(p.investor));
+      const latest = latestOf(p, inv);
+      const checks = projectChecks(p, inv, statusIds, latest);
+      return {
+        id: String(p._id),
+        project: p.projectTitle || '',
+        investor: inv.investorName || '',
+        firstContactDate: inv.firstContactDate || null,
+        checks,
+        t10Latest: latest,
+        missing: FIELDS.filter(([k]) => !checks[k]).map(([k]) => k),
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      };
+    })
+    .sort((x, y) => byText(x.investor, y.investor) || byText(x.project, y.project));
+  const totals = Object.fromEntries(FIELDS.map(([k]) => [k, rows.filter((r) => !r.checks[k]).length]));
+  const complete = rows.filter((r) => r.missing.length === 0).length;
+  const cells = rows.length * FIELDS.length;
+  const filled = cells - Object.values(totals).reduce((n, v) => n + v, 0);
+  return {
+    rows, totals, checked: rows.length, complete, cells, filled,
+  };
+};
+
+const COMPLETENESS_INVESTOR_FIELDS = 'investorName organisationType sector countryOfOrigin leadSource firstContactDate keyContactPerson phoneNumber email createdAt updatedAt';
+const COMPLETENESS_PROJECT_FIELDS = 'projectTitle description investor lifecycleStatus estimatedValue currency estimatedNumberOfJobs sector location createdAt updatedAt';
+
+// Loads the data and builds the completeness of `year`. `investorFilter` (a
+// Mongo condition on investors, e.g. { assignedTo: id }) limits it to the
+// projects of those investors: the same rows the full report has for them,
+// since a project's scope and checks depend only on its investor and logs.
+// `investorFields` / `projectFields` / `logFields` add fields to what is loaded.
+// → buildCompleteness's result plus the loaded { records, projects, logs }.
+const completenessFor = async ({
+  year = null, investorFilter = null, investorFields = '', projectFields = '', logFields = '',
+} = {}) => {
+  const logSelect = `investor project interactionDate serviceCodes ${logFields}`;
+  const [records, statuses] = await Promise.all([
+    Investor.find(investorFilter || {}).select(`${COMPLETENESS_INVESTOR_FIELDS} ${investorFields}`).lean(),
+    loadStatuses(),
+  ]);
+  let projects;
+  let logs;
+  if (investorFilter) {
+    const investorIds = records.map((r) => r._id);
+    projects = await InvestmentProject.find({ investor: { $in: investorIds } }).select(`${COMPLETENESS_PROJECT_FIELDS} ${projectFields}`).lean();
+    logs = await InteractionLog.find({
+      $and: [OFFICER_LOG, { $or: [{ investor: { $in: investorIds } }, { project: { $in: projects.map((p) => p._id) } }] }],
+    }).select(logSelect).lean();
+  } else {
+    [projects, logs] = await Promise.all([
+      InvestmentProject.find({}).select(`${COMPLETENESS_PROJECT_FIELDS} ${projectFields}`).lean(),
+      InteractionLog.find(OFFICER_LOG).select(logSelect).lean(),
+    ]);
+  }
+  const statusIds = new Set(statuses.map((st) => String(st._id)));
+  return {
+    ...buildCompleteness({
+      records, projects, logs, statusIds, year,
+    }),
+    records,
+    projects,
+    logs,
+  };
+};
+
 // ---------- builder ----------
 
 // { year, generatedAt, generatedBy, summary, links, completeness, services,
@@ -171,8 +273,8 @@ const buildSaberReport = async ({ year = null, user = null, generatedAt = new Da
   const annFilter = year === null ? {} : { announcementDate: announcementYearRange(year) };
   const issueFilter = year === null ? {} : { dateReported: yearRange(year) };
   const [records, projects, logs, statuses, issuesSummary, annSummary, countedCondition] = await Promise.all([
-    Investor.find({}).select('investorName organisationType sector countryOfOrigin leadSource firstContactDate keyContactPerson phoneNumber email createdAt updatedAt').lean(),
-    InvestmentProject.find({}).select('projectTitle description investor lifecycleStatus estimatedValue currency estimatedNumberOfJobs sector location createdAt updatedAt').lean(),
+    Investor.find({}).select(COMPLETENESS_INVESTOR_FIELDS).lean(),
+    InvestmentProject.find({}).select(COMPLETENESS_PROJECT_FIELDS).lean(),
     InteractionLog.find(OFFICER_LOG).select(`${LOG_FIELDS} description documents documentUrl updatedAt`).lean(),
     loadStatuses(),
     issuesMetric(year),
@@ -247,44 +349,12 @@ const buildSaberReport = async ({ year = null, user = null, generatedAt = new Da
   // 3. Credit linkage: the same predicate as the count.
   const creditRows = sortedInYear.filter(isCreditLinkage).map(logRow);
 
-  // 1. Completeness.
-  // T10: the latest coded officer log dated on or before the end of the year:
-  // a project log for its project, an investor-level log for all its projects.
-  const yearEnd = year === null ? null : new Date(`${year + 1}-01-01T00:00:00.000Z`).getTime();
-  const t10ByProject = new Map();
-  const t10ByInvestor = new Map();
-  const later = (m, k, d) => { if (k && (!m.has(k) || time(m.get(k)) < time(d))) m.set(k, d); };
-  logs.forEach((l) => {
-    if (!l.interactionDate || !isCoded(l)) return;
-    if (yearEnd !== null && time(l.interactionDate) >= yearEnd) return;
-    if (l.project) later(t10ByProject, idOf(l.project), l.interactionDate);
-    else if (l.investor) later(t10ByInvestor, idOf(l.investor), l.interactionDate);
+  // 1. Completeness (the shared builder, also used by Fill the gaps).
+  const {
+    rows: completenessRows, totals: fieldTotals, complete, cells, filled,
+  } = buildCompleteness({
+    records, projects, logs, statusIds, year,
   });
-  const completenessRows = completenessScope({
-    records, projects, logs, year,
-  })
-    .map((p) => {
-      const inv = investorById.get(idOf(p.investor));
-      const t10Latest = [t10ByProject.get(String(p._id)), t10ByInvestor.get(String(inv._id))]
-        .filter(Boolean).sort((x, y) => time(y) - time(x))[0] || null;
-      const checks = projectChecks(p, inv, statusIds, t10Latest);
-      return {
-        id: String(p._id),
-        project: p.projectTitle || '',
-        investor: inv.investorName || '',
-        firstContactDate: inv.firstContactDate || null,
-        checks,
-        t10Latest,
-        missing: FIELDS.filter(([k]) => !checks[k]).map(([k]) => k),
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      };
-    })
-    .sort((x, y) => byText(x.investor, y.investor) || byText(x.project, y.project));
-  const fieldTotals = Object.fromEntries(FIELDS.map(([k]) => [k, completenessRows.filter((r) => !r.checks[k]).length]));
-  const complete = completenessRows.filter((r) => r.missing.length === 0).length;
-  const cells = completenessRows.length * FIELDS.length;
-  const filled = cells - Object.values(fieldTotals).reduce((n, v) => n + v, 0);
 
   // 4. Announcements in the year; "counts" = the DLR 4.4 rule (announcementsMetric).
   const [announcements, countedIds] = await Promise.all([
@@ -575,6 +645,11 @@ module.exports = {
   ISSUE_COLUMNS,
   completenessScope,
   saberScopeProjectIds,
+  buildCompleteness,
+  completenessFor,
+  isCoded,
+  yearEndOf,
+  newestFirst,
   buildSaberReport,
   csvPart,
   rowCounts,

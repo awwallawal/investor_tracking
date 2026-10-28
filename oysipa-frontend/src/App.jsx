@@ -21,6 +21,7 @@ import AnnouncementsPage from './pages/AnnouncementsPage';
 import AnnouncementDetailPage from './pages/AnnouncementDetailPage';
 import ChangeLogPage from './pages/ChangeLogPage';
 import SaberReportPage from './pages/SaberReportPage';
+import FillGapsPage from './pages/FillGapsPage';
 
 const isAuthenticated = () => {
   return localStorage.getItem('token') !== null;
@@ -66,6 +67,7 @@ function App() {
             <Route path="/issues/:id" element={<AppLayout><IssueDetailPage /></AppLayout>} />
             <Route path="/announcements" element={<AppLayout><AnnouncementsPage /></AppLayout>} />
             <Route path="/announcements/:id" element={<AppLayout><AnnouncementDetailPage /></AppLayout>} />
+            <Route path="/fill-gaps" element={<AppLayout><FillGapsPage /></AppLayout>} />
           </Route>
 
           {/* Admin Protected Routes (MoU MDAs: DG + Portal-Admin; lifecycle statuses: Portal-Admin only, inside the page) */}

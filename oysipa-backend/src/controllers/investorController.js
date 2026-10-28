@@ -174,7 +174,10 @@ exports.updateInvestor = async (req, res) => {
           current = await Investor.findById(req.params.id).select('leadSource referredBy sector').lean();
         }
         const resultingLead = body.leadSource !== undefined ? body.leadSource : current && current.leadSource;
-        if (resultingLead !== 'Intermediary referral' && ('referredBy' in body || (current && current.referredBy))) {
+        // Only when the lead source or referrer is being changed: a partial edit
+        // (e.g. the phone only, from Fill the gaps) never touches referredBy.
+        const leadTouched = 'leadSource' in body || 'referredBy' in body;
+        if (leadTouched && resultingLead !== 'Intermediary referral' && ('referredBy' in body || (current && current.referredBy))) {
           body.referredBy = null;
         }
         const referredError = await applyReferredBy(body, { isCreate: false, investorId: req.params.id });

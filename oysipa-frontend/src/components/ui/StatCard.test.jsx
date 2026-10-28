@@ -38,4 +38,12 @@ describe('StatCard', () => {
     render(<MemoryRouter><StatCard label="X" value="1" tone="weird" /></MemoryRouter>);
     expect(screen.getByText('1')).toBeInTheDocument();
   });
+
+  it('secondaryLink is a second link outside the card link (no nested links)', () => {
+    render(<MemoryRouter><StatCard label="Projects checked" value="49" to="/projects?saberYear=2025" secondaryLink={{ to: '/fill-gaps?year=2025', label: 'Fill the gaps' }} /></MemoryRouter>);
+    const links = screen.getAllByRole('link');
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/projects?saberYear=2025', '/fill-gaps?year=2025']);
+    expect(links[0].contains(links[1])).toBe(false);
+    expect(links[1]).toHaveTextContent('Fill the gaps');
+  });
 });

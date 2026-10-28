@@ -635,6 +635,7 @@ module.exports = {
   listParam,
   firstParam,
   qText,
+  officerCondition,
   flag,
   dayRange,
   sortOf,

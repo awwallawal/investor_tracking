@@ -69,6 +69,8 @@ describe('SaberReportPage', () => {
     const links = within(summary).getAllByRole('link');
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/projects?organisationType=Investor',
+      // 11.17: the second link on "Projects checked".
+      '/fill-gaps?year=2026',
       '/interactions?officerLogs=1&year=2026&serviceCode=M1',
       '/interactions?officerLogs=1&creditLinkage=1&year=2026',
       '/announcements?year=2026&oysipaNamed=true&counted=1',
@@ -78,6 +80,14 @@ describe('SaberReportPage', () => {
     expect(within(summary).getByText(/25% complete/)).toBeInTheDocument();
     expect(within(summary).getByText('1/5')).toBeInTheDocument();
     expect(within(summary).getByText('75%')).toBeInTheDocument();
+  });
+
+  it('"Fill the gaps" on the Projects checked card follows the year (11.17)', async () => {
+    renderPage();
+    await screen.findByText('Services tagged');
+    expect(screen.getByRole('link', { name: 'Fill the gaps' })).toHaveAttribute('href', '/fill-gaps?year=2026');
+    await userEvent.click(screen.getByRole('button', { name: '2025' }));
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Fill the gaps' })).toHaveAttribute('href', '/fill-gaps?year=2025'));
   });
 
   it('picking 2025 reloads the summary for 2025', async () => {

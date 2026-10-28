@@ -23,8 +23,10 @@ import HistoryIcon from '@mui/icons-material/History';
 import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import { getCurrentUser } from '../utils/currentUser';
 import { fetchUntaggedCount, UNTAGGED_CHANGED_EVENT } from '../api/evidence';
+import { fetchFillGapsCount, FILL_GAPS_CHANGED_EVENT } from '../api/fillGaps';
 import { tokens } from '../theme';
 import { isActivePath } from '../utils/shell';
 
@@ -59,6 +61,23 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
     };
   }, [signedIn]);
 
+  // The officer's own incomplete projects (current SABER year), shown as a badge
+  // on "Fill the gaps". Same pattern: on mount and after each fix.
+  const [incomplete, setIncomplete] = useState(null);
+  useEffect(() => {
+    if (!signedIn) return undefined;
+    let active = true;
+    const load = () => fetchFillGapsCount()
+      .then((count) => { if (active) setIncomplete(count); })
+      .catch(() => { if (active) setIncomplete(null); });
+    load();
+    window.addEventListener(FILL_GAPS_CHANGED_EVENT, load);
+    return () => {
+      active = false;
+      window.removeEventListener(FILL_GAPS_CHANGED_EVENT, load);
+    };
+  }, [signedIn]);
+
   if (!signedIn) {
     return null; // Don't render sidebar if not authenticated
   }
@@ -83,6 +102,9 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
       key: 'saber',
       title: 'SABER evidence',
       items: [
+        {
+          path: '/fill-gaps', name: 'Fill the gaps', icon: FactCheckOutlinedIcon, roles: ALL, badge: incomplete, badgeLabel: 'incomplete', badgeTitle: 'Your incomplete projects (T1–T11)',
+        },
         { path: '/issues', name: 'Issues', icon: ReportProblemOutlinedIcon, roles: ALL },
         { path: '/announcements', name: 'Announcements', icon: CampaignOutlinedIcon, roles: ALL },
         { path: '/evidence', name: 'Evidence library', icon: FolderOutlinedIcon, roles: ALL, badge: untagged },
@@ -156,8 +178,8 @@ const Sidebar = ({ mobileOpen, onDrawerToggle }) => {
                     {link.badge > 0 && (
                       <Box
                         component="span"
-                        aria-label={`${link.badge} untagged`}
-                        title="Untagged files"
+                        aria-label={`${link.badge} ${link.badgeLabel || 'untagged'}`}
+                        title={link.badgeTitle || 'Untagged files'}
                         sx={{ ml: 1, bgcolor: tokens.badge, color: tokens.badgeText, borderRadius: '999px', fontSize: 11, fontWeight: 600, px: 1, py: '1px' }}
                       >
                         {link.badge > 999 ? '999+' : link.badge}

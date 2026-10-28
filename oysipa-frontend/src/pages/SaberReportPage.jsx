@@ -111,6 +111,7 @@ const SaberReportPage = () => {
           value={formatCount(s.projectsChecked)}
           hint={`${pct(s.completeShare)} complete (${formatCount(s.projectsComplete)} with nothing missing) · ${pct(s.fieldsFilledShare)} of fields filled`}
           to={links.completeness}
+          secondaryLink={{ to: `/fill-gaps?year=${year}`, label: 'Fill the gaps' }}
         />
         <StatCard
           label="Services tagged"
